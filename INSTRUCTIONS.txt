@@ -1,0 +1,221 @@
+TAP-IT – Kompletný návrh softvéru s landing page
+1️⃣ Cieľ softvéru
+
+Tap-it je moderný systém pre fitká, ktorý umožňuje:
+
+Spravovať používateľov a permanentky
+
+Evidovať vstupy a výstupy cez unikátny QR kód
+
+Zobraziť štatistiky a gamifikáciu pre používateľov
+
+Poskytovať live prehľad obsadenosti pre adminov a verejnosť (landing page)
+
+Analyzovať historické dáta a populárne časy pre manažment fitka
+
+2️⃣ Používateľské role
+Role	Prístup / Funkcie
+User	Registrácia, login, dashboard, kúpa permanentky, QR check-in, štatistiky
+Admin	Správa používateľov, správa permanentiek, live occupancy, export dát, historické štatistiky
+Verejnosť	Zobrazenie landing page, live occupancy a popular hours (bez osobných údajov)
+3️⃣ Funkcie softvéru
+3.1. Auth & Profil
+
+Registrácia, login, logout, reset hesla
+
+Editácia profilu (meno, heslo, foto)
+
+Role-based access control
+
+3.2. Permanentky / Membership
+
+Typy permanentiek: mesačná, 10/20 vstupov, ročná
+
+Aktivácia po kúpe, sledovanie platnosti
+
+Historické permanentky používateľa
+
+3.3. QR vstup / check-in systém
+
+Unikátny QR kód (UUID + hash podpis)
+
+Check-in / check-out
+
+Evidencia:
+
+user_id, check_in, check_out, duration
+
+Admin vidí všetky aktuálne check-iny
+
+3.4. Štatistiky používateľa
+
+Počet návštev
+
+Priemerný čas tréningu
+
+Streak (dni po sebe)
+
+Historické grafy
+
+3.5. Live occupancy
+
+Počet ľudí vo fitku teraz (check_out IS NULL)
+
+Farebné indikátory (green/yellow/red)
+
+Pre admin dashboard aj pre landing page
+
+3.6. Popular hours (landing page)
+
+Histogram / graf počtu návštev počas dňa
+
+Zobrazenie peak hours a odporúčaných časov pre návštevu
+
+Agregované, anonymizované dáta
+
+3.7. Gamifikácia a motivácia
+
+Streaky
+
+Odznaky za počet návštev / dni po sebe
+
+Leaderboard (voliteľné)
+
+3.8. Admin dashboard
+
+Správa používateľov a permanentiek
+
+Live obsadenosť + check-in história
+
+Export dát, analýzy
+
+Notifikácie o expirovaných permanentkách
+
+3.9. Landing page sekcia
+
+Hero (fitko, slogan, CTA)
+
+About (tréneri, služby, fotky)
+
+Live occupancy (dynamický počet ľudí + farebný indikátor)
+
+Popular hours (histogram / odporúčané časy)
+
+CTA (registrácia / kúpa permanentky)
+
+Footer (kontakty, GDPR info)
+
+3.10. Voliteľné rozšírenia (future features)
+
+Push notifikácie
+
+Mobilná PWA verzia
+
+Platobná brána
+
+Multi-gym verzia
+
+API pre 3rd-party integrácie
+
+4️⃣ Databázový návrh (Supabase / PostgreSQL)
+4.1. Tables
+
+profiles / users
+
+id (uuid, FK na auth.users)
+
+full_name
+
+role ("user" | "admin")
+
+created_at
+
+memberships
+
+id, name, duration_days, price, created_at
+
+user_memberships
+
+id, user_id, membership_id, start_date, end_date, active
+
+entries
+
+id, user_id, check_in, check_out, duration_min
+
+5️⃣ Frontend (Next.js)
+5.1. Stránky používateľa
+
+/login, /register
+
+/dashboard – QR, štatistiky, aktuálna permanentka
+
+/membership – prehľad a kúpa permanentiek
+
+5.2. Stránky admina
+
+/admin/dashboard – live occupancy, aktuálni používatelia
+
+/admin/users – správa používateľov
+
+/admin/memberships – správa permanentiek
+
+/admin/analytics – historické štatistiky, export dát
+
+5.3. Landing page /
+
+Hero
+
+About
+
+LiveOccupancy component (fetch z Supabase / Realtime)
+
+PopularHours component (fetch historických dát)
+
+CTA, Footer
+
+5.4. Komponenty
+
+QRCode, Card, Table, Chart, LiveOccupancy, PopularHours
+
+6️⃣ Backend (Supabase)
+
+Auth + JWT
+
+RLS policies:
+
+Users vidia len svoje entries
+
+Admin vidí všetko
+
+API routes (voliteľné): check-in/out, stats, occupancy
+
+Realtime subscriptions (live occupancy)
+
+7️⃣ Bezpečnosť
+
+QR kód = UUID + HMAC hash
+
+HTTPS / TLS
+
+Ochrana pred duplicitnými check-inami / podvodmi
+
+GDPR (možnosť vymazania dát na žiadosť)
+
+Verejná landing page iba anonymizované a agregované dáta
+
+8️⃣ MVP vs Full-feature roadmap
+Fáza	Funkcie
+MVP	Auth, QR check-in/out, dashboard, aktívna permanentka, live occupancy, landing page s dynamickými sekciami
+Fáza 2	Štatistiky používateľa, streaky, priemerný čas tréningu
+Fáza 3	Historické analýzy, peak hours pre admin a landing page
+Fáza 4	Gamifikácia, notifikácie, leaderboards
+Fáza 5	Multi-gym, platby, PWA, API pre integrácie
+9️⃣ UI / UX návrh
+
+Minimalistický dark theme
+
+Dashboard s kartami pre štatistiky
+
+Admin dashboard so zoznamom používateľov a live occupancy indikátormi
+
+Landing page s dynamickou LiveOccupancy a PopularHours sekciou

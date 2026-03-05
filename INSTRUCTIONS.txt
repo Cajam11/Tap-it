@@ -1,344 +1,409 @@
-TAP-IT – Kompletný návrh softvéru s landing page
+TAP-IT – Kompletný návrh softvéru
+==================================
+
 1️⃣ Cieľ softvéru
+------------------
 
-Tap-it je moderný systém pre fitká, ktorý umožňuje:
+Tap-it je moderný systém pre fitká, ktorý slúži ako virtuálna permanentka.
+Používateľ si vie založiť účet, vybrať typ permanentky a po aktivácii používať
+QR kód na vstup a výstup z fitka. Systém eviduje tréningy, zobrazuje štatistiky
+a poskytuje live prehľad obsadenosti pre verejnosť aj admin.
 
-Spravovať používateľov a permanentky
-
-Evidovať vstupy a výstupy cez unikátny QR kód
-
-Zobraziť štatistiky a gamifikáciu pre používateľov
-
-Poskytovať live prehľad obsadenosti pre adminov a verejnosť (landing page)
-
-Analyzovať historické dáta a populárne časy pre manažment fitka
 
 2️⃣ Používateľské role
-Role	Prístup / Funkcie
-User	Registrácia, login, dashboard, kúpa permanentky, QR check-in, štatistiky
-Admin	Správa používateľov, správa permanentiek, live occupancy, export dát, historické štatistiky
-Verejnosť	Zobrazenie landing page, live occupancy a popular hours (bez osobných údajov)
+-----------------------
+
+Role         Prístup / Funkcie
+-----------  -----------------------------------------------------------------------
+User         Registrácia, login, dashboard, kúpa permanentky, QR check-in, štatistiky
+Admin        Správa používateľov, správa permanentiek, live occupancy, export dát,
+             historické štatistiky, manuálny check-out
+Verejnosť    Zobrazenie landing page, live occupancy a popular hours (bez osobných
+             údajov – iba agregované a anonymizované dáta)
+
+
 3️⃣ Funkcie softvéru
+---------------------
+
 3.1. Auth & Profil
 
-Registrácia, login, logout, reset hesla
+  - Registrácia, login, logout, reset hesla (cez e-mail link)
+  - OAuth: Google Auth a Apple Auth (cez Supabase Auth)
+  - Editácia profilu: full name, titulná fotka (uložená v Supabase Storage)
+  - Role-based access control (user / admin)
 
-Editácia profilu (meno, heslo, foto)
+3.2. Navigácia – profilové dropdown menu
 
-Role-based access control
+  Po kliknutí na ikonu profilu sa zobrazí dropdown menu s položkami:
+    - Profil        – zobrazenie profilu, QR kód a základné štatistiky
+    - Nastavenia    – zmena full name, titulnej fotky, hesla
+    - Personal stats – záznamy tréningov a ich štatistiky (počet návštev,
+                       priemerný čas, streak, historické grafy, odznaky)
+    - Transakcie    – história nákupov permanentiek a záznam každého vstupu/výstupu
+    - QR kód        – samostatná sekcia so QR kódom na skenovanie pri vstupe/výstupe
 
-3.2. Permanentky / Membership
+3.3. Permanentky / Membership
 
-Typy permanentiek: mesačná, 10/20 vstupov, ročná
+  Typy permanentiek:
+    - Jednorazová  (1 vstup)
+    - Vstupová     (napr. 10 alebo 20 vstupov)
+    - Mesačná
+    - Ročná
 
-Aktivácia po kúpe, sledovanie platnosti  POZNÁMKA: V MVP fáze sa permanentka aktivuje manuálne adminom (bez platobnej brány).
-  Platobná brána sa integruje vo Fáze 5.
-Historické permanentky používateľa
+  Aktivácia a správa:
+    - POZNÁMKA: V MVP fáze sa permanentka aktivuje manuálne adminom (bez platobnej brány).
+      Platobná brána sa integruje vo Fáze 5.
+    - Po aktivácii je permanentka viditeľná na dashboarde
+    - Systém sleduje platnosť (dátum expirácie alebo zostatok vstupov)
+    - História všetkých permanentiek je dostupná v sekcii Transakcie
 
-3.3. QR vstup / check-in systém
+3.4. QR vstup / check-in systém
 
-Unikátny QR kód (UUID + HMAC podpis), tokeny sú jednorazové a časovo obmedzené (expiry)
+  - Každý používateľ má unikátny QR kód (UUID + HMAC podpis)
+  - Tokeny sú jednorazové a časovo obmedzené (expires_at, napr. platnosť 24h)
+  - Po použití sa token označí (used_at) – žiadne replay útoky
 
-Check-in / check-out
+  Priebeh check-in / check-out:
+    1. Používateľ naskenuje QR kód pri vstupe → systém vytvorí entry (check_in),
+       záznam sa okamžite prejaví v live occupancy na landing page
+    2. Pri odchode naskenuje znova → systém zapíše check_out a vypočíta duration_min,
+       používateľ sa odpíše z aktuálneho počtu ľudí vo fitku
 
-Evidencia:
+  Auto-checkout:
+    - Ak používateľ zabudne odísť (check_out IS NULL po 6 hodinách), systém
+      automaticky uzavrie entry cez scheduled cron job (Supabase pg_cron)
+    - Takáto session je označená ako NEVALIDNÁ a NEZAPOČÍTAVA sa do personal stats
+      ani do streaku
 
-user_id, check_in, check_out, duration
+  Ochrana pred zdieľaním QR kódu:
+    - Dočasné pravidlo: používateľ môže mať za jeden kalendárny deň maximálne 1 vstup
+    - ⚠️  OTVORENÁ OTÁZKA – pozri sekciu ⚠️ na konci
 
-Admin vidí všetky aktuálne check-iny
+  Recepčný checker (Python app):
+    - Samostatná Python aplikácia bežiaca na recepcii
+    - Napojená na webkameru / QR scanner
+    - Pri naskenovaní validuje token voči Supabase API
+    - Na obrazovke zobrazí fotku a meno používateľa, aby recepčný mohol overiť identitu
+    - Použije knižnicu pre čítanie QR kódov (napr. pyzbar alebo opencv)
 
-Auto-checkout: ak používateľ zabudne odísť (check_out IS NULL po 6 hodinách),
-  systém automaticky uzavrie entry cez scheduled cron job (napr. Supabase pg_cron)
+3.5. Štatistiky používateľa (Personal stats)
 
-3.4. Štatistiky používateľa
+  - Počet návštev celkovo
+  - Priemerný čas tréningu
+  - Streak (pozri definíciu nižšie)
+  - Historické grafy návštev
+  - Dostupné cez dropdown menu → Personal stats
 
-Počet návštev
+  Definícia streaku:
+    - Používateľ si v Nastaveniach zadá plánované dni tréningu (napr. PON, STR, PIA)
+    - Streak rastie za každý týždeň, v ktorom odcvičil všetky naplánované dni
+    - Streak sa resetuje pri vynechaní niektorého z naplánovaných dní
+    - ⚠️  OTVORENÁ OTÁZKA – pozri sekciu ⚠️ na konci
 
-Priemerný čas tréningu
+3.6. Live occupancy
 
-Streak (dni po sebe)
-  Definícia: streak sa počíta podľa kalendárnych dní (polnoc–polnoc).
-  Streak sa resetuje, ak používateľ nevykoná žiadny check-in v rámci jedného kalendárneho dňa.
+  - Zobrazuje aktuálny počet ľudí vo fitku (záznamy s check_out IS NULL)
+  - Farebný indikátor podľa kapacity (max_capacity v gym_settings):
+      green  = < 50 % kapacity
+      yellow = 50–80 % kapacity
+      red    = > 80 % kapacity
+  - Dostupné na landing page (verejne) aj v admin dashboarde
+  - Aktualizácia v reálnom čase cez Supabase Realtime
 
-Historické grafy
+3.7. Popular hours (landing page)
 
-3.5. Live occupancy
+  - Histogram / graf počtu návštev počas dňa
+  - Zobrazenie peak hours a odporúčaných časov pre návštevu
+  - Iba agregované a anonymizované dáta
+  - Predagregované nočným cron jobom do popular_hours_cache (hodinové buckety)
+    – nepočíta sa live pri každom requeste
 
-Počet ľudí vo fitku teraz (check_out IS NULL)
+3.8. Gamifikácia a motivácia
 
-Definovaná maximálna kapacita fitka (napr. gym_settings.max_capacity):
-  green  = < 50% kapacity
-  yellow = 50–80% kapacity
-  red    = > 80% kapacity
+  - Streaky (pozri 3.5)
+  - Odznaky (badges) za počet návštev, dni po sebe, dĺžku tréningu
+    (uložené v tabuľkách badges a user_badges)
+  - Leaderboard (voliteľné – Fáza 4)
 
-Farebné indikátory (green/yellow/red)
+3.9. Admin dashboard
 
-Pre admin dashboard aj pre landing page
+  - Správa používateľov: zobrazenie, úprava role, deaktivácia
+  - Správa permanentiek: aktivácia, zmena statusu
+  - Live obsadenosť + história všetkých check-inov
+  - Manuálny check-out pre konkrétneho používateľa
+  - Export dát (CSV / JSON)
+  - Notifikácie o expirovaných permanentkách
+  - Každá admin akcia sa zaznamenáva do admin_audit_log (GDPR compliance)
 
-3.6. Popular hours (landing page)
+3.10. Landing page (/)
 
-Histogram / graf počtu návštev počas dňa
+  - Hero sekcia   – fitko, slogan, CTA tlačidlo
+  - About sekcia  – tréneri, služby, fotky
+  - Live occupancy – dynamický počet ľudí + farebný indikátor (Supabase Realtime)
+  - Popular hours  – histogram odporúčaných časov (predagregované dáta)
+  - CTA sekcia    – registrácia / kúpa permanentky
+  - Footer        – kontakty, GDPR info
 
-Zobrazenie peak hours a odporúčaných časov pre návštevu
+3.11. Voliteľné rozšírenia (future features)
 
-Agregované, anonymizované dáta
+  - Push notifikácie
+  - Mobilná aplikácia (React Native) – onboarding, stav fitka, profil,
+    personal stats, QR kód
+  - Platobná brána (Fáza 5)
+  - Multi-gym verzia
+  - API pre 3rd-party integrácie
 
-Výkonnosť: histogram sa nepočíta live pri každom requeste.
-  Dáta sa predagregujú nočným cron jobom do materialized view alebo cache tabuľky
-  (napr. popular_hours_cache s hodinovými bucket-mi).
-
-3.7. Gamifikácia a motivácia
-
-Streaky
-
-Odznaky za počet návštev / dni po sebe
-  Uložené v tabuľkách badges a user_badges (pozri sekciu 4.1)
-
-Leaderboard (voliteľné)
-
-3.8. Admin dashboard
-
-Správa používateľov a permanentiek
-
-Live obsadenosť + check-in história
-
-Export dát, analýzy
-
-Notifikácie o expirovaných permanentkách
-
-3.9. Landing page sekcia
-
-Hero (fitko, slogan, CTA)
-
-About (tréneri, služby, fotky)
-
-Live occupancy (dynamický počet ľudí + farebný indikátor)
-
-Popular hours (histogram / odporúčané časy)
-
-CTA (registrácia / kúpa permanentky)
-
-Footer (kontakty, GDPR info)
-
-3.10. Voliteľné rozšírenia (future features)
-
-Push notifikácie
-
-Mobilná PWA verzia
-
-Platobná brána
-
-Multi-gym verzia
-
-API pre 3rd-party integrácie
 
 4️⃣ Databázový návrh (Supabase / PostgreSQL)
-4.1. Tables
+---------------------------------------------
 
-profiles / users
+4.1. Tabuľky
 
-id (uuid, FK na auth.users)
+profiles
+  id (uuid, FK na auth.users)
+  full_name
+  avatar_url          -- URL na Supabase Storage
+  role                ("user" | "admin")
+  gdpr_consent_at     -- timestamp súhlasu pri registrácii
+  created_at
 
-full_name
+memberships           -- katalóg typov permanentiek
+  id
+  name                (napr. "Jednorazová", "10 vstupov", "Mesačná", "Ročná")
+  billing_cycle       ("entries" | "monthly" | "yearly")
+  entry_count         (nullable – počet vstupov, iba pre billing_cycle = "entries")
+  duration_days       (nullable – iba pre mesačné/ročné plány)
+  is_single_entry     (boolean – true = jednorazová permanentka, UI rozlíšenie)
+  price
+  created_at
 
-role ("user" | "admin")
+user_memberships      -- priradenie permanentky k používateľovi
+  id
+  user_id
+  membership_id
+  start_date
+  end_date            (nullable pre vstupové/jednorazové permanentky)
+  entries_remaining   (nullable – zostatok vstupov)
+  status              ("active" | "expired" | "cancelled" | "suspended")
+  activated_by_admin  (boolean – MVP fáza)
+  created_at
 
-created_at
-
-memberships
-
-id, name, billing_cycle ("monthly" | "yearly" | "entries"), entry_count (nullable),
-duration_days (nullable – nepoužívať pre mesačné/ročné plány, použiť billing_cycle),
-price, created_at
-
-user_memberships
-
-id, user_id, membership_id, start_date, end_date,
-status ("active" | "expired" | "cancelled" | "suspended")
-
-entries
-
-id, user_id, check_in, check_out, duration_min
+entries               -- záznamy check-in / check-out
+  id
+  user_id
+  check_in            (timestamp)
+  check_out           (timestamp, nullable)
+  duration_min        (nullable – vypočíta sa pri check-out)
+  is_valid            (boolean – false = auto-checkout po 6h, nezapočíta sa do štatistík)
   INDEX: entries(user_id), entries(check_in)
 
-qr_tokens
+qr_tokens             -- jednorazové QR tokeny (1 token = 1 celá návšteva)
+  id
+  user_id
+  token               (uuid)
+  hmac_signature
+  status              ("active" | "checked_in" | "used" | "expired")
+  created_at
+  expires_at          (24h od vytvorenia)
+  checked_in_at       (nullable – timestamp prvého skenovania / check-in)
+  used_at             (nullable – timestamp check-outu, token definitívne neplatný)
 
-id, user_id, token (uuid), hmac_signature, created_at, expires_at, used_at (nullable)
-  Tokeny sú jednorazové. Po použití sa used_at nastaví a token je neplatný.
-
-badges
-
-id, name, description, icon, condition_type ("visit_count" | "streak" | "duration"), condition_value
+badges                -- definície odznakov
+  id
+  name
+  description
+  icon
+  condition_type      ("visit_count" | "streak" | "duration")
+  condition_value
 
 user_badges
+  id
+  user_id
+  badge_id
+  earned_at
 
-id, user_id, badge_id, earned_at
+gym_settings          -- konfigurácia fitka (1 riadok)
+  id
+  gym_name
+  max_capacity
+  max_entries_per_day (integer, default: 1 – konfigurovateľný limit vstupov/deň)
+  updated_at
 
-gym_settings
+popular_hours_cache   -- predagregované dáta pre histogram
+  hour_of_day         (0–23)
+  day_of_week         (0–6)
+  avg_visits
+  updated_at
 
-id, max_capacity, gym_name, updated_at
+admin_audit_log       -- log všetkých admin akcií
+  id
+  admin_id
+  action
+  target_type
+  target_id
+  created_at
 
-popular_hours_cache
-
-hour_of_day (0–23), day_of_week (0–6), avg_visits, updated_at
-
-admin_audit_log
-
-id, admin_id, action, target_type, target_id, created_at
 
 5️⃣ Frontend (Next.js)
+-----------------------
+
 5.1. Stránky používateľa
 
-/login, /register
-
-/forgot-password – žiadosť o reset hesla
-
-/reset-password – nastavenie nového hesla (cez email link)
-
-/dashboard – QR, štatistiky, aktuálna permanentka
-
-/membership – prehľad a kúpa permanentiek
-
-/profile – editácia mena, hesla, fotky
+  /                     – Landing page (Hero, About, LiveOccupancy, PopularHours, CTA, Footer)
+  /login                – Prihlásenie (email+heslo, Google, Apple)
+  /register             – Registrácia (vrátane GDPR súhlasu)
+  /forgot-password      – Žiadosť o reset hesla
+  /reset-password       – Nastavenie nového hesla (cez e-mail link)
+  /dashboard            – Hlavný dashboard: QR kód, aktuálna permanentka, rýchle štatistiky
+  /membership           – Prehľad a kúpa permanentiek
+  /profile              – Profil + QR kód sekcia
+  /settings             – Nastavenia: full name, titulná fotka, zmena hesla
+  /stats                – Personal stats: záznamy tréningov, grafy, streak, odznaky
+  /transactions         – Transakcie: história nákupov permanentiek a vstupov/výstupov
 
 5.2. Stránky admina
 
-/admin/dashboard – live occupancy, aktuálni používatelia
+  /admin/dashboard      – Live occupancy, zoznam aktuálnych check-inov
+  /admin/users          – Správa používateľov
+  /admin/memberships    – Správa permanentiek (aktivácia, zmena statusu)
+  /admin/entries        – História všetkých check-inov, manuálny check-out
+  /admin/analytics      – Historické štatistiky, export dát
+  /admin/settings       – Nastavenia fitka (max kapacita, max_entries_per_day, gym_name)
 
-/admin/users – správa používateľov
+5.3. Komponenty
 
-/admin/memberships – správa permanentiek
+  QRCode, Card, Table, Chart, LiveOccupancy, PopularHours, BadgeList,
+  StreakDisplay, ProfileDropdown, MembershipCard, TransactionList
 
-/admin/entries – história všetkých check-inov, manuálny check-out
+5.4. Tech stack / UI
 
-/admin/analytics – historické štatistiky, export dát
+  - Next.js App Router (server components pre statické časti, client pre realtime)
+  - Tailwind CSS + shadcn/ui
+  - Mobile-first dizajn – primárny use-case je telefón (QR check-in na mieste)
 
-/admin/settings – max kapacita fitka, gym_settings
-
-5.3. Landing page /
-
-Hero
-
-About
-
-LiveOccupancy component (fetch z Supabase / Realtime)
-
-PopularHours component (fetch historických dát)
-
-CTA, Footer
-
-5.4. Komponenty
-
-QRCode, Card, Table, Chart, LiveOccupancy, PopularHours, BadgeList, StreakDisplay
-
-5.5. Tech stack / UI
-
-Tailwind CSS + shadcn/ui (component library)
-
-Mobile-first dizajn (používatelia checkujú na telefóne)
-
-Next.js App Router s server components pre statické časti landing page
 
 6️⃣ Backend (Supabase)
+-----------------------
 
-Auth + JWT
+  - Auth: email+heslo, Google OAuth, Apple OAuth
+  - Supabase Storage: profilové fotky (bucket "avatars", RLS – iba vlastný súbor)
+  - RLS policies:
+      Users vidia iba vlastné entries, user_memberships, qr_tokens
+      Admin vidí všetko
+      Verejnosť číta iba popular_hours_cache a gym_settings (max_capacity)
+  - Realtime subscriptions: live occupancy (tabuľka entries)
+  - API routes (Next.js): /api/checkin, /api/checkout, /api/stats, /api/occupancy
+  - pg_cron jobs:
+      Auto-checkout: každých 10 min – uzavrie entries staršie ako 6h, is_valid = false
+      Popular hours cache: každú noc o 02:00 – prepočíta popular_hours_cache
 
-RLS policies:
-
-Users vidia len svoje entries
-
-Admin vidí všetko
-
-API routes (voliteľné): check-in/out, stats, occupancy
-
-Realtime subscriptions (live occupancy)
 
 7️⃣ Bezpečnosť
+--------------
 
-QR kód = UUID + HMAC hash
-  Tokeny sú jednorazové a majú expires_at (napr. 24h platnosť).
-  Po použití sa token označí v qr_tokens.used_at – žiadne replay útoky.
+  - QR kód = UUID + HMAC podpis, jednorazový token s expires_at
+  - Po skenovaní sa used_at nastaví → token okamžite neplatný (no replay attacks)
+  - HTTPS / TLS na všetkej komunikácii
+  - Rate limiting: max 5 check-in pokusov/min per IP
+  - Ochrana pred duplicitnými check-inmi (1 vstup/deň – dočasné pravidlo)
+  - Admin audit log pre každú admin akciu
+  - GDPR:
+      Súhlas so spracovaním dát pri registrácii (gdpr_consent_at)
+      Entries staršie ako 3 roky sa anonymizujú (nočný cron job)
+      Right-to-erasure: používateľ môže požiadať o zmazanie profilu a všetkých dát
+      Verejná landing page zobrazuje iba agregované a anonymizované dáta
 
-HTTPS / TLS
-
-Ochrana pred duplicitnými check-inami / podvodmi
-
-Rate limiting na check-in endpoint (napr. max 5 pokusov/min per IP)
-
-Admin audit log: každá admin akcia (zmena permanentky, manuálny check-out atď.)
-  sa zaznamená v admin_audit_log pre GDPR compliance.
-
-GDPR:
-  Súhlas so spracovaním dát pri registrácii
-  Definovaná doba uchovávania dát (napr. entries staršie ako 3 roky = anonymizovať)
-  Right-to-erasure workflow: používateľ môže požiadať o zmazanie profilu a všetkých entries
-  Verejná landing page zobrazuje iba agregované a anonymizované dáta
-
-Verejná landing page iba anonymizované a agregované dáta
 
 8️⃣ MVP vs Full-feature roadmap
-Fáza	Funkcie
-MVP	Auth, QR check-in/out, dashboard, aktívna permanentka, live occupancy, landing page s dynamickými sekciami
-Fáza 2	Štatistiky používateľa, streaky, priemerný čas tréningu
-Fáza 3	Historické analýzy, peak hours pre admin a landing page
-Fáza 4	Gamifikácia, notifikácie, leaderboards
-Fáza 5	Multi-gym, platby, PWA, API pre integrácie
+--------------------------------
+
+Fáza    Funkcie
+------  -------------------------------------------------------------------------
+MVP     Auth (email + Google/Apple), QR check-in/out, dashboard, aktívna
+        permanentka (manuálna aktivácia adminom), live occupancy, landing page,
+        Python recepčná app
+Fáza 2  Personal stats, streaky, priemerný čas tréningu, sekcia Transakcie
+Fáza 3  Historické analýzy, popular hours pre admin aj landing page
+Fáza 4  Gamifikácia (badges, leaderboard), push notifikácie
+Fáza 5  Platobná brána, React Native mobilná app, multi-gym, PWA, 3rd-party API
+
+
 9️⃣ UI / UX návrh
+-----------------
 
-Minimalistický dark theme
+  - Minimalistický dark theme
+  - Mobile-first: primárny use-case je telefón
+  - Dashboard s kartami pre štatistiky a QR kód
+  - Profilové dropdown menu (pozri sekciu 3.2)
+  - Admin dashboard so zoznamom používateľov a live occupancy indikátormi
+  - Landing page s dynamickou LiveOccupancy a PopularHours sekciou
+  - Komponent library: Tailwind CSS + shadcn/ui
 
-Mobile-first: primárny use-case je telefón (QR check-in na mieste)
-
-Dashboard s kartami pre štatistiky
-
-Admin dashboard so zoznamom používateľov a live occupancy indikátormi
-
-Landing page s dynamickou LiveOccupancy a PopularHours sekciou
-
-Komponent library: Tailwind CSS + shadcn/ui
 
 🔟 CI/CD & Testovanie
+----------------------
 
-GitHub Actions: lint + build na každý PR
-
-Supabase migrations verzionované v /supabase/migrations
-
-Základné E2E testy (Playwright): registrácia, check-in, check-out flow
-
-Unit testy pre biznis logiku: streak výpočet, QR token validácia, expiry
+  - GitHub Actions: lint + build na každý PR
+  - Supabase migrations verzionované v /supabase/migrations
+  - E2E testy (Playwright): registrácia, check-in, check-out flow
+  - Unit testy: streak výpočet, QR token validácia, auto-checkout logika
 
 
+🔟+1️⃣ Tech stack – súhrn
+--------------------------
 
-Dalej možeme spravit python kod ktory bude zapnuty na recepcii a napojeny na webku ktora bude skenovat tie qr kody a validovat
-a pri naskenovani to tiez hodi na obrazovku fotku toho usera co sa teraz cipol aby recepcny vedel skontrolovat ze je to naozaj on
+  Vrstva                Technológia
+  --------------------  -----------------------------------------------
+  Frontend              Next.js (App Router) + Tailwind CSS + shadcn/ui
+  Backend / DB          Supabase (PostgreSQL, Auth, Storage, Realtime)
+  Auth provajderi       Email/heslo, Google OAuth, Apple OAuth
+  File storage          Supabase Storage (profilové fotky)
+  QR checker (recepcia) Python (pyzbar / opencv + Supabase API)
+  Mobilná app (future)  React Native
+  CI/CD                 GitHub Actions
 
-ako BONUS mozeme spravit aj mobilne rozhranie aplikacie. S onboardingom a stavom fitka a profilom s personal stats a qrkodom
+
+📋 ROZHODNUTÉ – dizajnové rozhodnutia
+======================================
+
+1. PRAVIDLO VSTUPOV / DEŇ
+   Riešenie: konfigurovateľný parameter v gym_settings (max_entries_per_day, default: 1).
+   - Limit sa kontroluje iba voči uzavretým sessionám (check_out IS NOT NULL) –
+     teda user ktorý je aktuálne vo fitku nie je blokovaný
+   - Keď bude Python recepčná app bežať a overovať fotku, admin môže
+     max_entries_per_day zvýšiť alebo vypnúť podľa potreby fitka
+
+2. DEFINÍCIA STREAKU
+   Riešenie: schedule-based streak ako primárny, kalendárny ako fallback.
+   - User si v Nastaveniach zadá plánované dni tréningu (napr. PON, STR, PIA)
+   - Ak má rozvrh nastavený:
+       streak = počet po sebe idúcich TÝŽDŇOV, kde splnil všetky naplánované dni
+       zobrazuje sa ako "X týždňov"
+   - Ak nemá rozvrh nastavený:
+       streak = počet po sebe idúcich KALENDÁRNYCH DNÍ s aspoň 1 check-inom
+       zobrazuje sa ako "X dní"
+   - Auto-closed session (is_valid = false) sa do streaku NEZAPOČÍTAVA
+
+3. QR TOKEN – stavový model
+   Riešenie: 1 token = 1 celá návšteva (check-in + check-out), nie 1 skenovanie.
+   Stavy tokenu:
+     active      → token platný, čaká na check-in (expires_at = 24h od vytvorenia)
+     checked_in  → prvé skenovanie prebehlo, session otvorená, čaká na check-out
+     used        → check-out prebehol, token definitívne neplatný (used_at nastavený)
+     expired     → expires_at uplynul bez check-inu, systém vygeneruje nový token
+   - App automaticky vygeneruje nový token po každom used/expired
+
+4. VALIDITA SESSION
+   Riešenie: is_valid nastavuje IBA automatický cron job.
+   - Cron job (auto-checkout po 6h): is_valid = false
+   - Manuálny admin check-out: is_valid = true (session bola reálna)
+   - is_valid = false znamená: session sa NEZAPOČÍTAVA do personal stats ani streaku
+
+5. JEDNORAZOVÁ PERMANENTKA
+   Riešenie: zjednotená logika – jednorazová = vstupová s entry_count = 1.
+   - V DB: billing_cycle = "entries", entry_count = 1 (žiadny špeciálny typ "once")
+   - V UI: zobrazuje sa ako samostatná karta s iným názvom a cenou
+   - Výhoda: jedna checking logika pre všetky vstupové permanentky
+   - Tabuľka memberships obsahuje stĺpec is_single_entry (boolean) pre UI rozlíšenie
 
 
-SLOVNE PREPISANIE ZADANIA:
-
-Ide o WEBAPP ktora sluzi ako virtualna permanentka. 
-User si vie zalozit účet a prihlásiť sa potom si vie vybrat z 
-niekolkych druhov permanentiek(vrátane jednorazovej) a potom po 
-zaplateni sa mu aktivuje na účet. 
-
-Na main page(landing page) je zobrazeny aktuálny stav fitka(obsadenost a pocet ludi vo fitku
-znazornene aj vizualne farbami). Taktiez su tam zobrazene popularne hodinky ktore vsak je mozne vypocitat az na 
-zaklade historickych dat takze to az neskor. Po kliknutí na ikonu profilu sa nám zobrazi dropdown menu kde si 
-mozeme vybrat Profil, Nastavenia(tam sa nastavuje titulna fotka full name atd) ,Personal stats(zaznamenane treningi a ich statistiky),
-Transakcie(historia transakcii nakupov vstupov/permanentiek) a Qrkod sekcia kde je qr kod ktory sluzi na naskenovanie(ten qr kod
-teoreticky moze byt aj v sekcii Profil)
-
-Pri vstupe do fitka sa user naskenuje program ho zapise do databazy a zacne mu session. To zapisanie do databazy je ihned zobrazene 
-v aktualnom stave na mainpage. Pri odchode sa znova naskenuje a zapise sa jeho odchod do databazy a ukonci sa jeho session(trening).
-Toto je tiez hned vidno na aktualnom stave fitka nakkolko sa user odpise z poctu ludi vo fitku. 
-
-Ak sa user napriklad "neodpipne" z fitka tak je tam urcity cas po ktorom sa jeho session zavre. Napr 6h. Takato session(trening) 
-nebude zapocitavana do personal stats nakolko nieje validna.
-
-Docastne by som spravil ze user moze za den mat len jeden vstup do fitka aby sa zamedzilo zdielaniu qrkodov. TOTO TREBA ESTE PREBRAT!!!
-
-Personal stats mozu taktiez pocitat STREAK ten bude pocitany na zaklade predom urceny workout a jeho splnenie. Napr. ak si user
-zada ze pojde do gymu v PON, STR, PIA tak ak pojde cely tyzden poctivo v tie dni tak bude mat streak 3.
-
-...(Pokracovanie dopisem ked ma zas daco napadne 😉)

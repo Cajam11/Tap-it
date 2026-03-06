@@ -407,3 +407,42 @@ Fáza 5  Platobná brána, React Native mobilná app, multi-gym, PWA, 3rd-party 
    - Tabuľka memberships obsahuje stĺpec is_single_entry (boolean) pre UI rozlíšenie
 
 
+
+Dalej možeme spravit python kod ktory bude zapnuty na recepcii a napojeny na webku ktora bude skenovat tie qr kody a validovat a pri naskenovani to tiez hodi na obrazovku fotku toho usera co sa teraz cipol aby recepcny vedel skontrolovat ze je to naozaj on
+
+ako BONUS mozeme spravit aj mobilne rozhranie aplikacie. 5 onboardingom a stavom fitka a profilom s personal stats a qrkodom
+
+SLOVNE PREPISANIE ZADANIA:
+
+Ide o WEBAPP ktora sluzi ako virtualna permanentka.
+User si vie zalozit účet a prihlásiť sa potom si vie vybrat z
+niekolkych druhov permanentiek(vrátane jednorazovej) a potom po zaplateni sa mu aktivuje na účet.
+
+Na main page(landing page) je zobrazeny aktuálny stav fitka (obsadenost a pocet ludi vo fitku
+znazornene aj vizualne farbami). Taktiez su tam zobrazene popularne hodinky ktore vsak je mozne vypocitat az na
+zaklade historickych dat takze to az neskor. Po kliknutí na ikonu profilu sa nám zobrazi dropdown menu kde si
+mozeme vybrat Profil, Nastavenia (tam sa nastavuje titulna fotka full name atd), Personal stats (zaznamenane treningi a ich statistiky), 
+Transakcie (historia transakcii nakupov vstupov/permanentiek) a Qrkod sekcia kde je qr kod ktory sluzi na naskenovanie (ten qr kod teoreticky moze byt aj v sekcii Profil)
+
+Pri vstupe do fitka sa user naskenuje program ho zapise do databazy a zacne mu session. 
+To zapisanie do databazy je ihned zobrazene v aktualnom stave na mainpage. 
+Pri odchode sa znova naskenuje a zapise sa jeho odchod do databazy a ukonci sa jeho session(trening). 
+Toto je tiez hned vidno na aktualnom stave fitka nakkolko sa user odpise z poctu ludi vo fitku.
+
+Ak sa user napriklad "neodpipne" z fitka tak je tam urcity cas po ktorom sa jeho session zavre. 
+Napr 6h. Takato session (trening) nebude zapocitavana do personal stats nakolko nieje validna.
+Docastne by som spravil ze user moze za den mat len jeden vstup do fitka aby sa zamedzilo zdielaniu qrkodov. TOTO TREBA ESTE PREBRAT!!!
+
+Personal stats mozu taktiez pocitat STREAK ten bude pocitany na zaklade predom urceny workout a jeho splnenie.
+Napr. ak si user zada ze pojde do gymu v PON, STR, PIA tak ak pojde cely tyzden poctivo v tie dni tak bude mat streak 3.
+
+...(Pokracovanie dopisem ked ma zas daco napadne)
+
+TECH STACK PREPISANY SLOVNE:
+
+Na frontend sa pouzije Next.js a kombináciou Tailwind(css)
+
+Ako databazu pouzijeme Supabase. Tam budeme riesit aj OAuth do ktoreho sa da linknut Google Auth a Apple Auth. Taktiez pouzijeme Supabase storage na ukladanie profilovych fotiek.
+Na mobilnu aplikaciu pouzijeme React Native.
+
+A checker QR kodov bude napísaný v Pythone a bude "prinajlepšom" pouzivat niaku library ktora to uz ma zmaknute checkovanie.

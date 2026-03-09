@@ -1,0 +1,11 @@
+{
+  "css.validate": false,
+  "scss.validate": false,
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "tailwindCSS.experimental.classRegex": [],
+  "extensions.recommendations": [
+    "bradlc.vscode-tailwindcss"
+  ]
+}

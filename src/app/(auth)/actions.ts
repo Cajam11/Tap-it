@@ -4,6 +4,15 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
+async function getOrigin(): Promise<string> {
+  const h = await headers();
+  const origin = h.get("origin");
+  if (origin) return origin;
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  return `${proto}://${host}`;
+}
+
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
 
@@ -21,8 +30,7 @@ export async function signIn(formData: FormData) {
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get("origin") ?? "";
+  const origin = await getOrigin();
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -46,8 +54,7 @@ export async function signUp(formData: FormData) {
 
 export async function signInWithGoogle() {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get("origin") ?? "";
+  const origin = await getOrigin();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -65,8 +72,7 @@ export async function signInWithGoogle() {
 
 export async function forgotPassword(formData: FormData) {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get("origin") ?? "";
+  const origin = await getOrigin();
 
   const email = formData.get("email") as string;
 

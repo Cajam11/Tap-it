@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import NavBarAuth from "@/components/NavBarAuth";
 import {
   Smartphone,
   Scan,
@@ -167,46 +168,7 @@ export default function LandingPage() {
       </a>
 
       {/* ── Floating pill nav ─────────────────────────────────────────── */}
-      <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-6xl flex items-center justify-between h-14 px-6 rounded-full bg-black/40 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.55)]">
-          <Link
-            href="/"
-            className="font-extrabold text-white text-lg tracking-tight focus-visible:ring-2 focus-visible:ring-red-500 rounded-full px-1 outline-none"
-          >
-            Premium<span className="text-red-500">Gyms</span>
-          </Link>
-
-          <nav
-            className="hidden lg:flex items-center gap-0.5 text-[13px] font-medium text-white/60"
-            aria-label="Primary navigation"
-          >
-            {NAV_LINKS.map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="px-3.5 py-1.5 rounded-full hover:text-white hover:bg-white/[0.08] transition-colors focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/[0.08] transition-colors focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
-            >
-              Prihlásiť sa
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none"
-            >
-              Registrácia
-            </Link>
-          </div>
-        </div>
-      </header>
+      <NavBarAuth navLinks={NAV_LINKS} />
 
       <main id="main" className="bg-[#080808] overflow-x-hidden">
 

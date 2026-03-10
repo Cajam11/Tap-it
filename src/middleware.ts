@@ -12,7 +12,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
-// Routes that should redirect to /dashboard when already signed in
+// Routes that should redirect to / when already signed in
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from auth routes
   const isAuthRoute = AUTH_ROUTES.some((p) => pathname.startsWith(p));
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return response;

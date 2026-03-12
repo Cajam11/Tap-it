@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { signIn, signInWithGoogle } from "../actions";
 
 function GoogleIcon() {
@@ -28,9 +27,21 @@ function GoogleIcon() {
   );
 }
 
-function LoginForm() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+export default function LoginPage() {
+  const [signInState, signInAction, signInPending] = useActionState(signIn, null);
+  const [googleState, googleAction, googlePending] = useActionState(signInWithGoogle, null);
+  const [flashError, setFlashError] = useState<string | null>(null);
+
+  // Read flash cookie set by auth callback route
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)flash-error=([^;]*)/);
+    if (match) {
+      setFlashError(decodeURIComponent(match[1]));
+      document.cookie = "flash-error=; max-age=0; path=/";
+    }
+  }, []);
+
+  const error = signInState?.error || googleState?.error || flashError;
 
   return (
     <div className="w-full max-w-md">
@@ -46,13 +57,14 @@ function LoginForm() {
       )}
 
       {/* Google */}
-      <form action={signInWithGoogle}>
+      <form action={googleAction}>
         <button
           type="submit"
-          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+          disabled={googlePending}
+          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
         >
           <GoogleIcon />
-          Pokračovať s Google
+          {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
         </button>
       </form>
 
@@ -66,7 +78,7 @@ function LoginForm() {
       </div>
 
       {/* Email + Password */}
-      <form action={signIn} className="space-y-4">
+      <form action={signInAction} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-1.5">
             E-mail
@@ -108,9 +120,10 @@ function LoginForm() {
 
         <button
           type="submit"
-          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+          disabled={signInPending}
+          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-60 px-4 py-3 text-sm font-semibold text-white transition-colors"
         >
-          Prihlásiť sa
+          {signInPending ? "Prihlasujem..." : "Prihlásiť sa"}
         </button>
       </form>
 
@@ -121,13 +134,5 @@ function LoginForm() {
         </Link>
       </p>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
   );
 }

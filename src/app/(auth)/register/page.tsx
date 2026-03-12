@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useActionState } from "react";
 import { signUp, signInWithGoogle } from "../actions";
 
 function GoogleIcon() {
@@ -28,10 +27,12 @@ function GoogleIcon() {
   );
 }
 
-function RegisterForm() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
-  const success = searchParams.get("success");
+export default function RegisterPage() {
+  const [signUpState, signUpAction, signUpPending] = useActionState(signUp, null);
+  const [googleState, googleAction, googlePending] = useActionState(signInWithGoogle, null);
+
+  const error = signUpState?.error || googleState?.error;
+  const success = signUpState?.success;
 
   return (
     <div className="w-full max-w-md">
@@ -53,13 +54,14 @@ function RegisterForm() {
       )}
 
       {/* Google */}
-      <form action={signInWithGoogle}>
+      <form action={googleAction}>
         <button
           type="submit"
-          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+          disabled={googlePending}
+          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
         >
           <GoogleIcon />
-          Pokračovať s Google
+          {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
         </button>
       </form>
 
@@ -73,7 +75,7 @@ function RegisterForm() {
       </div>
 
       {/* Email + Password */}
-      <form action={signUp} className="space-y-4">
+      <form action={signUpAction} className="space-y-4">
         <div>
           <label htmlFor="fullName" className="block text-sm font-medium text-white/70 mb-1.5">
             Celé meno
@@ -122,9 +124,10 @@ function RegisterForm() {
 
         <button
           type="submit"
-          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+          disabled={signUpPending}
+          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-60 px-4 py-3 text-sm font-semibold text-white transition-colors"
         >
-          Vytvoriť účet
+          {signUpPending ? "Vytváram účet..." : "Vytvoriť účet"}
         </button>
       </form>
 
@@ -135,13 +138,5 @@ function RegisterForm() {
         </Link>
       </p>
     </div>
-  );
-}
-
-export default function RegisterPage() {
-  return (
-    <Suspense>
-      <RegisterForm />
-    </Suspense>
   );
 }

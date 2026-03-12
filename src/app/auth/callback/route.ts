@@ -39,8 +39,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // If code is missing or exchange failed, redirect to login with error
-  const errorUrl = new URL("/login", request.url);
-  errorUrl.searchParams.set("error", "Overenie zlyhalo. Skúste to znova.");
-  return NextResponse.redirect(errorUrl);
+  // If code is missing or exchange failed, redirect to login with flash cookie
+  const loginUrl = new URL("/login", request.url);
+  const response = NextResponse.redirect(loginUrl);
+  response.cookies.set("flash-error", "Overenie zlyhalo. Skúste to znova.", {
+    maxAge: 60,
+    path: "/",
+    httpOnly: false,
+  });
+  return response;
 }

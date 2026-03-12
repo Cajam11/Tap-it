@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useActionState } from "react";
 import { forgotPassword } from "../actions";
 
-function ForgotPasswordForm() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
-  const success = searchParams.get("success");
+export default function ForgotPasswordPage() {
+  const [state, formAction, pending] = useActionState(forgotPassword, null);
 
   return (
     <div className="w-full max-w-md">
@@ -19,19 +16,19 @@ function ForgotPasswordForm() {
         </p>
       </div>
 
-      {error && (
+      {state?.error && (
         <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
+          {state.error}
         </div>
       )}
 
-      {success && (
+      {state?.success && (
         <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          {success}
+          {state.success}
         </div>
       )}
 
-      <form action={forgotPassword} className="space-y-4">
+      <form action={formAction} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-1.5">
             E-mail
@@ -49,9 +46,10 @@ function ForgotPasswordForm() {
 
         <button
           type="submit"
-          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+          disabled={pending}
+          className="w-full rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-60 px-4 py-3 text-sm font-semibold text-white transition-colors"
         >
-          Odoslať odkaz
+          {pending ? "Odosielam..." : "Odoslať odkaz"}
         </button>
       </form>
 
@@ -62,13 +60,5 @@ function ForgotPasswordForm() {
         </Link>
       </p>
     </div>
-  );
-}
-
-export default function ForgotPasswordPage() {
-  return (
-    <Suspense>
-      <ForgotPasswordForm />
-    </Suspense>
   );
 }

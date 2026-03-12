@@ -57,24 +57,6 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   return { success: "Skontroluj svoj e-mail a potvrď registráciu." };
 }
 
-export async function signInWithGoogle(_prev: AuthState): Promise<AuthState> {
-  const supabase = await createClient();
-  const origin = await getOrigin();
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  redirect(data.url);
-}
-
 export async function forgotPassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const supabase = await createClient();
   const origin = await getOrigin();

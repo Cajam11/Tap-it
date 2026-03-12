@@ -16,6 +16,11 @@ const PROTECTED_PREFIXES = [
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
+  // Skip auth check for the OAuth callback — it only exchanges the code
+  if (request.nextUrl.pathname.startsWith("/auth/callback")) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

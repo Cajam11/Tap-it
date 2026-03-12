@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { signUp, signInWithGoogle } from "../actions";
+import { useActionState, useState } from "react";
+import { signUp } from "../actions";
+import { createClient } from "@/lib/supabase/client";
 
 function GoogleIcon() {
   return (
@@ -29,9 +30,24 @@ function GoogleIcon() {
 
 export default function RegisterPage() {
   const [signUpState, signUpAction, signUpPending] = useActionState(signUp, null);
-  const [googleState, googleAction, googlePending] = useActionState(signInWithGoogle, null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googlePending, setGooglePending] = useState(false);
 
-  const error = signUpState?.error || googleState?.error;
+  async function handleGoogleSignIn() {
+    setGooglePending(true);
+    setGoogleError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      setGoogleError(error.message);
+      setGooglePending(false);
+    }
+  }
+
+  const error = signUpState?.error || googleError;
   const success = signUpState?.success;
 
   return (
@@ -54,16 +70,15 @@ export default function RegisterPage() {
       )}
 
       {/* Google */}
-      <form action={googleAction}>
-        <button
-          type="submit"
-          disabled={googlePending}
-          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={googlePending}
+        className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+      >
+        <GoogleIcon />
+        {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
+      </button>
 
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">

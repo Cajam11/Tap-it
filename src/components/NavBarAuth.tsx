@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { LogOut, User as UserIcon } from "lucide-react";
@@ -11,6 +12,7 @@ interface NavBarAuthProps {
 }
 
 export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,6 +51,7 @@ export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
     await supabase.auth.signOut();
     setUser(null);
     setMenuOpen(false);
+    router.refresh();
   };
 
   const fullName =

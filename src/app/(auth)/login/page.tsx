@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
-import { signIn, signInWithGoogle } from "../actions";
+import { signIn } from "../actions";
+import { createClient } from "@/lib/supabase/client";
 
 function GoogleIcon() {
   return (
@@ -29,8 +30,9 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const [signInState, signInAction, signInPending] = useActionState(signIn, null);
-  const [googleState, googleAction, googlePending] = useActionState(signInWithGoogle, null);
   const [flashError, setFlashError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googlePending, setGooglePending] = useState(false);
 
   // Read flash cookie set by auth callback route
   useEffect(() => {
@@ -41,7 +43,21 @@ export default function LoginPage() {
     }
   }, []);
 
-  const error = signInState?.error || googleState?.error || flashError;
+  async function handleGoogleSignIn() {
+    setGooglePending(true);
+    setGoogleError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      setGoogleError(error.message);
+      setGooglePending(false);
+    }
+  }
+
+  const error = signInState?.error || googleError || flashError;
 
   return (
     <div className="w-full max-w-md">
@@ -57,16 +73,15 @@ export default function LoginPage() {
       )}
 
       {/* Google */}
-      <form action={googleAction}>
-        <button
-          type="submit"
-          disabled={googlePending}
-          className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={googlePending}
+        className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+      >
+        <GoogleIcon />
+        {googlePending ? "Presmerovávam..." : "Pokračovať s Google"}
+      </button>
 
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">

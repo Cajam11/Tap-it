@@ -15,6 +15,34 @@ const PROTECTED_PREFIXES = [
 // Routes that should redirect to / when already signed in
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
+function getSupabaseCookiePrefix() {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return null;
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    return `sb-${projectRef}-`;
+  } catch {
+    return null;
+  }
+}
+
+function clearSupabaseCookies(request: NextRequest, response: NextResponse) {
+  const prefix = getSupabaseCookiePrefix();
+  if (!prefix) return;
+
+  const cookiesToClear = request.cookies
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith(prefix));
+
+  cookiesToClear.forEach((cookie) => {
+    response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
+  });
+}
+
+function hasCompletedOnboarding(user: { user_metadata?: Record<string, unknown> } | null) {
+  return user?.user_metadata?.onboarding_completed === true;
+}
+
 export async function middleware(request: NextRequest) {
   // Skip auth check for the OAuth callback — it only exchanges the code
   if (request.nextUrl.pathname.startsWith("/auth/callback")) {
@@ -44,11 +72,27 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  const { data, error } = await supabase.auth.getUser();
+  user = data.user;
+
+  if (error?.code === "refresh_token_not_found") {
+    clearSupabaseCookies(request, response);
+    user = null;
+  }
 
   const { pathname } = request.nextUrl;
+  const onboardingCompleted = hasCompletedOnboarding(user);
+
+  if (pathname.startsWith("/onboarding")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    if (onboardingCompleted) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return response;
+  }
 
   // Redirect unauthenticated users away from protected routes
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
@@ -56,10 +100,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Force incomplete users through onboarding before using the app
+  if (user && !onboardingCompleted) {
+    return NextResponse.redirect(new URL("/onboarding", request.url));
+  }
+
   // Redirect authenticated users away from auth routes
   const isAuthRoute = AUTH_ROUTES.some((p) => pathname.startsWith(p));
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL(onboardingCompleted ? "/" : "/onboarding", request.url));
   }
 
   return response;

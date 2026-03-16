@@ -446,3 +446,10 @@ Ako databazu pouzijeme Supabase. Tam budeme riesit aj OAuth do ktoreho sa da lin
 Na mobilnu aplikaciu pouzijeme React Native.
 
 A checker QR kodov bude napísaný v Pythone a bude "prinajlepšom" pouzivat niaku library ktora to uz ma zmaknute checkovanie.
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+NESKOR PRI ROBENI SETTINGS PAGE TAK BY SA HODILO PRIDAT AJ FUNKCIU SPRAVENIA ONBOARDINGU ZNOVA ALEBO ZAVIEST UKLADANIE
+STEPOV ABY USER VEDEL DAT ZE POOKRACOVAT V ONBOARDING A VEDEL SI HO DOKONCIT

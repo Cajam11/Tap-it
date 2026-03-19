@@ -2,8 +2,19 @@ export type UserRole = "user" | "admin";
 
 export interface Profile {
   id: string;
+  email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  goal: "strength" | "fitness" | "fat_loss" | "mobility" | "mixed" | null;
+  experience_level: "beginner" | "intermediate" | "advanced" | null;
+  sessions_per_week: number | null;
+  session_length_min: number | null;
+  equipment_level: "none" | "basic" | "full_gym" | null;
+  onboarding_completed: boolean | null;
+  onboarding_completed_at: string | null;
   role: UserRole;
   gdpr_consent_at: string;
   created_at: string;
@@ -86,4 +97,11 @@ export interface UserBadge {
   badge_id: string;
   earned_at: string;
   badge?: Badge;
+}
+
+export interface WeightLog {
+  id: string;
+  user_id: string;
+  weight_kg: number;
+  created_at: string;
 }

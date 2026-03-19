@@ -15,6 +15,11 @@ type Goal = "strength" | "fitness" | "fat_loss" | "mobility" | "mixed";
 type Level = "beginner" | "intermediate" | "advanced";
 type Equipment = "none" | "basic" | "full_gym";
 
+function clampNumber(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, value));
+}
+
 export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: Props) {
   const router = useRouter();
 
@@ -24,6 +29,8 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
   const [fullName, setFullName] = useState(initialFullName);
   const [bio, setBio] = useState("");
+  const [heightCmInput, setHeightCmInput] = useState("175");
+  const [weightKgInput, setWeightKgInput] = useState("75");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
@@ -107,6 +114,11 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
     setSaving(true);
     setError(null);
 
+    const parsedHeight = Number(heightCmInput.replace(",", "."));
+    const parsedWeight = Number(weightKgInput.replace(",", "."));
+    const safeHeightCm = clampNumber(parsedHeight, 120, 240, 175);
+    const safeWeightKg = clampNumber(parsedWeight, 35, 250, 75);
+
     const supabase = createClient();
     const {
       data: { user },
@@ -141,6 +153,8 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
       full_name: fullName.trim(),
       avatar_url: nextAvatarUrl,
       bio: bio.trim() || null,
+      height_cm: safeHeightCm,
+      weight_kg: safeWeightKg,
       onboarding_completed: true,
       onboarding_completed_at: new Date().toISOString(),
       onboarding: {
@@ -168,6 +182,8 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
         full_name: fullName.trim(),
         avatar_url: nextAvatarUrl,
         bio: bio.trim() || null,
+        height_cm: safeHeightCm,
+        weight_kg: safeWeightKg,
         goal: goal ?? "mixed",
         experience_level: level ?? "beginner",
         sessions_per_week: sessionsPerWeek,
@@ -276,6 +292,38 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
               placeholder="Co ta najviac motivuje?"
               maxLength={120}
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="heightCm" className="mb-1.5 block text-sm text-white/70">
+                Vyska (cm)
+              </label>
+              <input
+                id="heightCm"
+                type="number"
+                min={120}
+                max={240}
+                value={heightCmInput}
+                onChange={(e) => setHeightCmInput(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="weightKg" className="mb-1.5 block text-sm text-white/70">
+                Vaha (kg)
+              </label>
+              <input
+                id="weightKg"
+                type="number"
+                min={35}
+                max={250}
+                value={weightKgInput}
+                onChange={(e) => setWeightKgInput(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -407,6 +455,8 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
           <h2 className="text-2xl font-semibold text-white">Hotovo, skontroluj setup</h2>
           <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/80">
             <p><span className="text-white/50">Meno:</span> {fullName.trim()}</p>
+            <p><span className="text-white/50">Vyska:</span> {clampNumber(Number(heightCmInput.replace(",", ".")), 120, 240, 175)} cm</p>
+            <p><span className="text-white/50">Vaha:</span> {clampNumber(Number(weightKgInput.replace(",", ".")), 35, 250, 75)} kg</p>
             <p><span className="text-white/50">Ciel:</span> {goal ?? "Mix"}</p>
             <p><span className="text-white/50">Uroven:</span> {level ?? "Zaciatocnik"}</p>
             <p><span className="text-white/50">Treningy:</span> {sessionsPerWeek}x tyzdenne / {sessionLengthMin} min</p>

@@ -118,13 +118,10 @@ export default async function ProfilePage() {
 
   const [
     profileRes,
-    monthCountRes,
     monthEntriesRes,
-    lastTrainingRes,
     totalCountRes,
     streakEntriesRes,
     membershipRes,
-    firstMembershipRes,
     dbBadgesRes,
     weightLogsRes,
   ] = await Promise.all([
@@ -135,21 +132,9 @@ export default async function ProfilePage() {
       .maybeSingle(),
     supabase
       .from("entries")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("check_in", monthStart.toISOString()),
-    supabase
-      .from("entries")
       .select("duration_min")
       .eq("user_id", user.id)
       .gte("check_in", monthStart.toISOString()),
-    supabase
-      .from("entries")
-      .select("check_in")
-      .eq("user_id", user.id)
-      .order("check_in", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
     supabase
       .from("entries")
       .select("id", { count: "exact", head: true })
@@ -169,13 +154,6 @@ export default async function ProfilePage() {
       .limit(1)
       .maybeSingle(),
     supabase
-      .from("user_memberships")
-      .select("start_date")
-      .eq("user_id", user.id)
-      .order("start_date", { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-    supabase
       .from("user_badges")
       .select("earned_at, badge:badges(name, description)")
       .eq("user_id", user.id)
@@ -185,7 +163,8 @@ export default async function ProfilePage() {
       .from("weight_logs")
       .select("id, weight_kg, created_at")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .limit(120),
   ]);
 
   const profile = profileRes.data;
@@ -226,15 +205,16 @@ export default async function ProfilePage() {
     equipment_level: normalizeEquipment(profile?.equipment_level),
   };
 
-  const monthTrainings = monthCountRes.count ?? 0;
+  const monthTrainings = (monthEntriesRes.data ?? []).length;
   const totalTrainings = totalCountRes.count ?? 0;
   const monthMinutes = (monthEntriesRes.data ?? []).reduce(
     (acc, row) => acc + (typeof row.duration_min === "number" ? row.duration_min : 0),
     0
   );
 
-  const lastTrainingAt = lastTrainingRes.data?.check_in ?? null;
-  const streak = getCurrentStreak((streakEntriesRes.data ?? []).map((item) => item.check_in));
+  const streakEntries = (streakEntriesRes.data ?? []).map((item) => item.check_in);
+  const lastTrainingAt = streakEntries[0] ?? null;
+  const streak = getCurrentStreak(streakEntries);
 
   const membershipRow = membershipRes.data;
   const hasActiveMembership = Boolean(membershipRow);
@@ -248,9 +228,7 @@ export default async function ProfilePage() {
       : null;
 
   const memberSinceRaw =
-    firstMembershipRes.data?.start_date ??
-    (typeof profile?.created_at === "string" ? profile.created_at : null) ??
-    user.created_at;
+    (typeof profile?.created_at === "string" ? profile.created_at : null) ?? user.created_at;
 
   const memberSince = memberSinceRaw
     ? new Date(memberSinceRaw).toLocaleDateString("sk-SK", { year: "numeric", month: "long" })
@@ -280,11 +258,25 @@ export default async function ProfilePage() {
     new Map([...dbBadges, ...dynamicBadges].map((badge) => [badge.name, badge])).values()
   ).slice(0, 8);
 
-  const weightLogs = weightLogsRes.data ?? [];
+  const weightLogs = (weightLogsRes.data ?? []).reverse();
+
+  const navUser = {
+    id: user.id,
+    email: user.email ?? null,
+    user_metadata: {
+      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
+      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+    },
+  };
+
+  const navProfile = {
+    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
+    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+  };
 
   return (
     <>
-      <NavBarAuth navLinks={NAV_LINKS} />
+      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
 
       <main className="relative min-h-screen overflow-hidden bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />

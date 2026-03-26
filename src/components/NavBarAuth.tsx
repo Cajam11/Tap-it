@@ -1,60 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 import { LogOut, User as UserIcon, Settings } from "lucide-react";
+
+type NavUser = {
+  id: string;
+  email: string | null;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+};
+
+type NavProfile = {
+  full_name?: string | null;
+  avatar_url?: string | null;
+} | null;
 
 interface NavBarAuthProps {
   navLinks: [string, string][];
+  initialUser?: NavUser | null;
+  initialProfile?: NavProfile;
 }
 
-export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
+export default function NavBarAuth({ navLinks, initialUser = null, initialProfile = null }: NavBarAuthProps) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<{ full_name?: string; avatar_url?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<NavUser | null>(initialUser);
+  const [profile, setProfile] = useState<NavProfile>(initialProfile);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Funkcia na re-fetch usera a jeho profilu (databáza ma prednosť pred Google dátami)
-  const refreshUser = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-    
-    if (user) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .single();
-        
-      if (profileData) {
-        setProfile(profileData);
-      }
-    } else {
-      setProfile(null);
-    }
-  };
-
-  useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
-
-    const supabase = createClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (event === "USER_UPDATED" || event === "SIGNED_IN") {
-        refreshUser();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -79,8 +56,8 @@ export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
   // Najprv pozeráme do našej databázy (profile), ak tam nič nie je, až potom do Google (user_metadata)
   const fullName =
     profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
-  const avatarUrl = 
-    profile?.avatar_url || user?.user_metadata?.avatar_url as string | undefined;
+  const avatarUrl =
+    profile?.avatar_url || (user?.user_metadata?.avatar_url as string | undefined);
 
   return (
     <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
@@ -109,9 +86,7 @@ export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
 
         {/* Right side – auth buttons or user profile */}
         <div className="flex items-center gap-2">
-          {loading ? (
-            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
-          ) : user ? (
+          {user ? (
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((v) => !v)}

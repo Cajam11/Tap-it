@@ -94,6 +94,11 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Password recovery flow must always be reachable once recovery session is created.
+  if (pathname.startsWith("/reset-password")) {
+    return response;
+  }
+
   // Redirect unauthenticated users away from protected routes
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (isProtected && !user) {

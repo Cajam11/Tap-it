@@ -1,24 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { updatePassword } from "../actions";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (password.length < 6) {
       setError("Heslo musí mať aspoň 6 znakov.");
@@ -32,21 +26,17 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
+    const formData = new FormData();
+    formData.append("password", password);
+
+    const result = await updatePassword(null, formData);
 
     setLoading(false);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (result?.error) {
+      setError(result.error);
       return;
     }
-
-    setSuccess("Heslo bolo úspešne zmenené. Môžeš sa prihlásiť.");
-    setTimeout(() => {
-      router.push("/login");
-    }, 1200);
   }
 
   return (
@@ -59,12 +49,6 @@ export default function ResetPasswordPage() {
       {error && (
         <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          {success}
         </div>
       )}
 
@@ -104,6 +88,10 @@ export default function ResetPasswordPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
         </div>
+
+        {password && confirmPassword && password !== confirmPassword && (
+          <p className="text-sm text-red-400">Heslá sa nezhodujú.</p>
+        )}
 
         <button
           type="submit"

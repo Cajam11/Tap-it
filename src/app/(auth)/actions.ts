@@ -73,3 +73,98 @@ export async function forgotPassword(_prev: AuthState, formData: FormData): Prom
 
   return { success: "Odkaz na resetovanie hesla bol odoslaný na tvoj e-mail." };
 }
+
+export async function updatePassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const supabase = await createClient();
+
+  const password = formData.get("password") as string;
+
+  if (password.length < 6) {
+    return { error: "Heslo musí mať aspoň 6 znakov." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect("/login");
+}
+
+export async function completeOnboarding(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Relacia vyprsala. Prihlas sa prosim znova." };
+  }
+
+  const fullName = formData.get("full_name") as string;
+  const avatarUrl = formData.get("avatar_url") as string;
+  const bio = formData.get("bio") as string;
+  const heightCm = Number(formData.get("height_cm"));
+  const weightKg = Number(formData.get("weight_kg"));
+  const goal = formData.get("goal") as string;
+  const level = formData.get("level") as string;
+  const sessionsPerWeek = Number(formData.get("sessions_per_week"));
+  const sessionLengthMin = Number(formData.get("session_length_min"));
+  const equipmentLevel = formData.get("equipment_level") as string;
+
+  const metadata = {
+    full_name: fullName,
+    avatar_url: avatarUrl,
+    bio: bio || null,
+    height_cm: heightCm,
+    weight_kg: weightKg,
+    onboarding_completed: true,
+    onboarding_completed_at: new Date().toISOString(),
+    onboarding: {
+      goal: goal ?? "mixed",
+      level: level ?? "beginner",
+      sessions_per_week: sessionsPerWeek,
+      session_length_min: sessionLengthMin,
+      equipment_level: equipmentLevel,
+    },
+  };
+
+  // Step 1: Update auth metadata
+  const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  // Step 2: Upsert to profiles table
+  const { error: profileError } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      full_name: fullName,
+      avatar_url: avatarUrl || null,
+      bio: bio || null,
+      height_cm: heightCm,
+      weight_kg: weightKg,
+      goal: goal ?? "mixed",
+      experience_level: level ?? "beginner",
+      sessions_per_week: sessionsPerWeek,
+      session_length_min: sessionLengthMin,
+      equipment_level: equipmentLevel,
+      onboarding_completed: true,
+      onboarding_completed_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+
+  if (profileError) {
+    return { error: "Chyba pri ukladani profilu: " + profileError.message };
+  }
+
+  redirect("/");
+}
+

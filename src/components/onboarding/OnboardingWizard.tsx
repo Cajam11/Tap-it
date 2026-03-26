@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { completeOnboarding } from "@/app/(auth)/actions";
 
 type Props = {
   initialFullName: string;
@@ -149,61 +150,30 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
       }
     }
 
-    const metadata = {
-      full_name: fullName.trim(),
-      avatar_url: nextAvatarUrl,
-      bio: bio.trim() || null,
-      height_cm: safeHeightCm,
-      weight_kg: safeWeightKg,
-      onboarding_completed: true,
-      onboarding_completed_at: new Date().toISOString(),
-      onboarding: {
-        goal: goal ?? "mixed",
-        level: level ?? "beginner",
-        sessions_per_week: sessionsPerWeek,
-        session_length_min: sessionLengthMin,
-        equipment_level: equipmentLevel,
-      },
-    };
+    // Prepare FormData pro server action
+    const formData = new FormData();
+    formData.append("full_name", fullName.trim());
+    formData.append("avatar_url", nextAvatarUrl || "");
+    formData.append("bio", bio.trim() || "");
+    formData.append("height_cm", String(safeHeightCm));
+    formData.append("weight_kg", String(safeWeightKg));
+    formData.append("goal", goal ?? "mixed");
+    formData.append("level", level ?? "beginner");
+    formData.append("sessions_per_week", String(sessionsPerWeek));
+    formData.append("session_length_min", String(sessionLengthMin));
+    formData.append("equipment_level", equipmentLevel);
 
-    const updateResult = await supabase.auth.updateUser({ data: metadata });
+    // Call server action - if successful, it will redirect
+    const result = await completeOnboarding(null, formData);
 
-    if (updateResult.error) {
+    // If we get here, there was an error
+    if (result?.error) {
       setSaving(false);
-      setError(updateResult.error.message);
+      setError(result.error);
       return;
     }
 
-    // 2. Uloženie všetkých dát do zjednotenej `profiles` tabuľky
-    const { error: profileError } = await supabase.from("profiles").upsert(
-      {
-        id: user.id,
-        email: user.email,
-        full_name: fullName.trim(),
-        avatar_url: nextAvatarUrl,
-        bio: bio.trim() || null,
-        height_cm: safeHeightCm,
-        weight_kg: safeWeightKg,
-        goal: goal ?? "mixed",
-        experience_level: level ?? "beginner",
-        sessions_per_week: sessionsPerWeek,
-        session_length_min: sessionLengthMin,
-        equipment_level: equipmentLevel,
-        onboarding_completed: true,
-        onboarding_completed_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
-
-    if (profileError) {
-      console.error("Chyba pri ukladani do profiles:", profileError);
-      setSaving(false);
-      setError("Nepodarilo sa uložiť dáta do databázy. Skontroluj RLS pravidlá a tabuľku: " + profileError.message);
-      return;
-    }
-
-    router.replace("/");
-    router.refresh();
+    setSaving(false);
   }
 
   return (

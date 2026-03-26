@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import NavBarAuth from "@/components/NavBarAuth";
+import { createClient } from "@/lib/supabase/server";
 import {
   Smartphone,
   Scan,
@@ -156,7 +157,33 @@ function pctBadge(pct: number) {
 /* ═══════════════════════════════════════════════════════════════════════════════
    PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
-export default function LandingPage() {
+export default async function LandingPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const navUser = user
+    ? {
+        id: user.id,
+        email: user.email ?? null,
+        user_metadata: {
+          full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
+          avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+        },
+      }
+    : null;
+
+  let navProfile: { full_name?: string | null; avatar_url?: string | null } | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    navProfile = data ?? null;
+  }
+
   return (
     <>
       {/* Skip link */}
@@ -168,7 +195,7 @@ export default function LandingPage() {
       </a>
 
       {/* ── Floating pill nav ─────────────────────────────────────────── */}
-      <NavBarAuth navLinks={NAV_LINKS} />
+      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
 
       <main id="main" className="bg-[#080808] overflow-x-hidden">
 

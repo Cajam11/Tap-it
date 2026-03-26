@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Settings } from "lucide-react";
 
 interface NavBarAuthProps {
   navLinks: [string, string][];
@@ -143,6 +143,14 @@ export default function NavBarAuth({ navLinks }: NavBarAuthProps) {
                   >
                     <UserIcon className="w-4 h-4" />
                     Profil
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Nastavenia
                   </Link>
                   <button
                     onClick={handleSignOut}

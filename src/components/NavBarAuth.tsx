@@ -30,6 +30,7 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
   const router = useRouter();
   const [user, setUser] = useState<NavUser | null>(initialUser);
   const [profile, setProfile] = useState<NavProfile>(initialProfile);
+  const [avatarRevision, setAvatarRevision] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +45,8 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
         full_name: nextName,
         avatar_url: nextAvatar,
       }));
+
+      setAvatarRevision(Date.now());
 
       setUser((prev) =>
         prev
@@ -88,6 +91,23 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
     profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const avatarUrl =
     profile?.avatar_url || (user?.user_metadata?.avatar_url as string | undefined);
+  const avatarSrc = (() => {
+    if (!avatarUrl) {
+      return undefined;
+    }
+
+    if (!avatarRevision) {
+      return avatarUrl;
+    }
+
+    try {
+      const url = new URL(avatarUrl);
+      url.searchParams.set("rev", String(avatarRevision));
+      return url.toString();
+    } catch {
+      return avatarUrl;
+    }
+  })();
 
   return (
     <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
@@ -122,9 +142,10 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                 onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2.5 rounded-full px-1.5 py-1 hover:bg-white/[0.08] transition-colors focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
               >
-                {avatarUrl ? (
+                {avatarSrc ? (
                   <img
-                    src={avatarUrl}
+                    key={avatarSrc}
+                    src={avatarSrc}
                     alt=""
                     className="w-8 h-8 rounded-full object-cover ring-2 ring-white/10"
                     referrerPolicy="no-referrer"

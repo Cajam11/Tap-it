@@ -151,7 +151,7 @@ export default function ProfileEditor({
       }
 
       const ext = avatarFile.name.split(".").pop() ?? "jpg";
-      const filePath = `${user.id}/avatar.${ext}`;
+      const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
       const upload = await supabase.storage
         .from("avatars")
         .upload(filePath, avatarFile, { upsert: true });
@@ -165,6 +165,7 @@ export default function ProfileEditor({
       const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
       nextAvatarUrl = data.publicUrl;
       setAvatarUrl(nextAvatarUrl);
+      setAvatarPreviewUrl(nextAvatarUrl);
     }
 
     const updatePayload = {

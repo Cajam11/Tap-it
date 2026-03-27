@@ -126,8 +126,32 @@ export default function ProfileEditor({
     let nextAvatarUrl = avatarUrl;
 
     if (avatarFile) {
+      const avatarFolder = user.id;
+      const { data: existingAvatars, error: listError } = await supabase.storage
+        .from("avatars")
+        .list(avatarFolder, { limit: 100 });
+
+      if (listError) {
+        setSaving(false);
+        setError("Nepodarilo sa nacitat existujuci avatar.");
+        return;
+      }
+
+      const existingPaths = (existingAvatars ?? [])
+        .filter((file) => typeof file.name === "string" && file.name.length > 0)
+        .map((file) => `${avatarFolder}/${file.name}`);
+
+      if (existingPaths.length > 0) {
+        const { error: removeError } = await supabase.storage.from("avatars").remove(existingPaths);
+        if (removeError) {
+          setSaving(false);
+          setError("Nepodarilo sa odstranit stary avatar.");
+          return;
+        }
+      }
+
       const ext = avatarFile.name.split(".").pop() ?? "jpg";
-      const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const filePath = `${user.id}/avatar.${ext}`;
       const upload = await supabase.storage
         .from("avatars")
         .upload(filePath, avatarFile, { upsert: true });
@@ -186,7 +210,16 @@ export default function ProfileEditor({
 
     setSaving(false);
     setAvatarFile(null);
-    setSuccess("Profil bol uspesne aktualizovany.");
+    setSuccess("Zmeny boly ulozene");
+
+    window.dispatchEvent(
+      new CustomEvent("profile-updated", {
+        detail: {
+          full_name: fullName.trim(),
+          avatar_url: nextAvatarUrl,
+        },
+      })
+    );
   }
 
   return (
@@ -207,6 +240,18 @@ export default function ProfileEditor({
           {saving ? "Ukladam..." : "Ulozit zmeny"}
         </button>
       </div>
+
+      {success && (
+        <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+          {success}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       {/* Avatar Section */}
       {!hideAvatar && (
@@ -276,7 +321,7 @@ export default function ProfileEditor({
                 value={heightCm || ""}
                 onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : 0)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                placeholder="napr. 180"
+                placeholder="napr. 175"
                 min={100}
                 max={250}
               />
@@ -406,18 +451,6 @@ export default function ProfileEditor({
         </div>
       </section>
 
-      {/* Messages */}
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-          {success}
-        </div>
-      )}
     </div>
   );
 }

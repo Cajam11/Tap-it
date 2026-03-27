@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import NavBarAuth from "@/components/NavBarAuth";
 import WeightChart from "@/components/profile/WeightChart";
 import { createClient } from "@/lib/supabase/server";
-import { Award, CalendarCheck2, Clock3, Dumbbell, ShieldCheck, Trophy, LineChart as LineChartIcon } from "lucide-react";
+import { Award, CalendarCheck2, Clock3, Dumbbell, ShieldCheck, Trophy, LineChart as LineChartIcon, Settings } from "lucide-react";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -283,7 +284,14 @@ export default async function ProfilePage() {
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-6xl space-y-8">
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
+          <section className="relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
+            <Link
+              href="/settings"
+              aria-label="Otvorit nastavenia"
+              className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-white/75 transition hover:border-red-500/50 hover:text-white"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
             <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
               <div className="flex flex-col items-center gap-4 lg:items-start">
                 <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 ring-4 ring-red-500/20">

@@ -33,6 +33,36 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    function handleProfileUpdated(event: Event) {
+      const customEvent = event as CustomEvent<{ full_name?: string | null; avatar_url?: string | null }>;
+      const nextName = typeof customEvent.detail?.full_name === "string" ? customEvent.detail.full_name : null;
+      const nextAvatar = typeof customEvent.detail?.avatar_url === "string" ? customEvent.detail.avatar_url : null;
+
+      setProfile((prev) => ({
+        ...(prev ?? {}),
+        full_name: nextName,
+        avatar_url: nextAvatar,
+      }));
+
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              user_metadata: {
+                ...(prev.user_metadata ?? {}),
+                full_name: nextName ?? undefined,
+                avatar_url: nextAvatar ?? undefined,
+              },
+            }
+          : prev
+      );
+    }
+
+    window.addEventListener("profile-updated", handleProfileUpdated as EventListener);
+    return () => window.removeEventListener("profile-updated", handleProfileUpdated as EventListener);
+  }, []);
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {

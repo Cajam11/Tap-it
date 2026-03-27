@@ -119,7 +119,7 @@ const GALLERY = [
   { src: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=800&q=80", alt: "Cardio machines" },
   { src: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80", alt: "Training floor" },
   { src: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80", alt: "Stretching area" },
-  { src: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80", alt: "Gym interior" },
+  { src: "https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Gym interior" },
   { src: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800&q=80", alt: "Equipment" },
 ];
 
@@ -594,14 +594,14 @@ export default async function LandingPage() {
 
             <FadeIn className="grid grid-cols-2 sm:grid-cols-3 gap-4" delay={80}>
               {GALLERY.map((img) => (
-                <div key={img.alt} className="overflow-hidden rounded-3xl border border-white/[0.06] group">
+                <div key={img.alt} className="overflow-hidden rounded-3xl border border-white/[0.06] group bg-black/40">
                   <img
                     src={img.src}
                     alt={img.alt}
                     width={800}
                     height={600}
                     loading="lazy"
-                    className="w-full aspect-[4/3] object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                    className="w-full h-full aspect-[4/3] object-cover object-center scale-100 transition-[transform] duration-700 group-hover:scale-110 motion-reduce:group-hover:scale-100"
                   />
                 </div>
               ))}

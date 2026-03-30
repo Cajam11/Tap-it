@@ -36,7 +36,7 @@ function getPlanDisplayName(name: string) {
 export default async function MembershipPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: Promise<{ status?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -172,7 +172,8 @@ export default async function MembershipPage({
     avatar_url: typeof profileRes.data?.avatar_url === "string" ? profileRes.data.avatar_url : null,
   };
 
-  const status = searchParams?.status;
+  const resolvedSearchParams = await searchParams;
+  const status = resolvedSearchParams?.status;
   const showStatus =
     status === "selected" ||
     status === "missing-plan" ||

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import FadeIn from "@/components/FadeIn";
+import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    DATA
@@ -123,11 +124,7 @@ const GALLERY = [
   { src: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800&q=80", alt: "Equipment" },
 ];
 
-const PRICING = [
-  { name: "Jednorazový vstup", price: "14 €", period: "1 vstup", features: ["Prístup do posilňovne", "Sauna", "Skupinovky zadarmo"], highlight: false },
-  { name: "Mesačná", price: "39 €", period: "/ mesiac", features: ["Neobmedzený vstup", "Sauna", "Skupinovky zadarmo", "IONT nápoj"], highlight: true },
-  { name: "Ročná", price: "29 €", period: "/ mesiac", features: ["Neobmedzený vstup", "Sauna", "Skupinovky zadarmo", "IONT nápoj", "Uterák"], highlight: false },
-];
+const PRICING = MEMBERSHIP_PLANS;
 
 const STEPS: Array<{ n: number; title: string; desc: string; Icon: LucideIcon }> = [
   { n: 1, title: "Otvor appku", desc: "Spusti Tap-it na tvojom telefóne.", Icon: Smartphone },
@@ -667,7 +664,7 @@ export default async function LandingPage() {
                       ))}
                     </ul>
                     <Link
-                      href="/register"
+                      href={user ? "/membership" : "/register"}
                       className={`mt-8 block text-center text-sm font-bold py-4 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide ${
                         p.highlight
                           ? "bg-red-600 hover:bg-red-500 text-white"

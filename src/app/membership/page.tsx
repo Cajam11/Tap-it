@@ -1,30 +1,19 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import NavBarAuth from "@/components/NavBarAuth";
+import MembershipQrCard from "@/components/membership/MembershipQrCard";
 import { createClient } from "@/lib/supabase/server";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import { getCurrentActiveMembership } from "@/lib/membership-access";
 import { CheckCircle2 } from "lucide-react";
-import type { Membership } from "@/lib/types";
 
 const NAV_LINKS: [string, string][] = [];
 
-type DbMembership = Pick<
-  Membership,
-  "id" | "name" | "billing_cycle" | "entry_count" | "duration_days"
->;
-
-type Status = "selected" | "missing-plan" | "invalid-plan" | "error";
+type Status = "selected" | "payment-failed";
 
 function getStatusLabel(status: Status) {
-  if (status === "selected") return "Členstvo bolo úspešne zmenené.";
-  if (status === "missing-plan") return "Vybraný plán nebol nájdený v databáze.";
-  if (status === "invalid-plan") return "Vybraný plán nie je validný.";
-  return "Pri zmene členstva nastala chyba.";
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  if (status === "selected") return "Platba prebehla úspešne. Členstvo je aktívne.";
+  return "Platba zlyhala. Skús to znova.";
 }
 
 function getPlanDisplayName(name: string) {
@@ -47,92 +36,17 @@ export default async function MembershipPage({
     redirect("/login");
   }
 
-  async function selectMembership(formData: FormData) {
-    "use server";
-
-    const selectedPlanName = formData.get("planName");
-    if (typeof selectedPlanName !== "string") {
-      redirect("/membership?status=invalid-plan");
-    }
-
-    const selectedPlan = MEMBERSHIP_PLANS.find((plan) => plan.name === selectedPlanName);
-    if (!selectedPlan) {
-      redirect("/membership?status=invalid-plan");
-    }
-
-    const actionSupabase = await createClient();
-    const {
-      data: { user: actionUser },
-    } = await actionSupabase.auth.getUser();
-
-    if (!actionUser) {
-      redirect("/login");
-    }
-
-    const { data: membershipRow, error: membershipError } = await actionSupabase
-      .from("memberships")
-      .select("id, name, billing_cycle, entry_count, duration_days")
-      .eq("name", selectedPlan.name)
-      .maybeSingle<DbMembership>();
-
-    if (membershipError) {
-      redirect("/membership?status=error");
-    }
-
-    if (!membershipRow) {
-      redirect("/membership?status=missing-plan");
-    }
-
-    await actionSupabase
-      .from("user_memberships")
-      .update({ status: "cancelled", end_date: new Date().toISOString() })
-      .eq("user_id", actionUser.id)
-      .eq("status", "active");
-
-    const now = new Date();
-    const nextEndDate =
-      typeof membershipRow.duration_days === "number" && membershipRow.duration_days > 0
-        ? addDays(now, membershipRow.duration_days).toISOString()
-        : null;
-
-    const entriesRemaining =
-      membershipRow.billing_cycle === "entries"
-        ? typeof membershipRow.entry_count === "number" && membershipRow.entry_count > 0
-          ? membershipRow.entry_count
-          : 1
-        : null;
-
-    const { error: insertError } = await actionSupabase.from("user_memberships").insert({
-      user_id: actionUser.id,
-      membership_id: membershipRow.id,
-      start_date: now.toISOString(),
-      end_date: nextEndDate,
-      entries_remaining: entriesRemaining,
-      status: "active",
-      activated_by_admin: false,
-    });
-
-    if (insertError) {
-      redirect("/membership?status=error");
-    }
-
-    redirect("/membership?status=selected");
-  }
-
   const [profileRes, activeMembershipRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, avatar_url")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("user_memberships")
-      .select("membership_id, status, membership:memberships(name)")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("start_date", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    getCurrentActiveMembership<{ membership: { name: string } | null }>(
+      supabase,
+      user.id,
+      "membership_id, status, membership:memberships(name)"
+    ),
   ]);
 
   const fullName =
@@ -174,11 +88,7 @@ export default async function MembershipPage({
 
   const resolvedSearchParams = await searchParams;
   const status = resolvedSearchParams?.status;
-  const showStatus =
-    status === "selected" ||
-    status === "missing-plan" ||
-    status === "invalid-plan" ||
-    status === "error";
+  const showStatus = status === "selected" || status === "payment-failed";
 
   return (
     <>
@@ -206,16 +116,16 @@ export default async function MembershipPage({
             </div>
           </section>
 
+          {showStatus && (
+            <div className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white/80">
+              {getStatusLabel(status)}
+            </div>
+          )}
+
           {!activeMembershipName && (
             <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
               <h2 className="text-2xl font-bold text-white">Aktívne členstvo</h2>
               <p className="mt-3 text-white/70">Momentálne nemáš aktívne členstvo. Vyber si jedno nižšie.</p>
-
-              {showStatus && (
-                <div className="mt-4 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white/80">
-                  {getStatusLabel(status)}
-                </div>
-              )}
 
               <div className="mt-8 grid gap-4 md:grid-cols-3 md:items-stretch">
                 {MEMBERSHIP_PLANS.map((plan) => {
@@ -248,21 +158,27 @@ export default async function MembershipPage({
                         ))}
                       </ul>
 
-                      <form action={selectMembership} className="mt-auto pt-6">
-                        <input type="hidden" name="planName" value={plan.name} />
-                        <button
-                          type="submit"
-                          disabled={isActive}
-                          className="w-full rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50"
+                      <div className="mt-auto pt-6">
+                        <Link
+                          href={`/membership/payment?plan=${encodeURIComponent(plan.name)}`}
+                          className="block w-full rounded-full bg-red-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-red-500"
                         >
-                          {isActive ? "Aktuálne členské" : "Vybrať členské"}
-                        </button>
-                      </form>
+                          Pokračovať na platbu
+                        </Link>
+                      </div>
                     </article>
                   );
                 })}
               </div>
             </section>
+          )}
+
+          {activeMembershipName && (
+            <MembershipQrCard
+              fullName={fullName}
+              email={user.email ?? null}
+              membershipName={activeMembershipName}
+            />
           )}
         </div>
       </main>

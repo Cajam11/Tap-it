@@ -180,6 +180,17 @@ export default async function MembershipPage({
               membershipName={activeMembershipName}
             />
           )}
+
+          {activeMembershipName && (
+            <div className="flex justify-center">
+              <Link
+                href="/membership/details"
+                className="rounded-full bg-red-600 px-8 py-3 text-center font-semibold text-white transition hover:bg-red-500"
+              >
+                Detaily členstva
+              </Link>
+            </div>
+          )}
         </div>
       </main>
     </>

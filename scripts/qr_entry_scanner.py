@@ -198,6 +198,25 @@ def has_open_entry(user_id: str) -> bool:
     return len(response.json()) > 0
 
 
+def get_open_entry(user_id: str) -> dict[str, Any] | None:
+    endpoint = f"{SUPABASE_URL}/rest/v1/entries"
+    params = {
+        "select": "id,check_in",
+        "user_id": f"eq.{user_id}",
+        "check_out": "is.null",
+        "is_valid": "eq.true",
+        "order": "check_in.desc",
+        "limit": "1",
+    }
+
+    response = requests.get(endpoint, headers=get_headers(), params=params, timeout=5)
+    if response.status_code >= 400:
+        raise ScannerError(f"Entries query failed: {response.text}")
+
+    rows = response.json()
+    return rows[0] if rows else None
+
+
 def insert_entry(user_id: str) -> None:
     endpoint = f"{SUPABASE_URL}/rest/v1/entries"
     payload = {
@@ -215,6 +234,35 @@ def insert_entry(user_id: str) -> None:
 
     if response.status_code >= 400:
         raise ScannerError(f"Insert entry failed: {response.text}")
+
+
+def checkout_entry(entry_id: str, check_in_iso: str) -> int:
+    endpoint = f"{SUPABASE_URL}/rest/v1/entries"
+    now_dt = datetime.now(timezone.utc)
+    check_in_dt = datetime.fromisoformat(check_in_iso.replace("Z", "+00:00"))
+    duration_minutes = max(0, int((now_dt - check_in_dt).total_seconds() // 60))
+
+    payload = {
+        "check_out": now_dt.isoformat(),
+        "duration_min": duration_minutes,
+    }
+
+    params = {
+        "id": f"eq.{entry_id}",
+    }
+
+    response = requests.patch(
+        endpoint,
+        headers={**get_headers(), "Prefer": "return=minimal"},
+        params=params,
+        json=payload,
+        timeout=5,
+    )
+
+    if response.status_code >= 400:
+        raise ScannerError(f"Checkout update failed: {response.text}")
+
+    return duration_minutes
 
 
 def get_profile(user_id: str) -> dict[str, Any]:
@@ -252,19 +300,43 @@ def fetch_avatar_image(avatar_url: str | None) -> np.ndarray | None:
         return None
 
 
-def draw_status(frame: np.ndarray, message: str, is_success: bool) -> None:
-    color = (0, 200, 0) if is_success else (0, 0, 255)
-    cv2.rectangle(frame, (20, 20), (780, 80), (20, 20, 20), -1)
-    cv2.putText(frame, message, (30, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2, cv2.LINE_AA)
+def draw_side_panel(
+    frame: np.ndarray,
+    x1: int,
+    x2: int,
+    title: str,
+    message: str,
+    is_success: bool,
+    avatar: np.ndarray | None,
+    name: str,
+    detail: str,
+) -> None:
+    panel_color = (22, 22, 22)
+    status_color = (0, 200, 0) if is_success else (0, 0, 255)
 
+    cv2.rectangle(frame, (x1 + 12, 12), (x2 - 12, 90), panel_color, -1)
+    cv2.putText(frame, title, (x1 + 20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (220, 220, 220), 2, cv2.LINE_AA)
+    cv2.putText(frame, message[:38], (x1 + 20, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.65, status_color, 2, cv2.LINE_AA)
 
-def draw_avatar(frame: np.ndarray, avatar: np.ndarray | None, name: str) -> None:
-    cv2.rectangle(frame, (20, 100), (260, 250), (20, 20, 20), -1)
+    cv2.rectangle(frame, (x1 + 12, 100), (x1 + 260, 255), panel_color, -1)
     if avatar is not None:
-        frame[115:235, 30:150] = avatar
+        frame[115:235, x1 + 24:x1 + 144] = avatar
 
-    cv2.putText(frame, name[:18], (160, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, "ENTRY LOGGED", (160, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 0), 2, cv2.LINE_AA)
+    if name:
+        cv2.putText(frame, name[:18], (x1 + 154, 172), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (240, 240, 240), 2, cv2.LINE_AA)
+    if detail:
+        cv2.putText(frame, detail[:18], (x1 + 154, 206), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (130, 230, 130), 2, cv2.LINE_AA)
+
+
+def make_state(message: str, is_success: bool = False, ttl: float = 0.0) -> dict[str, Any]:
+    return {
+        "message": message,
+        "is_success": is_success,
+        "until": ttl,
+        "avatar": None,
+        "name": "",
+        "detail": "",
+    }
 
 
 def main() -> None:
@@ -272,12 +344,10 @@ def main() -> None:
     cap = open_camera()
 
     detector = cv2.QRCodeDetector()
-    last_scan_at = 0.0
-    last_status = "Waiting for QR code..."
-    last_success = False
-    status_until = 0.0
-    last_avatar = None
-    last_name = ""
+    last_scan_at_left = 0.0
+    last_scan_at_right = 0.0
+    left_state = make_state("Ready for check-in")
+    right_state = make_state("Ready for check-out")
 
     try:
         while True:
@@ -286,15 +356,25 @@ def main() -> None:
                 break
 
             now = time.time()
+            frame_h, frame_w = frame.shape[:2]
+            mid_x = frame_w // 2
+
+            cv2.line(frame, (mid_x, 0), (mid_x, frame_h), (160, 160, 160), 2)
+            cv2.putText(frame, "CHECK-IN", (20, frame_h - 22), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (90, 240, 90), 2, cv2.LINE_AA)
+            cv2.putText(frame, "CHECK-OUT", (mid_x + 20, frame_h - 22), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (90, 180, 255), 2, cv2.LINE_AA)
 
             value, points, _ = detector.detectAndDecode(frame)
+            side = None
             if points is not None and len(points) > 0:
                 pts = points.astype(int).reshape(-1, 2)
                 for i in range(len(pts)):
                     cv2.line(frame, tuple(pts[i]), tuple(pts[(i + 1) % len(pts)]), (255, 255, 0), 2)
 
-            if value and now - last_scan_at >= SCAN_COOLDOWN_SECONDS:
-                last_scan_at = now
+                center_x = int(np.mean(pts[:, 0]))
+                side = "left" if center_x < mid_x else "right"
+
+            if value and side == "left" and now - last_scan_at_left >= SCAN_COOLDOWN_SECONDS:
+                last_scan_at_left = now
                 try:
                     payload = verify_qr_token(value)
                     user_id = str(payload["sub"])
@@ -309,28 +389,77 @@ def main() -> None:
                     insert_entry(user_id)
 
                     profile = get_profile(user_id)
-                    last_avatar = fetch_avatar_image(profile.get("avatar_url"))
-                    last_name = str(profile.get("full_name") or "Unknown")
-
-                    last_status = "Successful"
-                    last_success = True
-                    status_until = now + STATUS_SHOW_SECONDS
+                    left_state["avatar"] = fetch_avatar_image(profile.get("avatar_url"))
+                    left_state["name"] = str(profile.get("full_name") or "Unknown")
+                    left_state["message"] = "Successful"
+                    left_state["is_success"] = True
+                    left_state["detail"] = "Check-in"
+                    left_state["until"] = now + STATUS_SHOW_SECONDS
                 except Exception as exc:
-                    last_status = f"Denied: {str(exc)}"
-                    last_success = False
-                    status_until = now + STATUS_SHOW_SECONDS
+                    left_state["message"] = f"Denied: {str(exc)}"
+                    left_state["is_success"] = False
+                    left_state["detail"] = ""
+                    left_state["until"] = now + STATUS_SHOW_SECONDS
 
-            if now <= status_until:
-                draw_status(frame, last_status, last_success)
-                if last_success:
-                    draw_avatar(frame, last_avatar, last_name)
-            else:
-                draw_status(frame, "Waiting for QR code...", False)
+            if value and side == "right" and now - last_scan_at_right >= SCAN_COOLDOWN_SECONDS:
+                last_scan_at_right = now
+                try:
+                    payload = verify_qr_token(value)
+                    user_id = str(payload["sub"])
+
+                    open_entry = get_open_entry(user_id)
+                    if not open_entry:
+                        raise ScannerError("No open check-in found")
+
+                    duration_minutes = checkout_entry(str(open_entry["id"]), str(open_entry["check_in"]))
+                    profile = get_profile(user_id)
+
+                    right_state["avatar"] = fetch_avatar_image(profile.get("avatar_url"))
+                    right_state["name"] = str(profile.get("full_name") or "Unknown")
+                    right_state["message"] = "Successful"
+                    right_state["is_success"] = True
+                    right_state["detail"] = f"{duration_minutes} min"
+                    right_state["until"] = now + STATUS_SHOW_SECONDS
+                except Exception as exc:
+                    right_state["message"] = f"Denied: {str(exc)}"
+                    right_state["is_success"] = False
+                    right_state["detail"] = ""
+                    right_state["until"] = now + STATUS_SHOW_SECONDS
+
+            if now > left_state["until"] and left_state["message"] != "Ready for check-in":
+                left_state = make_state("Ready for check-in")
+
+            if now > right_state["until"] and right_state["message"] != "Ready for check-out":
+                right_state = make_state("Ready for check-out")
+
+            draw_side_panel(
+                frame,
+                0,
+                mid_x,
+                "LEFT - CHECK IN",
+                left_state["message"],
+                bool(left_state["is_success"]),
+                left_state["avatar"],
+                str(left_state["name"]),
+                str(left_state["detail"]),
+            )
+
+            draw_side_panel(
+                frame,
+                mid_x,
+                frame_w,
+                "RIGHT - CHECK OUT",
+                right_state["message"],
+                bool(right_state["is_success"]),
+                right_state["avatar"],
+                str(right_state["name"]),
+                str(right_state["detail"]),
+            )
 
             cv2.putText(
                 frame,
                 "Press Q to quit",
-                (20, frame.shape[0] - 20),
+                (20, frame_h - 54),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
                 (200, 200, 200),

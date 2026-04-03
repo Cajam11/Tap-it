@@ -160,12 +160,12 @@ def expire_overdue_memberships(user_id: str) -> None:
     requests.patch(endpoint, headers=get_headers(), params=params, json=payload, timeout=5)
 
 
-def get_active_membership(user_id: str) -> bool:
+def get_active_membership(user_id: str) -> dict[str, Any] | None:
     endpoint = f"{SUPABASE_URL}/rest/v1/user_memberships"
     now_iso = datetime.now(timezone.utc).isoformat()
 
     params = {
-        "select": "id,end_date,status",
+        "select": "id,end_date,status,entries_remaining,membership:memberships(billing_cycle)",
         "user_id": f"eq.{user_id}",
         "status": "eq.active",
         "or": f"(end_date.is.null,end_date.gt.{now_iso})",
@@ -177,8 +177,20 @@ def get_active_membership(user_id: str) -> bool:
     if response.status_code >= 400:
         raise ScannerError(f"Membership query failed: {response.text}")
 
+    rows = response.json()
+    return rows[0] if rows else None
+
+
+def check_in_with_membership(user_id: str) -> dict[str, Any]:
+    endpoint = f"{SUPABASE_URL}/rest/v1/rpc/check_in_with_membership"
+    payload = {"p_user_id": user_id}
+
+    response = requests.post(endpoint, headers=get_headers(), json=payload, timeout=5)
+    if response.status_code >= 400:
+        raise ScannerError(f"Check-in RPC failed: {response.text}")
+
     data = response.json()
-    return len(data) > 0
+    return data if isinstance(data, dict) else {}
 
 
 def has_open_entry(user_id: str) -> bool:
@@ -380,20 +392,22 @@ def main() -> None:
                     user_id = str(payload["sub"])
 
                     expire_overdue_memberships(user_id)
-                    if not get_active_membership(user_id):
+                    active_membership = get_active_membership(user_id)
+                    if not active_membership:
                         raise ScannerError("Membership is not active")
 
                     if has_open_entry(user_id):
                         raise ScannerError("User already checked in")
 
-                    insert_entry(user_id)
+                    result = check_in_with_membership(user_id)
 
                     profile = get_profile(user_id)
                     left_state["avatar"] = fetch_avatar_image(profile.get("avatar_url"))
                     left_state["name"] = str(profile.get("full_name") or "Unknown")
                     left_state["message"] = "Successful"
                     left_state["is_success"] = True
-                    left_state["detail"] = "Check-in"
+                    remaining = result.get("remaining")
+                    left_state["detail"] = f"Remaining: {remaining}" if remaining is not None else "Check-in"
                     left_state["until"] = now + STATUS_SHOW_SECONDS
                 except Exception as exc:
                     left_state["message"] = f"Denied: {str(exc)}"

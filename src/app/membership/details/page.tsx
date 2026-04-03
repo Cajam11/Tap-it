@@ -4,7 +4,11 @@ import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
+import FlashMessageBanner from "@/components/FlashMessageBanner";
+import { parseFlashCookieValue } from "@/lib/flash";
+import { setFlashMessage } from "@/lib/flash.server";
 import { ChevronLeft } from "lucide-react";
+import { cookies } from "next/headers";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -36,14 +40,15 @@ export default async function MembershipDetailsPage() {
       .eq("id", user.id)
       .maybeSingle(),
     getCurrentActiveMembership<{
+      id: string;
       membership_id: string;
       start_date: string;
       status: string;
-      membership: { name: string } | null;
+      membership: { name: string; price: number } | null;
     }>(
       supabase,
       user.id,
-      "membership_id, start_date, status, membership:memberships(name)"
+      "id, membership_id, start_date, status, membership:memberships(name, price)"
     ),
   ]);
 
@@ -83,6 +88,74 @@ export default async function MembershipDetailsPage() {
     : "N/A";
 
   const features = membershipName ? getFeaturesByMembershipName(membershipName) : [];
+
+  async function cancelMembership() {
+    "use server";
+
+    const actionSupabase = await createClient();
+    const {
+      data: { user: actionUser },
+    } = await actionSupabase.auth.getUser();
+
+    if (!actionUser) {
+      redirect("/login");
+    }
+
+    const { data: currentMembership } = await getCurrentActiveMembership<{
+      id: string;
+      membership_id: string;
+      membership: { name: string; price: number } | null;
+    }>(
+      actionSupabase,
+      actionUser.id,
+      "id, membership_id, membership:memberships(name, price)"
+    );
+
+    if (!currentMembership) {
+      await setFlashMessage({ kind: "error", text: "Zrušenie členstva zlyhalo. Skús to znova." });
+      redirect("/membership/details");
+    }
+
+    const { error: transactionError } = await actionSupabase.from("transactions").insert({
+      user_id: actionUser.id,
+      membership_id: currentMembership.membership_id,
+      amount:
+        currentMembership.membership && typeof currentMembership.membership.price === "number"
+          ? currentMembership.membership.price
+          : 0,
+      currency: "EUR",
+      type: "refund",
+      status: "completed",
+      metadata: {
+        source_membership_row_id: currentMembership.id,
+        membership_name:
+          currentMembership.membership && typeof currentMembership.membership.name === "string"
+            ? currentMembership.membership.name
+            : null,
+      },
+    });
+
+    if (transactionError) {
+      await setFlashMessage({ kind: "error", text: "Zrušenie členstva zlyhalo. Skús to znova." });
+      redirect("/membership/details");
+    }
+
+    const { error: deleteError } = await actionSupabase
+      .from("user_memberships")
+      .delete()
+      .eq("id", currentMembership.id)
+      .eq("user_id", actionUser.id);
+
+    if (deleteError) {
+      await setFlashMessage({ kind: "error", text: "Zrušenie členstva zlyhalo. Skús to znova." });
+      redirect("/membership/details");
+    }
+
+    await setFlashMessage({ kind: "success", text: "Členstvo bolo zrušené a refund bol zaevidovaný." });
+    redirect("/membership");
+  }
+
+  const flashMessage = parseFlashCookieValue((await cookies()).get("tapit_flash")?.value);
 
   const navUser = {
     id: user.id,
@@ -144,6 +217,8 @@ export default async function MembershipDetailsPage() {
           <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-white">Informácie o členstve</h2>
 
+            {flashMessage && <div className="mt-4"><FlashMessageBanner message={flashMessage} /></div>}
+
             {/* Registration Date */}
             <div className="mt-6 space-y-4">
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
@@ -180,11 +255,14 @@ export default async function MembershipDetailsPage() {
               Kliknutím na tlačidlo nižšie zrušíš svoje členstvo. Túto akciu nie je možné vrátiť.
             </p>
 
-            <button
-              className="mt-4 rounded-full border border-red-500/50 bg-red-500/20 px-6 py-2.5 text-sm font-semibold text-red-300 transition hover:border-red-500 hover:bg-red-500/30"
-            >
-              Zrušiť členstvo
-            </button>
+            <form action={cancelMembership}>
+              <button
+                type="submit"
+                className="mt-4 rounded-full border border-red-500/50 bg-red-500/20 px-6 py-2.5 text-sm font-semibold text-red-300 transition hover:border-red-500 hover:bg-red-500/30"
+              >
+                Zrušiť členstvo
+              </button>
+            </form>
           </section>
         </div>
       </main>

@@ -4,13 +4,14 @@ import NavBarAuth from "@/components/NavBarAuth";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import { createClient } from "@/lib/supabase/server";
+import { setFlashMessage } from "@/lib/flash.server";
 import type { Membership } from "@/lib/types";
 
 const NAV_LINKS: [string, string][] = [];
 
 type DbMembership = Pick<
   Membership,
-  "id" | "name" | "billing_cycle" | "entry_count" | "duration_days"
+  "id" | "name" | "billing_cycle" | "entry_count" | "duration_days" | "price"
 >;
 
 function addDays(date: Date, days: number) {
@@ -88,7 +89,8 @@ export default async function MembershipPaymentPage({
   const selectedPlan = MEMBERSHIP_PLANS.find((plan) => plan.name === selectedPlanName);
 
   if (!selectedPlan) {
-    redirect("/membership?status=payment-failed");
+    await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+    redirect("/membership");
   }
 
   async function confirmPayment(formData: FormData) {
@@ -96,12 +98,14 @@ export default async function MembershipPaymentPage({
 
     const planName = formData.get("planName");
     if (typeof planName !== "string") {
-      redirect("/membership?status=payment-failed");
+      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+      redirect("/membership");
     }
 
     const plan = MEMBERSHIP_PLANS.find((item) => item.name === planName);
     if (!plan) {
-      redirect("/membership?status=payment-failed");
+      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+      redirect("/membership");
     }
 
     const actionSupabase = await createClient();
@@ -115,12 +119,13 @@ export default async function MembershipPaymentPage({
 
     const { data: membershipRow, error: membershipError } = await actionSupabase
       .from("memberships")
-      .select("id, name, billing_cycle, entry_count, duration_days")
+      .select("id, name, billing_cycle, entry_count, duration_days, price")
       .eq("name", plan.name)
       .maybeSingle<DbMembership>();
 
     if (membershipError || !membershipRow) {
-      redirect("/membership?status=payment-failed");
+      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+      redirect("/membership");
     }
 
     await actionSupabase
@@ -153,10 +158,37 @@ export default async function MembershipPaymentPage({
     });
 
     if (insertError) {
-      redirect("/membership?status=payment-failed");
+      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+      redirect("/membership");
     }
 
-    redirect("/membership?status=selected");
+    const { error: transactionError } = await actionSupabase.from("transactions").insert({
+      user_id: actionUser.id,
+      membership_id: membershipRow.id,
+      amount: membershipRow.price,
+      currency: "EUR",
+      type: "purchase",
+      status: "completed",
+      metadata: {
+        plan_name: membershipRow.name,
+        billing_cycle: membershipRow.billing_cycle,
+      },
+    });
+
+    if (transactionError) {
+      await actionSupabase
+        .from("user_memberships")
+        .delete()
+        .eq("user_id", actionUser.id)
+        .eq("membership_id", membershipRow.id)
+        .eq("status", "active");
+
+      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+      redirect("/membership");
+    }
+
+    await setFlashMessage({ kind: "success", text: "Platba prebehla úspešne. Členstvo je aktívne." });
+    redirect("/membership");
   }
 
   return (

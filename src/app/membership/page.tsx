@@ -1,20 +1,16 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import NavBarAuth from "@/components/NavBarAuth";
+import FlashMessageBanner from "@/components/FlashMessageBanner";
 import MembershipQrCard from "@/components/membership/MembershipQrCard";
 import { createClient } from "@/lib/supabase/server";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
+import { parseFlashCookieValue } from "@/lib/flash";
 import { CheckCircle2 } from "lucide-react";
+import { cookies } from "next/headers";
 
 const NAV_LINKS: [string, string][] = [];
-
-type Status = "selected" | "payment-failed";
-
-function getStatusLabel(status: Status) {
-  if (status === "selected") return "Platba prebehla úspešne. Členstvo je aktívne.";
-  return "Platba zlyhala. Skús to znova.";
-}
 
 function getPlanDisplayName(name: string) {
   if (name === "Mesačná") return "Mesačné";
@@ -22,11 +18,7 @@ function getPlanDisplayName(name: string) {
   return name;
 }
 
-export default async function MembershipPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ status?: string }>;
-}) {
+export default async function MembershipPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,6 +40,14 @@ export default async function MembershipPage({
       "membership_id, status, membership:memberships(name)"
     ),
   ]);
+
+  const { data: openEntries } = await supabase
+    .from("entries")
+    .select("id")
+    .eq("user_id", user.id)
+    .is("check_out", null)
+    .eq("is_valid", true)
+    .limit(1);
 
   const fullName =
     typeof profileRes.data?.full_name === "string"
@@ -72,6 +72,9 @@ export default async function MembershipPage({
       ? activeMembershipRes.data.membership.name
       : null;
 
+  const hasOpenEntry = Array.isArray(openEntries) && openEntries.length > 0;
+  const showQr = Boolean(activeMembershipName || hasOpenEntry);
+
   const navUser = {
     id: user.id,
     email: user.email ?? null,
@@ -86,9 +89,7 @@ export default async function MembershipPage({
     avatar_url: typeof profileRes.data?.avatar_url === "string" ? profileRes.data.avatar_url : null,
   };
 
-  const resolvedSearchParams = await searchParams;
-  const status = resolvedSearchParams?.status;
-  const showStatus = status === "selected" || status === "payment-failed";
+  const flashMessage = parseFlashCookieValue((await cookies()).get("tapit_flash")?.value);
 
   return (
     <>
@@ -116,13 +117,9 @@ export default async function MembershipPage({
             </div>
           </section>
 
-          {showStatus && (
-            <div className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white/80">
-              {getStatusLabel(status)}
-            </div>
-          )}
+          {flashMessage && <FlashMessageBanner message={flashMessage} />}
 
-          {!activeMembershipName && (
+          {!showQr && (
             <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
               <h2 className="text-2xl font-bold text-white">Aktívne členstvo</h2>
               <p className="mt-3 text-white/70">Momentálne nemáš aktívne členstvo. Vyber si jedno nižšie.</p>
@@ -173,15 +170,15 @@ export default async function MembershipPage({
             </section>
           )}
 
-          {activeMembershipName && (
+          {showQr && (
             <MembershipQrCard
               fullName={fullName}
               email={user.email ?? null}
-              membershipName={activeMembershipName}
+              membershipName={activeMembershipName || "Otvorený vstup"}
             />
           )}
 
-          {activeMembershipName && (
+          {showQr && (
             <div className="flex justify-center">
               <Link
                 href="/membership/details"

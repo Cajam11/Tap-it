@@ -19,7 +19,24 @@ export async function GET() {
     "id"
   );
 
+  let hasOpenEntry = false;
   if (!activeMembership) {
+    const { data: openEntries, error: openEntryError } = await supabase
+      .from("entries")
+      .select("id")
+      .eq("user_id", user.id)
+      .is("check_out", null)
+      .eq("is_valid", true)
+      .limit(1);
+
+    if (openEntryError) {
+      return NextResponse.json({ error: "entry_lookup_failed" }, { status: 500 });
+    }
+
+    hasOpenEntry = Array.isArray(openEntries) && openEntries.length > 0;
+  }
+
+  if (!activeMembership && !hasOpenEntry) {
     return NextResponse.json({ error: "membership_not_active" }, { status: 403 });
   }
 

@@ -128,7 +128,7 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, created_at")
+      .select("email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, onboarding_completed_at, created_at")
       .eq("id", user.id)
       .maybeSingle(),
     supabase

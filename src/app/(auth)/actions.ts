@@ -165,6 +165,20 @@ export async function completeOnboarding(_prev: AuthState, formData: FormData): 
     return { error: "Chyba pri ukladani profilu: " + profileError.message };
   }
 
+  // Step 3: Insert initial weight into weight_logs if weight is provided
+  if (Number.isFinite(weightKg) && weightKg > 0) {
+    const now = new Date().toISOString();
+    const { error: weightLogError } = await supabase.from("weight_logs").insert({
+      user_id: user.id,
+      weight_kg: weightKg,
+      created_at: now,
+    });
+
+    if (weightLogError) {
+      console.error("Warning: Failed to insert initial weight log:", weightLogError);
+    }
+  }
+
   redirect("/");
 }
 

@@ -195,6 +195,18 @@ export default function ProfileEditor({
       return;
     }
 
+    // Insert weight change into weight_logs if weight changed
+    if (Number.isFinite(weightKg) && weightKg > 0 && weightKg !== initialProfile.weight_kg) {
+      const { error: weightLogError } = await supabase.from("weight_logs").insert({
+        user_id: user.id,
+        weight_kg: weightKg,
+      });
+
+      if (weightLogError) {
+        console.warn("Warning: Failed to log weight change:", weightLogError);
+      }
+    }
+
     const metadata = {
       full_name: fullName.trim(),
       avatar_url: nextAvatarUrl,

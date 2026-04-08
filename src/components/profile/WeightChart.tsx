@@ -19,9 +19,11 @@ interface WeightLog {
 
 interface WeightChartProps {
   logs: WeightLog[];
+  initialWeightKg?: number | null;
+  initialWeightCreatedAt?: string | null;
 }
 
-export default function WeightChart({ logs }: WeightChartProps) {
+export default function WeightChart({ logs, initialWeightKg, initialWeightCreatedAt }: WeightChartProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -31,13 +33,13 @@ export default function WeightChart({ logs }: WeightChartProps) {
   }, []);
 
   const chartData = useMemo(() => {
-    if (!logs) return [];
-    
+    if (!logs || logs.length === 0) return [];
+
     // Zoraď chronologicky podla datumu
     const sorted = [...logs].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-    
+
     return sorted.map((log) => {
       const date = new Date(log.created_at);
       return {

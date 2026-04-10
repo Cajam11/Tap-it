@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, User as UserIcon, Settings, CreditCard, Receipt } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, CreditCard, Receipt, HelpCircle } from "lucide-react";
 
 type NavUser = {
   id: string;
@@ -193,6 +193,14 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                   >
                     <Receipt className="w-4 h-4" />
                     Transakcie
+                  </Link>
+                  <Link
+                    href="/help"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    Pomoc
                   </Link>
                   <button
                     onClick={handleSignOut}

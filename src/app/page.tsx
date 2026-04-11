@@ -23,6 +23,9 @@ import type { LucideIcon } from "lucide-react";
 import FadeIn from "@/components/FadeIn";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 
+import BlurText from "@/components/BlurText";
+import SplashWrapper from "@/components/SplashWrapper";
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -182,7 +185,7 @@ export default async function LandingPage() {
   }
 
   return (
-    <>
+    <SplashWrapper>
       {/* Skip link */}
       <a
         href="#main"
@@ -824,7 +827,7 @@ export default async function LandingPage() {
           </p>
         </div>
       </footer>
-    </>
+    </SplashWrapper>
   );
 }
 

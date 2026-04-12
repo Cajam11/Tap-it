@@ -20,15 +20,15 @@ export default function HelpContactForm() {
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-      <h2 className="text-2xl font-bold text-white">Kontaktujte nás</h2>
-      <p className="mt-2 text-white/65">
+    <section className="border-t border-white/10 pt-8 sm:pt-10">
+      <h2 className="text-3xl font-bold text-white">Kontaktujte nás</h2>
+      <p className="mt-3 text-base text-white/65 sm:text-lg">
         Potrebuješ pomoc? Napíš nám svoje meno, e-mail a otázku alebo problém.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="help-name" className="block text-sm font-medium text-white/80">
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <div className="space-y-2.5">
+          <label htmlFor="help-name" className="block text-base font-medium text-white/85">
             Meno
           </label>
           <input
@@ -37,14 +37,14 @@ export default function HelpContactForm() {
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
+            className="w-full rounded-xl border border-white/12 bg-transparent px-4 py-3 text-base text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
             placeholder="Tvoje meno"
             autoComplete="name"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="help-email" className="block text-sm font-medium text-white/80">
+        <div className="space-y-2.5">
+          <label htmlFor="help-email" className="block text-base font-medium text-white/85">
             E-mail
           </label>
           <input
@@ -53,14 +53,14 @@ export default function HelpContactForm() {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
+            className="w-full rounded-xl border border-white/12 bg-transparent px-4 py-3 text-base text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
             placeholder="tvoj@email.sk"
             autoComplete="email"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="help-issue" className="block text-sm font-medium text-white/80">
+        <div className="space-y-2.5">
+          <label htmlFor="help-issue" className="block text-base font-medium text-white/85">
             Otázka / Problém
           </label>
           <textarea
@@ -69,25 +69,22 @@ export default function HelpContactForm() {
             rows={5}
             value={issue}
             onChange={(event) => setIssue(event.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
+            className="w-full rounded-xl border border-white/12 bg-transparent px-4 py-3 text-base text-white placeholder:text-white/35 outline-none focus:border-red-500/70 focus:ring-2 focus:ring-red-500/30"
             placeholder="Popíš svoj problém alebo otázku"
           />
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-white/45">
-            Poznámka: formulár je zatiaľ iba informatívny a správy sa neodosielajú.
-          </p>
+        <div className="flex justify-start sm:justify-end">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-red-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500"
+            className="inline-flex items-center justify-center rounded-full bg-red-600 px-7 py-3 text-base font-semibold text-white transition hover:bg-red-500"
           >
             Odoslať
           </button>
         </div>
 
         {infoMessage ? (
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/80">
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-base text-white/80">
             {infoMessage}
           </div>
         ) : null}

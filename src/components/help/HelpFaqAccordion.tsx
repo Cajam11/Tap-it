@@ -34,12 +34,12 @@ export default function HelpFaqAccordion({ sections }: HelpFaqAccordionProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {sections.map((section) => (
-        <section key={section.title} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-          <h2 className="px-2 text-2xl font-bold text-white">{section.title}</h2>
+        <section key={section.title} className="space-y-4">
+          <h2 className="text-[28px] font-bold text-white sm:text-3xl">{section.title}</h2>
 
-          <div className="mt-5 space-y-3">
+          <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.02]">
             {section.items.map((item) => {
               const isOpen = openItems.has(item.number);
               const answerId = `help-faq-answer-${item.number}`;
@@ -47,18 +47,14 @@ export default function HelpFaqAccordion({ sections }: HelpFaqAccordionProps) {
               return (
                 <article
                   key={item.number}
-                  className={`overflow-hidden rounded-2xl border transition-colors ${
-                    isOpen
-                      ? "border-white/20 bg-white/[0.08]"
-                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.06]"
-                  }`}
+                  className={`overflow-hidden transition-colors ${isOpen ? "bg-white/[0.05]" : "hover:bg-white/[0.03]"}`}
                 >
                   <button
                     type="button"
                     onClick={() => toggleItem(item.number)}
                     aria-expanded={isOpen}
                     aria-controls={answerId}
-                    className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5"
+                    className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-6"
                   >
                     <h3 className="text-base font-semibold text-white sm:text-lg">
                       {item.number}. {item.question}
@@ -77,7 +73,7 @@ export default function HelpFaqAccordion({ sections }: HelpFaqAccordionProps) {
                     }`}
                   >
                     <div className="overflow-hidden">
-                      <p className="px-4 pb-4 text-sm leading-6 text-white/70 sm:px-5 sm:pb-5">{item.answer}</p>
+                      <p className="px-4 pb-4 text-[15px] leading-7 text-white/70 sm:px-6 sm:pb-5">{item.answer}</p>
                     </div>
                   </div>
                 </article>

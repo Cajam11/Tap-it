@@ -156,10 +156,10 @@ export default async function HelpPage() {
       <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
 
       <main className="min-h-screen bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-5xl space-y-8">
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Pomoc a podpora</h1>
-            <p className="mt-2 text-white/65">
+        <div className="mx-auto w-full max-w-6xl space-y-12">
+          <section className="max-w-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Pomoc a podpora</h1>
+            <p className="mt-4 text-[15px] text-white/65 sm:text-base">
               Tu nájdeš najčastejšie otázky a odpovede. Ak potrebuješ pomoc, použi kontaktný formulár nižšie.
             </p>
           </section>

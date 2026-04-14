@@ -224,6 +224,7 @@ export default function ProfileEditor({
     setSaving(false);
     setAvatarFile(null);
     setSuccess("Zmeny boly ulozene");
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     window.dispatchEvent(
       new CustomEvent("profile-updated", {
@@ -238,20 +239,12 @@ export default function ProfileEditor({
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-white/45">Moj profil</p>
           <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white">{title}</h1>
           <p className="mt-2 text-sm text-white/55">{subtitle}</p>
         </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
-        >
-          {saving ? "Ukladam..." : "Ulozit zmeny"}
-        </button>
       </div>
 
       {success && (
@@ -285,11 +278,9 @@ export default function ProfileEditor({
               </label>
             </div>
 
-            <div className="flex-1 space-y-3">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-white/40 mb-2">Email</p>
-                <p className="text-base text-white/85 font-medium">{initialProfile.email}</p>
-              </div>
+            <div className="flex-1 self-center -mt-8 space-y-2">
+              <h1 className="text-3xl font-bold text-white">{initialProfile.full_name || "Anonymous"}</h1>
+              <p className="text-base text-white/70 font-medium">{initialProfile.email}</p>
             </div>
           </div>
         </section>
@@ -463,6 +454,17 @@ export default function ProfileEditor({
           ))}
         </div>
       </section>
+
+      <div className="mt-8 flex justify-center">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-full bg-red-600 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+        >
+          {saving ? "Ukladam..." : "Ulozit zmeny"}
+        </button>
+      </div>
 
     </div>
   );

@@ -22,6 +22,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import FadeIn from "@/components/FadeIn";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import LiveOccupancyCard from "@/components/LiveOccupancyCard";
+import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
 
 import BlurText from "@/components/BlurText";
 import SplashWrapper from "@/components/SplashWrapper";
@@ -29,10 +31,6 @@ import SplashWrapper from "@/components/SplashWrapper";
 /* ═══════════════════════════════════════════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════════════════════════════════════ */
-
-const CURRENT = 4;
-const MAX = 7;
-const PCT = Math.round((CURRENT / MAX) * 100);
 
 const NAV_LINKS: [string, string][] = [
   ["#about", "O nás"],
@@ -142,18 +140,6 @@ const SOCIAL: Array<{ label: string; href: string; Icon: LucideIcon }> = [
   { label: "LinkedIn", href: "#", Icon: Linkedin },
 ];
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-function pctBarColor(pct: number) {
-  if (pct >= 80) return "bg-red-500";
-  if (pct >= 50) return "bg-yellow-400";
-  return "bg-emerald-500";
-}
-function pctBadge(pct: number) {
-  if (pct >= 80) return "bg-red-500/20 text-red-400";
-  if (pct >= 50) return "bg-yellow-500/20 text-yellow-400";
-  return "bg-emerald-500/20 text-emerald-400";
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════════
    PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -182,6 +168,47 @@ export default async function LandingPage() {
       .eq("id", user.id)
       .maybeSingle();
     navProfile = data ?? null;
+  }
+
+  let liveOccupancyCount = 0;
+  const { count: openEntriesCount } = await supabase
+    .from("entries")
+    .select("id", { count: "exact", head: true })
+    .is("check_out", null)
+    .eq("is_valid", true);
+
+  if (typeof openEntriesCount === "number") {
+    liveOccupancyCount = openEntriesCount;
+  }
+
+  let initialMembers: LivePresenceMember[] = [];
+  if (user) {
+    const { data: presenceRows } = await supabase.rpc("get_live_gym_presence");
+    if (Array.isArray(presenceRows)) {
+      initialMembers = presenceRows
+        .map((row) => {
+          if (!row || typeof row !== "object") {
+            return null;
+          }
+
+          const record = row as Partial<LivePresenceMember>;
+          if (
+            typeof record.user_id !== "string" ||
+            typeof record.display_name !== "string" ||
+            typeof record.check_in !== "string"
+          ) {
+            return null;
+          }
+
+          return {
+            user_id: record.user_id,
+            display_name: record.display_name,
+            avatar_url: typeof record.avatar_url === "string" ? record.avatar_url : null,
+            check_in: record.check_in,
+          };
+        })
+        .filter((row): row is LivePresenceMember => row !== null);
+    }
   }
 
   return (
@@ -285,48 +312,11 @@ export default async function LandingPage() {
           style={{ background: "linear-gradient(180deg, #080808 0%, #0e0a0a 50%, #080808 100%)" }}
           aria-labelledby="capacity-heading"
         >
-          <FadeIn className="mx-auto max-w-md">
-            <div
-              className="rounded-3xl border border-white/[0.08] p-8"
-              style={{
-                background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
-                boxShadow: "0 0 50px rgba(220,38,38,0.07), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span id="capacity-heading" className="text-base font-semibold text-white/80">
-                  Aktuálna obsadenosť
-                </span>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${pctBadge(PCT)}`}>
-                  {CURRENT}/{MAX} ľudí
-                </span>
-              </div>
-              <p className="text-7xl font-black text-white tabular-nums mt-4 tracking-tight">
-                {PCT}<span className="text-4xl text-white/50">%</span>
-              </p>
-              <p className="text-sm text-white/30 mt-2 mb-5">Kapacita fitka</p>
-              <div
-                role="progressbar"
-                aria-valuenow={PCT}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Gym occupancy ${PCT}%`}
-                className="h-2 w-full bg-white/[0.08] rounded-full overflow-hidden"
-              >
-                <div
-                  className={`h-full rounded-full ${pctBarColor(PCT)} transition-[width] duration-700 motion-reduce:transition-none`}
-                  style={{ width: `${PCT}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] text-white/20 mt-2">
-                <span>Prázdne</span>
-                <span>Plné</span>
-              </div>
-              <p className="text-[11px] text-white/20 mt-6 text-center">
-                ⚡ Powered by Tap-it · aktualizácia v reálnom čase
-              </p>
-            </div>
-          </FadeIn>
+          <LiveOccupancyCard
+            initialCount={liveOccupancyCount}
+            initialMembers={initialMembers}
+            showMemberList={Boolean(user)}
+          />
         </section>
 
         {/* ════════════════════ GROUP TRAININGS ═════════════════════════ */}

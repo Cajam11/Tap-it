@@ -58,6 +58,9 @@ export default async function SettingsPage() {
             equipment_level: profile.equipment_level ?? "basic",
             height_cm: profile.height_cm,
             weight_kg: profile.weight_kg,
+            show_in_gym_list: profile.show_in_gym_list ?? true,
+            show_name_in_gym_list: profile.show_name_in_gym_list ?? false,
+            show_avatar_in_gym_list: profile.show_avatar_in_gym_list ?? false,
           }}
           hideFullName={true}
           title="Nastavenia"

@@ -20,6 +20,9 @@ type ProfileEditorProps = {
     equipment_level: Equipment;
     height_cm?: number | null;
     weight_kg?: number | null;
+    show_in_gym_list?: boolean;
+    show_name_in_gym_list?: boolean;
+    show_avatar_in_gym_list?: boolean;
   };
   hideFullName?: boolean;
   hideAvatar?: boolean;
@@ -63,6 +66,9 @@ export default function ProfileEditor({
   const [equipmentLevel, setEquipmentLevel] = useState<Equipment>(initialProfile.equipment_level);
   const [heightCm, setHeightCm] = useState(initialProfile.height_cm ?? 0);
   const [weightKg, setWeightKg] = useState(initialProfile.weight_kg ?? 0);
+  const [showInGymList, setShowInGymList] = useState(initialProfile.show_in_gym_list ?? true);
+  const [showNameInGymList, setShowNameInGymList] = useState(initialProfile.show_name_in_gym_list ?? false);
+  const [showAvatarInGymList, setShowAvatarInGymList] = useState(initialProfile.show_avatar_in_gym_list ?? false);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile.avatar_url);
@@ -181,6 +187,9 @@ export default function ProfileEditor({
       equipment_level: equipmentLevel,
       height_cm: heightCm || null,
       weight_kg: weightKg || null,
+      show_in_gym_list: showInGymList,
+      show_name_in_gym_list: showNameInGymList,
+      show_avatar_in_gym_list: showAvatarInGymList,
       onboarding_completed: true,
       onboarding_completed_at: new Date().toISOString(),
     };
@@ -452,6 +461,65 @@ export default function ProfileEditor({
               {option.label}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Privacy Section */}
+      <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Sukromie vo fitku</h2>
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInGymList}
+              onChange={(e) => setShowInGymList(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
+            />
+            <span>
+              <span className="block text-sm font-medium text-white">Zobrazit ma v zozname ludi vo fitku</span>
+              <span className="block text-xs text-white/50 mt-0.5">
+                Ked je vypnute, nebudes viditelny ani ako anonymous.
+              </span>
+            </span>
+          </label>
+
+          <label className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+            <input
+              type="checkbox"
+              checked={showNameInGymList}
+              onChange={(e) => setShowNameInGymList(e.target.checked)}
+              disabled={!showInGymList}
+              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
+            />
+            <span>
+              <span className="block text-sm font-medium text-white">Zobrazit moje meno</span>
+              <span className="block text-xs text-white/50 mt-0.5">
+                Ak je vypnute, ostatni uvidia iba Anonymous.
+              </span>
+            </span>
+          </label>
+
+          <label className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+            <input
+              type="checkbox"
+              checked={showAvatarInGymList}
+              onChange={(e) => setShowAvatarInGymList(e.target.checked)}
+              disabled={!showInGymList}
+              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
+            />
+            <span>
+              <span className="block text-sm font-medium text-white">Zobrazit moj avatar</span>
+              <span className="block text-xs text-white/50 mt-0.5">
+                Ked je vypnute, zobrazi sa predvolena anonymous ikona.
+              </span>
+            </span>
+          </label>
+
+          {showInGymList && !showNameInGymList && !showAvatarInGymList ? (
+            <p className="text-xs text-white/45">
+              Aktualne budes vo fitku zobrazeny ako Anonymous.
+            </p>
+          ) : null}
         </div>
       </section>
 

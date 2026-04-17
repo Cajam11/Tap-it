@@ -13,6 +13,9 @@ export interface Profile {
   sessions_per_week: number | null;
   session_length_min: number | null;
   equipment_level: "none" | "basic" | "full_gym" | null;
+  show_in_gym_list: boolean;
+  show_name_in_gym_list: boolean;
+  show_avatar_in_gym_list: boolean;
   onboarding_completed: boolean | null;
   onboarding_completed_at: string | null;
   role: UserRole;

@@ -3,6 +3,8 @@
 import React, { useRef } from 'react';
 import { motion, useInView, Variants } from 'framer-motion';
 
+type InViewMargin = `${number}px` | `${number}px ${number}px` | `${number}px ${number}px ${number}px` | `${number}px ${number}px ${number}px ${number}px`;
+
 interface BlurTextProps {
   text: string;
   animateBy?: 'words' | 'letters';
@@ -11,7 +13,7 @@ interface BlurTextProps {
   containerDelay?: number; // in milliseconds
   stepDuration?: number; // in seconds
   threshold?: number;
-  rootMargin?: string;
+  rootMargin?: InViewMargin;
   className?: string;
   onAnimationComplete?: () => void;
 }
@@ -32,7 +34,7 @@ export const BlurText: React.FC<BlurTextProps> = ({
   const isInView = useInView(ref, {
     once: true,
     amount: threshold,
-    margin: rootMargin as any,
+    margin: rootMargin,
   });
 
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');

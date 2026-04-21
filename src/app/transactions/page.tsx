@@ -133,7 +133,7 @@ export default async function TransactionsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-medium text-white/90">
-                            {(Array.isArray(tx.memberships) ? tx.memberships[0]?.name : (tx.memberships as any)?.name) || "Neznáme členstvo (Zmazané)"}
+                            {(Array.isArray(tx.memberships) ? tx.memberships[0]?.name : (tx.memberships as { name: string })?.name) || "Neznáme členstvo (Zmazané)"}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

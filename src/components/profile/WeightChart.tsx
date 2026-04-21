@@ -81,7 +81,7 @@ export default function WeightChart({ logs, initialWeightKg, initialWeightCreate
 
   // Vypočitanie minimálnej a maximálnej váhy pre osu Y kvôli peknému grafu
   const maxWeight = Math.max(...chartData.map((d) => d.weight_kg));
-  let minWeight = Math.min(...chartData.map((d) => d.weight_kg));
+  const minWeight = Math.min(...chartData.map((d) => d.weight_kg));
   let Y_DOMAIN: [number, number] = [Math.floor(minWeight - 5), Math.ceil(maxWeight + 5)];
 
   // Ak mame len jeden zaznam padneme z rozsahu alebo urobime custom
@@ -124,7 +124,7 @@ export default function WeightChart({ logs, initialWeightKg, initialWeightCreate
               color: "#fff" 
             }}
             itemStyle={{ color: "#ef4444", fontWeight: 600 }}
-            formatter={(value: any) => [`${value} kg`, "Váha"]}
+            formatter={(value: unknown) => [`${typeof value === "number" ? value : Number(value ?? 0)} kg`, "Váha"]}
             labelStyle={{ color: "#ffffff80", marginBottom: "4px", fontSize: "12px" }}
           />
           <Line 

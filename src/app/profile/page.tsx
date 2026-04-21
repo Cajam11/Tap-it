@@ -40,7 +40,7 @@ function getCurrentStreak(checkIns: string[]) {
   ).sort((a, b) => (a > b ? -1 : 1));
 
   let streak = 0;
-  let cursor = new Date();
+  const cursor = new Date();
 
   const latestDate = new Date(uniqueDays[0]);
   const today = new Date();

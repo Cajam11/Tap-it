@@ -21,6 +21,19 @@ type UpdatableMembershipsQuery = {
   eq(column: string, value: string): UpdatableMembershipsQuery;
 };
 
+type InsertableMembershipsQuery = {
+  insert(values: Record<string, unknown>): Promise<{ error: unknown }>;
+};
+
+type UpdatableTransactionsQuery = {
+  update(values: Record<string, unknown>): UpdatableTransactionsQuery;
+  eq(column: string, value: string): UpdatableTransactionsQuery;
+};
+
+type InsertableTransactionsQuery = {
+  insert(values: Record<string, unknown>): Promise<{ error: unknown }>;
+};
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -93,7 +106,9 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
       .eq("user_id", userId)
       .eq("status", "active");
 
-    const { error: membershipInsertError } = await admin.from("user_memberships").insert({
+    const { error: membershipInsertError } = await (
+      admin.from("user_memberships") as unknown as InsertableMembershipsQuery
+    ).insert({
       user_id: userId,
       membership_id: membershipRow.id,
       start_date: now.toISOString(),
@@ -120,8 +135,7 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
   } as Record<string, unknown>;
 
   if (existingTx?.id) {
-    await admin
-      .from("transactions")
+    await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
       .update({
         status: "completed",
         amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
@@ -132,7 +146,7 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
     return;
   }
 
-  await admin.from("transactions").insert({
+  await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
     user_id: userId,
     membership_id: membershipRow.id,
     amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
@@ -170,8 +184,7 @@ async function markPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
   } as Record<string, unknown>;
 
   if (existingTx?.id) {
-    await admin
-      .from("transactions")
+    await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
       .update({
         status: "failed",
         metadata: nextMetadata,
@@ -181,7 +194,7 @@ async function markPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
     return;
   }
 
-  await admin.from("transactions").insert({
+  await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
     user_id: userId,
     membership_id: membershipId,
     amount: Number(paymentIntent.amount || 0) / 100,

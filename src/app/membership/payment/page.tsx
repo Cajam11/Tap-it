@@ -1,23 +1,31 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import NavBarAuth from "@/components/NavBarAuth";
+import StripePaymentForm from "@/components/membership/StripePaymentForm";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import { createClient } from "@/lib/supabase/server";
 import { setFlashMessage } from "@/lib/flash.server";
-import type { Membership } from "@/lib/types";
 
 const NAV_LINKS: [string, string][] = [];
 
-type DbMembership = Pick<
-  Membership,
-  "id" | "name" | "billing_cycle" | "entry_count" | "duration_days" | "price"
->;
+async function getStripePublishableKey() {
+  const runtimeValue = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (runtimeValue && runtimeValue.length > 0) {
+    return runtimeValue;
+  }
 
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  // Dev fallback: if Next runtime env is stale, read from .env.local directly.
+  try {
+    const envPath = join(process.cwd(), ".env.local");
+    const raw = await readFile(envPath, "utf8");
+    const match = raw.match(/^NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=(.*)$/m);
+    return match?.[1]?.trim() ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function getPlanDisplayName(name: string) {
@@ -31,6 +39,8 @@ export default async function MembershipPaymentPage({
 }: {
   searchParams?: Promise<{ plan?: string }>;
 }) {
+  const stripePublishableKey = await getStripePublishableKey();
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -93,104 +103,6 @@ export default async function MembershipPaymentPage({
     redirect("/membership");
   }
 
-  async function confirmPayment(formData: FormData) {
-    "use server";
-
-    const planName = formData.get("planName");
-    if (typeof planName !== "string") {
-      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
-      redirect("/membership");
-    }
-
-    const plan = MEMBERSHIP_PLANS.find((item) => item.name === planName);
-    if (!plan) {
-      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
-      redirect("/membership");
-    }
-
-    const actionSupabase = await createClient();
-    const {
-      data: { user: actionUser },
-    } = await actionSupabase.auth.getUser();
-
-    if (!actionUser) {
-      redirect("/login");
-    }
-
-    const { data: membershipRow, error: membershipError } = await actionSupabase
-      .from("memberships")
-      .select("id, name, billing_cycle, entry_count, duration_days, price")
-      .eq("name", plan.name)
-      .maybeSingle<DbMembership>();
-
-    if (membershipError || !membershipRow) {
-      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
-      redirect("/membership");
-    }
-
-    await actionSupabase
-      .from("user_memberships")
-      .update({ status: "cancelled", end_date: new Date().toISOString() })
-      .eq("user_id", actionUser.id)
-      .eq("status", "active");
-
-    const now = new Date();
-    const nextEndDate =
-      typeof membershipRow.duration_days === "number" && membershipRow.duration_days > 0
-        ? addDays(now, membershipRow.duration_days).toISOString()
-        : null;
-
-    const entriesRemaining =
-      membershipRow.billing_cycle === "entries"
-        ? typeof membershipRow.entry_count === "number" && membershipRow.entry_count > 0
-          ? membershipRow.entry_count
-          : 1
-        : null;
-
-    const { error: insertError } = await actionSupabase.from("user_memberships").insert({
-      user_id: actionUser.id,
-      membership_id: membershipRow.id,
-      start_date: now.toISOString(),
-      end_date: nextEndDate,
-      entries_remaining: entriesRemaining,
-      status: "active",
-      activated_by_admin: false,
-    });
-
-    if (insertError) {
-      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
-      redirect("/membership");
-    }
-
-    const { error: transactionError } = await actionSupabase.from("transactions").insert({
-      user_id: actionUser.id,
-      membership_id: membershipRow.id,
-      amount: membershipRow.price,
-      currency: "EUR",
-      type: "purchase",
-      status: "completed",
-      metadata: {
-        plan_name: membershipRow.name,
-        billing_cycle: membershipRow.billing_cycle,
-      },
-    });
-
-    if (transactionError) {
-      await actionSupabase
-        .from("user_memberships")
-        .delete()
-        .eq("user_id", actionUser.id)
-        .eq("membership_id", membershipRow.id)
-        .eq("status", "active");
-
-      await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
-      redirect("/membership");
-    }
-
-    await setFlashMessage({ kind: "success", text: "Platba prebehla úspešne. Členstvo je aktívne." });
-    redirect("/membership");
-  }
-
   return (
     <>
       <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
@@ -230,22 +142,24 @@ export default async function MembershipPaymentPage({
               ))}
             </ul>
 
-            <form action={confirmPayment} className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <input type="hidden" name="planName" value={selectedPlan.name} />
-              <button
-                type="submit"
-                className="w-full rounded-full bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 sm:w-auto"
-              >
-                Zaplatiť a aktivovať členstvo
-              </button>
+            <div className="mt-8">
+              <StripePaymentForm
+                planName={selectedPlan.name}
+                publishableKey={stripePublishableKey}
+              />
+              <p className="mt-3 text-xs text-white/50">
+                Členstvo sa aktivuje automaticky po Stripe webhook potvrdení platby.
+              </p>
+            </div>
 
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/membership"
                 className="w-full rounded-full border border-white/15 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white/85 transition hover:bg-white/10 sm:w-auto"
               >
                 Späť na členstvá
               </Link>
-            </form>
+            </div>
           </section>
         </div>
       </main>

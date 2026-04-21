@@ -16,6 +16,11 @@ type TransactionRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type UpdatableMembershipsQuery = {
+  update(values: Record<string, unknown>): UpdatableMembershipsQuery;
+  eq(column: string, value: string): UpdatableMembershipsQuery;
+};
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -83,8 +88,7 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
   const isAlreadyActivated = currentActiveMembership?.membership_id === membershipRow.id;
 
   if (!isAlreadyActivated) {
-    await admin
-      .from("user_memberships")
+    await (admin.from("user_memberships") as unknown as UpdatableMembershipsQuery)
       .update({ status: "cancelled", end_date: now.toISOString() })
       .eq("user_id", userId)
       .eq("status", "active");

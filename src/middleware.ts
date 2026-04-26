@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { isAdminRole } from "@/lib/admin-authz";
 
 // Routes that require an authenticated session
 const PROTECTED_PREFIXES = [
@@ -10,8 +11,10 @@ const PROTECTED_PREFIXES = [
   "/transactions",
   "/membership",
   "/help",
-  "/admin",
 ];
+
+const ADMIN_PREFIX = "/admin";
+const ADMIN_PUBLIC_ROUTES = ["/admin/login"];
 
 // Routes that should redirect to / when already signed in
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
@@ -84,6 +87,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const onboardingCompleted = hasCompletedOnboarding(user);
+  let currentUserIsAdmin = false;
 
   if (pathname.startsWith("/onboarding")) {
     if (!user) {
@@ -106,8 +110,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Admin area: require authentication and one of the admin roles.
+  const isAdminRoute = pathname.startsWith(ADMIN_PREFIX);
+  const isAdminPublicRoute = ADMIN_PUBLIC_ROUTES.some((p) => pathname.startsWith(p));
+
+  if (isAdminRoute && !isAdminPublicRoute) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !isAdminRole(profile?.role)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    currentUserIsAdmin = true;
+  }
+
   // Force incomplete users through onboarding before using the app
-  if (user && !onboardingCompleted) {
+  if (user && !onboardingCompleted && !currentUserIsAdmin) {
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 

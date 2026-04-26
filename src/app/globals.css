@@ -115,3 +115,11 @@
   }
 }
 
+/* Keep role selects on system sans without ligature substitutions to avoid garbled option text in some browsers. */
+.admin-role-select,
+.admin-role-select option {
+  font-family: "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif;
+  font-feature-settings: normal;
+  font-variant-ligatures: none;
+}
+

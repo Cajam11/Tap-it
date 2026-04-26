@@ -19,11 +19,9 @@ interface WeightLog {
 
 interface WeightChartProps {
   logs: WeightLog[];
-  initialWeightKg?: number | null;
-  initialWeightCreatedAt?: string | null;
 }
 
-export default function WeightChart({ logs, initialWeightKg, initialWeightCreatedAt }: WeightChartProps) {
+export default function WeightChart({ logs }: WeightChartProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {

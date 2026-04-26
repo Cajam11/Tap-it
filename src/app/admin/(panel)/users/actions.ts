@@ -35,7 +35,10 @@ export async function updateUserRole(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ role: nextRole }).eq("id", userId);
+  const { error } = await admin
+    .from("profiles")
+    .update({ role: nextRole })
+    .eq("id", userId);
 
   if (error) {
     redirect("/admin/users?status=error&message=Zmena_roly_zlyhala");

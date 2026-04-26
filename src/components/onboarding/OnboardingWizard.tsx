@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { completeOnboarding } from "@/app/(auth)/actions";
 
@@ -22,8 +21,6 @@ function clampNumber(value: number, min: number, max: number, fallback: number) 
 }
 
 export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: Props) {
-  const router = useRouter();
-
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +30,7 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
   const [heightCmInput, setHeightCmInput] = useState("175");
   const [weightKgInput, setWeightKgInput] = useState("75");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [avatarUrl] = useState<string | null>(initialAvatarUrl);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
 
   const [goal, setGoal] = useState<Goal | null>(null);

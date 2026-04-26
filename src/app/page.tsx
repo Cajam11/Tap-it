@@ -25,7 +25,6 @@ import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import LiveOccupancyCard from "@/components/LiveOccupancyCard";
 import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
 
-import BlurText from "@/components/BlurText";
 import SplashWrapper from "@/components/SplashWrapper";
 
 /* ═══════════════════════════════════════════════════════════════════════════════

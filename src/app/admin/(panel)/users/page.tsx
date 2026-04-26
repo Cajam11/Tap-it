@@ -51,26 +51,33 @@ function formatDate(dateIso: string) {
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     status?: string;
     message?: string;
     q?: string;
     role?: string;
     onboarding?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
   const supabase = await createClient();
   const hasAccess = await hasServerAdminAccess(supabase, "recepcny");
   const context = await getCurrentAdminContext(supabase);
   const isOwner = context.role === "owner";
 
-  const status = typeof searchParams?.status === "string" ? searchParams.status : undefined;
-  const messageRaw = typeof searchParams?.message === "string" ? searchParams.message : undefined;
+  const status =
+    typeof resolvedSearchParams?.status === "string" ? resolvedSearchParams.status : undefined;
+  const messageRaw =
+    typeof resolvedSearchParams?.message === "string" ? resolvedSearchParams.message : undefined;
   const message = typeof messageRaw === "string" ? decodeURIComponent(messageRaw.replaceAll("_", " ")) : null;
-  const q = typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
-  const roleFilter = typeof searchParams?.role === "string" ? searchParams.role.trim() : "all";
+  const q = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q.trim() : "";
+  const roleFilter =
+    typeof resolvedSearchParams?.role === "string" ? resolvedSearchParams.role.trim() : "all";
   const onboardingFilter =
-    typeof searchParams?.onboarding === "string" ? searchParams.onboarding.trim() : "all";
+    typeof resolvedSearchParams?.onboarding === "string"
+      ? resolvedSearchParams.onboarding.trim()
+      : "all";
 
   if (!hasAccess) {
     redirect("/");

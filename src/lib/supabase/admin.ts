@@ -1,6 +1,129 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let adminClient: ReturnType<typeof createClient> | null = null;
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+type AdminDatabase = {
+  public: {
+    Tables: {
+      memberships: {
+        Row: {
+          id: string;
+          billing_cycle: "entries" | "monthly" | "yearly" | null;
+          entry_count: number | null;
+          duration_days: number | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          role: string | null;
+          onboarding_completed: boolean | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email?: string | null;
+          full_name?: string | null;
+          role?: string | null;
+          onboarding_completed?: boolean | null;
+          created_at?: string;
+        };
+        Update: {
+          email?: string | null;
+          full_name?: string | null;
+          role?: string | null;
+          onboarding_completed?: boolean | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      transactions: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          membership_id: string | null;
+          amount: number | null;
+          currency: string | null;
+          type: string | null;
+          status: string | null;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          membership_id?: string | null;
+          amount?: number | null;
+          currency?: string | null;
+          type?: string | null;
+          status?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string | null;
+          membership_id?: string | null;
+          amount?: number | null;
+          currency?: string | null;
+          type?: string | null;
+          status?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_memberships: {
+        Row: {
+          id: string;
+          user_id: string;
+          membership_id: string;
+          start_date: string;
+          end_date: string | null;
+          entries_remaining: number | null;
+          status: string | null;
+          activated_by_admin: boolean | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          membership_id: string;
+          start_date: string;
+          end_date?: string | null;
+          entries_remaining?: number | null;
+          status?: string | null;
+          activated_by_admin?: boolean | null;
+        };
+        Update: {
+          user_id?: string;
+          membership_id?: string;
+          start_date?: string;
+          end_date?: string | null;
+          entries_remaining?: number | null;
+          status?: string | null;
+          activated_by_admin?: boolean | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+let adminClient: SupabaseClient<AdminDatabase> | null = null;
 
 function requireEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") {
   const value = process.env[name];
@@ -13,7 +136,7 @@ function requireEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KE
 
 export function createAdminClient() {
   if (!adminClient) {
-    adminClient = createClient(
+    adminClient = createClient<AdminDatabase>(
       requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
       requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
       {

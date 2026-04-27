@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, User as UserIcon, Settings, CreditCard, Receipt, HelpCircle } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, CreditCard, Receipt, HelpCircle, BarChart3 } from "lucide-react";
 
 type NavUser = {
   id: string;
@@ -24,9 +24,10 @@ interface NavBarAuthProps {
   navLinks: [string, string][];
   initialUser?: NavUser | null;
   initialProfile?: NavProfile;
+  isAdmin?: boolean;
 }
 
-export default function NavBarAuth({ navLinks, initialUser = null, initialProfile = null }: NavBarAuthProps) {
+export default function NavBarAuth({ navLinks, initialUser = null, initialProfile = null, isAdmin = false }: NavBarAuthProps) {
   const router = useRouter();
   const [user, setUser] = useState<NavUser | null>(initialUser);
   const [profile, setProfile] = useState<NavProfile>(initialProfile);
@@ -202,6 +203,19 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                     <HelpCircle className="w-4 h-4" />
                     Pomoc
                   </Link>
+                  {isAdmin && (
+                    <>
+                      <div className="border-t border-white/10 my-1" />
+                      <Link
+                        href="/admin"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-600/10 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        Admin Panel
+                      </Link>
+                    </>
+                  )}
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors w-full text-left"

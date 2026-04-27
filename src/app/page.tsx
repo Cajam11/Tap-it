@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAdminContext } from "@/lib/admin-access";
 import {
   Smartphone,
   Scan,
@@ -160,13 +161,18 @@ export default async function LandingPage() {
     : null;
 
   let navProfile: { full_name?: string | null; avatar_url?: string | null } | null = null;
+  let isAdmin = false;
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, avatar_url")
+      .select("full_name, avatar_url, role")
       .eq("id", user.id)
       .maybeSingle();
     navProfile = data ?? null;
+    
+    // Check if user is admin
+    const adminContext = await getCurrentAdminContext(supabase);
+    isAdmin = adminContext.isAdmin;
   }
 
   let liveOccupancyCount = 0;
@@ -221,7 +227,7 @@ export default async function LandingPage() {
       </a>
 
       {/* ── Floating pill nav ─────────────────────────────────────────── */}
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} isAdmin={isAdmin} />
 
       <main id="main" className="bg-[#080808] overflow-x-hidden">
 

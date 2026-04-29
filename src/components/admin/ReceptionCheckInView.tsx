@@ -45,12 +45,12 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
       return record.check_out === null && record.is_valid === true;
     };
 
-    const refreshLatestEntry = async () => {
+    const refreshEntryById = async (entryId: string) => {
       try {
         setFetchError(null);
-        const res = await fetch("/api/admin/latest-entry", { credentials: "same-origin" });
+        const res = await fetch(`/api/admin/entry/${entryId}`, { credentials: "same-origin" });
         if (!res.ok) {
-          const msg = `Failed to fetch latest entry: ${res.status}`;
+          const msg = `Failed to fetch entry: ${res.status}`;
           console.error(msg);
           setFetchError(msg);
           return;
@@ -58,12 +58,9 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
         const data = await res.json();
         if (data.entry) {
           setLatestEntry(data.entry);
-        } else {
-          // no entry yet
-          setLatestEntry(null);
         }
       } catch (error) {
-        console.error("Failed to fetch latest entry:", error);
+        console.error("Failed to fetch entry:", error);
         setFetchError(String(error));
       }
     };
@@ -80,19 +77,22 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
         (payload) => {
           const wasOpen = isOpen(payload.old);
           const isNowOpen = isOpen(payload.new);
+          const entryId =
+            typeof payload.new === "object" && payload.new && "id" in payload.new
+              ? String((payload.new as { id?: string }).id || "")
+              : typeof payload.old === "object" && payload.old && "id" in payload.old
+                ? String((payload.old as { id?: string }).id || "")
+                : "";
 
           // Refresh on any change (new check-in or check-out)
-          if ((wasOpen && !isNowOpen) || (!wasOpen && isNowOpen)) {
-            void refreshLatestEntry();
+          if (entryId && ((wasOpen && !isNowOpen) || (!wasOpen && isNowOpen))) {
+            void refreshEntryById(entryId);
           }
         }
       )
       .subscribe((status) => {
         console.debug("reception channel status:", status);
         setIsRealtimeConnected(status === "SUBSCRIBED");
-        if (status === "SUBSCRIBED") {
-          void refreshLatestEntry();
-        }
       });
 
     return () => {
@@ -102,15 +102,22 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
 
   if (!latestEntry) {
     return (
-      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
-        <div className="text-center">
-          <Clock className="w-16 h-16 text-white/40 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Čakanie na check-in</h2>
-          <p className="text-white/60">Naskenuj QR kód na to aby sa zobrazili údaje návštevníka</p>
-          <p className="text-xs text-white/40 mt-4">{isRealtimeConnected ? "🟢 Realtime pripojené" : "🔄 Pripájam realtime..."}</p>
-          {fetchError ? (
-            <p className="text-xs text-red-400 mt-3">{fetchError}</p>
-          ) : null}
+      <div
+        className="flex h-full min-h-[420px] items-center rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-6"
+        style={{ boxShadow: "0 0 50px rgba(220,38,38,0.07), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+      >
+        <div className="flex w-full flex-col items-center justify-center gap-5 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+            <Clock className="h-8 w-8 text-white/40" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-white">Čakanie na check-in</h2>
+            <p className="mt-2 text-base text-white/60">Naskenuj QR kód a údaje návštevníka sa ukážu tu.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs text-white/40">{isRealtimeConnected ? "🟢 Realtime pripojené" : "🔄 Pripájam realtime..."}</p>
+            {fetchError ? <p className="text-xs text-red-400">{fetchError}</p> : null}
+          </div>
         </div>
       </div>
     );
@@ -123,75 +130,78 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
   const durationSec = Math.floor((durationMs % 60000) / 1000);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Realtime Check-In</h1>
-        <p className="text-white/60 mt-2">Údaje návštevníka čo sa práve checkinol</p>
+    <div
+      className="flex h-full min-h-[420px] flex-col rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-6"
+      style={{ boxShadow: "0 0 50px rgba(220,38,38,0.07), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Realtime Check-In</h1>
+          <p className="mt-1 text-sm text-white/60">Údaje návštevníka, ktorý sa práve check-inol</p>
+        </div>
+        <p className="text-xs text-white/40">{isRealtimeConnected ? "🟢 Realtime pripojené" : "🔄 Pripájam realtime..."}</p>
       </div>
 
-      {/* Large Check-In Card - Avatar Left, Info Right */}
-      <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-8">
-        <div className="flex items-center gap-12">
-          {/* Avatar (Left) */}
-          <div className="flex-shrink-0">
+      <div className="mt-5 flex flex-1 items-start gap-8 lg:gap-10">
+        <div className="flex-shrink-0">
             {latestEntry.avatar_url ? (
               <Image
                 src={latestEntry.avatar_url}
                 alt={latestEntry.full_name || "User"}
-                width={200}
-                height={200}
-                className="w-48 h-48 rounded-full border-4 border-red-600 object-cover"
+                width={512}
+                height={512}
+                className="h-[28rem] w-[28rem] rounded-[28px] border border-white/15 object-cover shadow-[0_20px_70px_rgba(0,0,0,0.45)]"
               />
             ) : (
-              <div className="w-48 h-48 rounded-full border-4 border-red-600 bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center">
-                <span className="text-6xl font-bold text-white">
+              <div className="flex h-[28rem] w-[28rem] items-center justify-center rounded-[28px] border border-white/15 bg-gradient-to-br from-white/10 to-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
+                <span className="text-[10rem] font-bold text-white/90 leading-none">
                   {latestEntry.full_name?.charAt(0).toUpperCase() || "?"}
                 </span>
               </div>
             )}
-          </div>
-
-          {/* Info (Right) */}
-          <div className="flex-1">
-            <h2 className="text-4xl font-bold text-white mb-2">{latestEntry.full_name || "Unknown"}</h2>
-            <p className="text-white/60 font-mono text-sm mb-6">ID: {latestEntry.user_id.slice(0, 12)}...</p>
-
-            {/* Check-In Status */}
-            <div className="flex items-center gap-3 mb-6">
-              <span className={`w-3 h-3 rounded-full animate-pulse ${latestEntry.check_out ? "bg-red-500" : "bg-emerald-500"}`}></span>
-              <p className={`font-semibold text-lg ${latestEntry.check_out ? "text-red-400" : "text-emerald-400"}`}>
-                {latestEntry.check_out ? "CHECK-OUT ZAREGISTROVANÝ" : "CHECK-IN ZAREGISTROVANÝ"}
-              </p>
-            </div>
-
-            {/* Time Info Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="rounded-xl bg-white/[0.05] p-4">
-                <p className="text-white/60 text-sm mb-2">Check-In Čas</p>
-                <p className="text-white font-mono text-lg font-semibold">{checkInTime.toLocaleTimeString("sk-SK")}</p>
-              </div>
-              <div className="rounded-xl bg-white/[0.05] p-4">
-                <p className="text-white/60 text-sm mb-2">Trvanie v posilňovni</p>
-                <p className="text-white font-mono text-lg font-semibold">
-                  {durationMin > 0 ? `${durationMin}m ${durationSec}s` : `${durationSec}s`}
-                </p>
-              </div>
-            </div>
-
-            {/* Action Button */}
-            <button className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors">
-              <LogOut className="w-5 h-5" />
-              Zaregistruj Odchod
-            </button>
-          </div>
         </div>
 
-        {/* Realtime status */}
-        <p className="text-white/40 text-xs mt-8 text-center">
-          {isRealtimeConnected ? "🟢 Stránka sa automaticky aktualizuje keď sa naskenuje nový QR kód" : "🔄 Pripájam realtime..."}
-        </p>
+        <div className="min-w-0 flex-1 pt-2">
+          <div className="flex items-center gap-3">
+            <span className={`h-3 w-3 rounded-full animate-pulse ${latestEntry.check_out ? "bg-red-500" : "bg-emerald-500"}`} />
+            <p className={`text-lg font-semibold ${latestEntry.check_out ? "text-red-400" : "text-emerald-400"}`}>
+              {latestEntry.check_out ? "CHECK-OUT ZAREGISTROVANÝ" : "CHECK-IN ZAREGISTROVANÝ"}
+            </p>
+          </div>
+
+          <h2 className="mt-4 text-4xl font-bold tracking-tight text-white">{latestEntry.full_name || "Unknown"}</h2>
+          <p className="mt-2 font-mono text-sm text-white/60">ID: {latestEntry.user_id.slice(0, 12)}...</p>
+
+          <div className="mt-6 space-y-3">
+            <div className="h-4 w-full max-w-[420px] rounded-full bg-white/10" />
+            <div className="h-4 w-full max-w-[320px] rounded-full bg-white/10" />
+            <div className="h-4 w-full max-w-[380px] rounded-full bg-white/10" />
+            <div className="h-4 w-full max-w-[280px] rounded-full bg-white/10" />
+          </div>
+
+          <div className="mt-7 grid max-w-[520px] grid-cols-2 gap-4">
+            <div className="rounded-xl bg-white/[0.05] p-4">
+              <p className="text-xs text-white/60 mb-1">Check-In Čas</p>
+              <p className="font-mono text-base font-semibold text-white">{checkInTime.toLocaleTimeString("sk-SK")}</p>
+            </div>
+            <div className="rounded-xl bg-white/[0.05] p-4">
+              <p className="text-xs text-white/60 mb-1">Trvanie v posilňovni</p>
+              <p className="font-mono text-base font-semibold text-white">
+                {durationMin > 0 ? `${durationMin}m ${durationSec}s` : `${durationSec}s`}
+              </p>
+            </div>
+          </div>
+
+          <button className="mt-6 flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-emerald-700">
+            <LogOut className="h-5 w-5" />
+            Zaregistruj Odchod
+          </button>
+        </div>
       </div>
+
+      <p className="mt-4 text-center text-xs text-white/40">
+        {isRealtimeConnected ? "🟢 Stránka sa automaticky aktualizuje keď sa naskenuje nový QR kód" : "🔄 Pripájam realtime..."}
+      </p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TrendingUp, Users } from "lucide-react";
 import ReceptionCheckInView from "@/components/admin/ReceptionCheckInView";
 import EntriesLogsPanel from "@/components/admin/EntriesLogsPanel";
+import LiveOccupancyCard, { type LivePresenceMember } from "@/components/LiveOccupancyCard";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -11,10 +12,57 @@ export default async function AdminDashboardPage() {
 
   // If not owner, show reception check-in view with logs
   if (context.role !== "owner") {
+    let liveOccupancyCount = 0;
+    const { count: openEntriesCount } = await supabase
+      .from("entries")
+      .select("id", { count: "exact", head: true })
+      .is("check_out", null)
+      .eq("is_valid", true);
+
+    if (typeof openEntriesCount === "number") {
+      liveOccupancyCount = openEntriesCount;
+    }
+
+    let initialMembers: LivePresenceMember[] = [];
+    const { data: presenceRows } = await supabase.rpc("get_live_gym_presence");
+    if (Array.isArray(presenceRows)) {
+      initialMembers = presenceRows
+        .map((row) => {
+          if (!row || typeof row !== "object") {
+            return null;
+          }
+
+          const record = row as Partial<LivePresenceMember>;
+          if (
+            typeof record.user_id !== "string" ||
+            typeof record.display_name !== "string" ||
+            typeof record.check_in !== "string"
+          ) {
+            return null;
+          }
+
+          return {
+            user_id: record.user_id,
+            display_name: record.display_name,
+            avatar_url: typeof record.avatar_url === "string" ? record.avatar_url : null,
+            check_in: record.check_in,
+          };
+        })
+        .filter((row): row is LivePresenceMember => row !== null);
+    }
+
     return (
       <div className="flex h-full min-w-0 overflow-hidden">
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <ReceptionCheckInView initialLatestEntry={null} />
+        <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden pr-2">
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ReceptionCheckInView initialLatestEntry={null} />
+          </div>
+          <LiveOccupancyCard
+            initialCount={liveOccupancyCount}
+            initialMembers={initialMembers}
+            showMemberList
+            compact
+          />
         </div>
         <EntriesLogsPanel />
       </div>

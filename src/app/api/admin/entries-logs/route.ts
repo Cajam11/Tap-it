@@ -11,14 +11,16 @@ type LogEvent = {
   avatar_url: string | null;
 };
 
-function buildEvents(entries: Array<{
+type NormalizedEntry = {
   id: string;
   user_id: string;
   check_in: string;
   check_out: string | null;
   full_name: string | null;
   avatar_url: string | null;
-}>): LogEvent[] {
+};
+
+function buildEvents(entries: NormalizedEntry[]): LogEvent[] {
   const events = entries.flatMap((entry) => {
     const checkInEvent: LogEvent = {
       id: `${entry.id}:check_in`,
@@ -48,8 +50,49 @@ function buildEvents(entries: Array<{
   return events.sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
 }
 
-export async function GET() {
+const MAX_FETCH_ENTRIES = 1000;
+
+function parsePositiveInt(value: string | null, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function normalizeEntriesWithProfiles(entries: Array<{
+  id: string;
+  user_id: string;
+  check_in: string;
+  check_out: string | null;
+  profiles: { id: string; full_name: string | null; avatar_url: string | null } | { id: string; full_name: string | null; avatar_url: string | null }[] | null;
+}>): NormalizedEntry[] {
+  return entries.map((entry) => {
+    const profiles = Array.isArray(entry.profiles) ? entry.profiles : [entry.profiles];
+    const profile = profiles[0];
+    return {
+      id: entry.id,
+      user_id: entry.user_id,
+      check_in: entry.check_in,
+      check_out: entry.check_out,
+      full_name: profile?.full_name || null,
+      avatar_url: profile?.avatar_url || null,
+    };
+  });
+}
+
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const page = parsePositiveInt(url.searchParams.get("page"), 1);
+    const pageSize = Math.min(parsePositiveInt(url.searchParams.get("pageSize"), 20), 100);
+    const query = (url.searchParams.get("q") || "").trim().toLowerCase();
+
     const supabase = await createClient();
     const context = await getCurrentAdminContext(supabase);
 
@@ -57,7 +100,8 @@ export async function GET() {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch last 50 entries with profile info, ordered by check_in descending
+    // Fetch a sufficiently large snapshot and paginate events in-memory.
+    // This keeps response shape compatible with existing dashboard consumers.
     const { data: entries, error } = await supabase
       .from("entries")
       .select(
@@ -74,7 +118,9 @@ export async function GET() {
       `
       )
       .order("check_in", { ascending: false })
-      .limit(50);
+      .limit(MAX_FETCH_ENTRIES);
+
+    let normalizedEntries: NormalizedEntry[] = [];
 
     if (error) {
       console.error("Query error:", error);
@@ -83,14 +129,14 @@ export async function GET() {
         .from("entries")
         .select("id, user_id, check_in, check_out")
         .order("check_in", { ascending: false })
-        .limit(50);
+        .limit(MAX_FETCH_ENTRIES);
 
       if (!entriesOnly) {
-        return Response.json({ entries: [] });
+        return Response.json({ entries: [], total: 0, page, pageSize, totalPages: 0, query });
       }
 
       // Fetch profiles for each entry
-      const enrichedEntries = await Promise.all(
+      normalizedEntries = await Promise.all(
         entriesOnly.map(async (entry) => {
           const { data: profile } = await supabase
             .from("profiles")
@@ -107,25 +153,32 @@ export async function GET() {
           };
         })
       );
-
-      return Response.json({ entries: buildEvents(enrichedEntries) });
+    } else {
+      normalizedEntries = normalizeEntriesWithProfiles(entries);
     }
 
-    // Normalize entries similar to latest-entry route
-    const normalizedEntries = entries.map((entry) => {
-      const profiles = Array.isArray(entry.profiles) ? entry.profiles : [entry.profiles];
-      const profile = profiles[0];
-      return {
-        id: entry.id,
-        user_id: entry.user_id,
-        check_in: entry.check_in,
-        check_out: entry.check_out,
-        full_name: profile?.full_name || null,
-        avatar_url: profile?.avatar_url || null,
-      };
-    });
+    let events = buildEvents(normalizedEntries);
+    if (query) {
+      events = events.filter((event) => {
+        const name = (event.full_name || "").toLowerCase();
+        const userId = event.user_id.toLowerCase();
+        return name.includes(query) || userId.includes(query);
+      });
+    }
 
-    return Response.json({ entries: buildEvents(normalizedEntries) });
+    const total = events.length;
+    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
+    const offset = (page - 1) * pageSize;
+    const paginatedEntries = events.slice(offset, offset + pageSize);
+
+    return Response.json({
+      entries: paginatedEntries,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      query,
+    });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("Error fetching entries logs:", errorMsg);

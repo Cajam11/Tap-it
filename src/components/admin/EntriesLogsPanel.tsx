@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { LogOut, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -241,9 +242,9 @@ export default function EntriesLogsPanel() {
         </div>
 
         <div className="pt-3 text-center">
-          <button className="text-sm font-medium text-red-400 transition-colors hover:text-red-300">
+          <Link href="/admin/logs" className="text-sm font-medium text-red-400 transition-colors hover:text-red-300">
             View All Logs
-          </button>
+          </Link>
         </div>
       </div>
     </aside>

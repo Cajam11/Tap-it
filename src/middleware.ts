@@ -48,6 +48,15 @@ function hasCompletedOnboarding(user: { user_metadata?: Record<string, unknown> 
 }
 
 export async function middleware(request: NextRequest) {
+  // Handle admin subdomain routing
+  const host = request.headers.get('host') || '';
+  if (host.startsWith('admin.')) {
+    const pathname = request.nextUrl.pathname;
+    // Rewrite requests from admin subdomain to /admin path
+    const newUrl = new URL(pathname === '/' ? '/admin' : `/admin${pathname}`, request.url);
+    return NextResponse.rewrite(newUrl);
+  }
+
   // Skip auth check for the OAuth callback — it only exchanges the code
   if (request.nextUrl.pathname.startsWith("/auth/callback")) {
     return NextResponse.next();

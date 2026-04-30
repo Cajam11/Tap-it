@@ -86,7 +86,7 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
           </div>
         </div>
         <Link
-          href="/"
+          href="https://tap-it.sk"
           className="flex items-center gap-3 px-4 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors text-sm w-full"
         >
           <LogOut className="w-4 h-4" />

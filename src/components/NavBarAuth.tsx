@@ -207,7 +207,7 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                     <>
                       <div className="border-t border-white/10 my-1" />
                       <Link
-                        href="/admin"
+                        href="https://admin.tap-it.sk"
                         onClick={() => setMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-600/10 transition-colors"
                       >

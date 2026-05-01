@@ -6,7 +6,7 @@ import {
   getCurrentAdminContext,
   hasServerAdminAccess,
 } from "@/lib/admin-access";
-import { updateUserMembership } from "./actions";
+import { MembershipsTableClient } from "./MembershipsTableClient";
 
 type AdminProfileRow = {
   id: string;
@@ -22,18 +22,6 @@ type AdminMembershipRow = {
   status: string | null;
   membership: { name: string } | { name: string }[] | null;
 };
-
-function formatDate(dateIso: string) {
-  try {
-    return new Date(dateIso).toLocaleDateString("sk-SK", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  } catch {
-    return dateIso;
-  }
-}
 
 function getMembershipRecord(membership: AdminMembershipRow["membership"]) {
   if (Array.isArray(membership)) {
@@ -113,10 +101,6 @@ export default async function AdminMembershipsPage({
   for (const membership of memberships) {
     membershipsByUserId.set(membership.user_id, membership);
   }
-
-  const totalActiveMemberships = memberships.filter(
-    (membership) => !isExpiredMembership(membership),
-  ).length;
 
   const status =
     typeof resolvedSearchParams?.status === "string"
@@ -250,103 +234,10 @@ export default async function AdminMembershipsPage({
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
-            <tr>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">E-mail</th>
-              <th className="px-4 py-3 font-medium">Membership plan</th>
-              <th className="px-4 py-3 font-medium">start_date</th>
-              <th className="px-4 py-3 font-medium">end_date</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProfiles.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-white/50">
-                  Zatial tu nie su ziadne profily.
-                </td>
-              </tr>
-            ) : (
-              filteredProfiles.map((profile) => {
-                const membership = membershipsByUserId.get(profile.id);
-                const hasCurrentMembership =
-                  membership && !isExpiredMembership(membership);
-                const membershipRecord = hasCurrentMembership
-                  ? getMembershipRecord(membership.membership)
-                  : null;
-                const currentMembershipPlan =
-                  getMembershipPlanKey(membershipRecord);
-
-                return (
-                  <tr
-                    key={profile.id}
-                    className="border-b border-white/10 last:border-b-0"
-                  >
-                    <td className="px-4 py-3 text-white">
-                      {profile.full_name ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-white/80">
-                      {profile.email ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-white/80">
-                      {membershipRecord?.name ?? "none"}
-                    </td>
-                    <td className="px-4 py-3 text-white/60">
-                      {hasCurrentMembership
-                        ? formatDate(membership.start_date)
-                        : "none"}
-                    </td>
-                    <td className="px-4 py-3 text-white/60">
-                      {hasCurrentMembership && membership.end_date
-                        ? formatDate(membership.end_date)
-                        : "none"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <form
-                        action={updateUserMembership}
-                        className="flex items-center gap-2"
-                      >
-                        <input type="hidden" name="userId" value={profile.id} />
-                        <select
-                          name="membershipPlan"
-                          defaultValue={currentMembershipPlan}
-                          className="admin-role-select rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-white"
-                        >
-                          <option
-                            value="monthly"
-                            disabled={currentMembershipPlan === "monthly"}
-                          >
-                            Mesačná
-                          </option>
-                          <option
-                            value="yearly"
-                            disabled={currentMembershipPlan === "yearly"}
-                          >
-                            Ročná
-                          </option>
-                          <option
-                            value="none"
-                            disabled={currentMembershipPlan === "none"}
-                          >
-                            None
-                          </option>
-                        </select>
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10"
-                        >
-                          Ulozit
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+        <MembershipsTableClient
+          filteredProfiles={filteredProfiles}
+          membershipsByUserId={membershipsByUserId}
+        />
       </div>
     </section>
   );

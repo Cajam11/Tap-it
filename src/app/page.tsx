@@ -110,27 +110,69 @@ const LOCATIONS = [
     name: "ePORT Mall",
     address: "Ivanská cesta 26",
     area: "2 000 m²",
-    hours: ["Po – Pia / 5:30 – 22:00", "So – Ne / 7:00 – 22:00", "24/7 (schválená žiadosť)"],
+    hours: [
+      "Po – Pia / 5:30 – 22:00",
+      "So – Ne / 7:00 – 22:00",
+      "24/7 (schválená žiadosť)",
+    ],
     badge: "Otvorené 24/7 – NONSTOP",
     img: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=900&q=80",
   },
 ];
 
 const GALLERY = [
-  { src: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80", alt: "Free weights area" },
-  { src: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=800&q=80", alt: "Cardio machines" },
-  { src: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80", alt: "Training floor" },
-  { src: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80", alt: "Stretching area" },
-  { src: "https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Gym interior" },
-  { src: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800&q=80", alt: "Equipment" },
+  {
+    src: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80",
+    alt: "Free weights area",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=800&q=80",
+    alt: "Cardio machines",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80",
+    alt: "Training floor",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80",
+    alt: "Stretching area",
+  },
+  {
+    src: "https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    alt: "Gym interior",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?w=800&q=80",
+    alt: "Equipment",
+  },
 ];
 
 const PRICING = MEMBERSHIP_PLANS;
 
-const STEPS: Array<{ n: number; title: string; desc: string; Icon: LucideIcon }> = [
-  { n: 1, title: "Otvor appku", desc: "Spusti Tap-it na tvojom telefóne.", Icon: Smartphone },
-  { n: 2, title: "Naskenuj sa", desc: "Pridrž telefón k skeneru pri vstupe.", Icon: Scan },
-  { n: 3, title: "Trénuj", desc: "Žiadne čakanie. Rovno na tréning.", Icon: Zap },
+const STEPS: Array<{
+  n: number;
+  title: string;
+  desc: string;
+  Icon: LucideIcon;
+}> = [
+  {
+    n: 1,
+    title: "Otvor appku",
+    desc: "Spusti Tap-it na tvojom telefóne.",
+    Icon: Smartphone,
+  },
+  {
+    n: 2,
+    title: "Naskenuj sa",
+    desc: "Pridrž telefón k skeneru pri vstupe.",
+    Icon: Scan,
+  },
+  {
+    n: 3,
+    title: "Trénuj",
+    desc: "Žiadne čakanie. Rovno na tréning.",
+    Icon: Zap,
+  },
 ];
 
 const SOCIAL: Array<{ label: string; href: string; Icon: LucideIcon }> = [
@@ -154,13 +196,22 @@ export default async function LandingPage() {
         id: user.id,
         email: user.email ?? null,
         user_metadata: {
-          full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-          avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+          full_name:
+            typeof user.user_metadata?.full_name === "string"
+              ? user.user_metadata.full_name
+              : undefined,
+          avatar_url:
+            typeof user.user_metadata?.avatar_url === "string"
+              ? user.user_metadata.avatar_url
+              : undefined,
         },
       }
     : null;
 
-  let navProfile: { full_name?: string | null; avatar_url?: string | null } | null = null;
+  let navProfile: {
+    full_name?: string | null;
+    avatar_url?: string | null;
+  } | null = null;
   let isAdmin = false;
   if (user) {
     const { data } = await supabase
@@ -169,7 +220,7 @@ export default async function LandingPage() {
       .eq("id", user.id)
       .maybeSingle();
     navProfile = data ?? null;
-    
+
     // Check if user is admin
     const adminContext = await getCurrentAdminContext(supabase);
     isAdmin = adminContext.isAdmin;
@@ -208,7 +259,8 @@ export default async function LandingPage() {
           return {
             user_id: record.user_id,
             display_name: record.display_name,
-            avatar_url: typeof record.avatar_url === "string" ? record.avatar_url : null,
+            avatar_url:
+              typeof record.avatar_url === "string" ? record.avatar_url : null,
             check_in: record.check_in,
           };
         })
@@ -227,15 +279,20 @@ export default async function LandingPage() {
       </a>
 
       {/* ── Floating pill nav ─────────────────────────────────────────── */}
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} isAdmin={isAdmin} />
+      <NavBarAuth
+        navLinks={NAV_LINKS}
+        initialUser={navUser}
+        initialProfile={navProfile}
+        isAdmin={isAdmin}
+      />
 
       <main id="main" className="bg-[#080808] overflow-x-hidden">
-
         {/* ════════════════════════ HERO ════════════════════════════════ */}
         <section
           className="relative min-h-[100vh] flex items-end pb-40 sm:items-center sm:pb-0 px-6 lg:px-12"
           style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80')",
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -243,18 +300,33 @@ export default async function LandingPage() {
         >
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(8,8,8,0.35) 40%, #080808 100%)" }}
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(8,8,8,0.35) 40%, #080808 100%)",
+            }}
             aria-hidden="true"
           />
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: "radial-gradient(ellipse 70% 50% at 50% 80%, rgba(220,38,38,0.10) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 50% at 50% 80%, rgba(220,38,38,0.10) 0%, transparent 70%)",
+            }}
             aria-hidden="true"
           />
 
-          <div className="relative z-10 mx-auto max-w-7xl w-full anim-fade-up" style={{ animationDelay: "100ms" }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-600/15 border border-red-500/20 text-red-400 text-sm font-medium mb-8 anim-fade" style={{ animationDelay: "0ms" }}>
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+          <div
+            className="relative z-10 mx-auto max-w-7xl w-full anim-fade-up"
+            style={{ animationDelay: "100ms" }}
+          >
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-600/15 border border-red-500/20 text-red-400 text-sm font-medium mb-8 anim-fade"
+              style={{ animationDelay: "0ms" }}
+            >
+              <span
+                className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
+                aria-hidden="true"
+              />
               Next Level Fitness · Powered by Tap-it
             </div>
 
@@ -283,28 +355,42 @@ export default async function LandingPage() {
                 className="group flex items-center gap-2 text-white/60 hover:text-white text-base font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full px-3 py-3"
               >
                 Zisti viac
-                <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0" aria-hidden="true" />
+                <ChevronRight
+                  className="w-5 h-5 transition-transform group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
+                  aria-hidden="true"
+                />
               </a>
             </div>
           </div>
         </section>
 
         {/* ════════════════════ HIGHLIGHT STATS ═════════════════════════ */}
-        <section className="relative z-10 -mt-20 px-4 lg:px-8" aria-label="Key statistics">
+        <section
+          className="relative z-10 -mt-20 px-4 lg:px-8"
+          aria-label="Key statistics"
+        >
           <div className="mx-auto max-w-6xl grid grid-cols-2 sm:grid-cols-4 gap-4">
             {HIGHLIGHTS.map(({ value, label, Icon }, i) => (
               <FadeIn key={label} delay={i * 80}>
                 <div
                   className="rounded-3xl border border-white/[0.08] p-7 sm:p-8 text-center"
                   style={{
-                    background: "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
+                    background:
+                      "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
                     backdropFilter: "blur(20px)",
                     boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
                   }}
                 >
-                  <Icon className="w-6 h-6 text-red-500 mx-auto mb-3" aria-hidden="true" />
-                  <p className="text-3xl sm:text-4xl font-black text-white tracking-tight">{value}</p>
-                  <p className="text-xs text-white/40 mt-2 font-medium uppercase tracking-wider">{label}</p>
+                  <Icon
+                    className="w-6 h-6 text-red-500 mx-auto mb-3"
+                    aria-hidden="true"
+                  />
+                  <p className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                    {value}
+                  </p>
+                  <p className="text-xs text-white/40 mt-2 font-medium uppercase tracking-wider">
+                    {label}
+                  </p>
                 </div>
               </FadeIn>
             ))}
@@ -314,7 +400,10 @@ export default async function LandingPage() {
         {/* ════════════════════ LIVE CAPACITY ═══════════════════════════ */}
         <section
           className="py-28 px-4 lg:px-8"
-          style={{ background: "linear-gradient(180deg, #080808 0%, #0e0a0a 50%, #080808 100%)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, #080808 0%, #0e0a0a 50%, #080808 100%)",
+          }}
           aria-labelledby="capacity-heading"
         >
           <LiveOccupancyCard
@@ -333,12 +422,15 @@ export default async function LandingPage() {
         >
           <div className="mx-auto max-w-7xl">
             <FadeIn>
-              <h2 id="group-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
-                Skupinové{" "}
-                <span className="text-red-500">tréningy</span>
+              <h2
+                id="group-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
+                Skupinové <span className="text-red-500">tréningy</span>
               </h2>
               <p className="mt-6 text-white/50 text-lg sm:text-xl max-w-2xl leading-relaxed">
-                ZADARMO! v rámci platného jednorazového vstupu (14€) alebo platnej permanentky či MultiSport a UpBalansea.
+                ZADARMO! v rámci platného jednorazového vstupu (14€) alebo
+                platnej permanentky či MultiSport a UpBalansea.
               </p>
               <Link
                 href="#pricing"
@@ -359,15 +451,23 @@ export default async function LandingPage() {
                       loading="lazy"
                       className="absolute inset-0 w-full h-full object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" aria-hidden="true" />
+                    <div
+                      className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"
+                      aria-hidden="true"
+                    />
 
                     {/* Arrow icon top-right */}
-                    <div className="absolute top-5 right-5 w-11 h-11 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true">
+                    <div
+                      className="absolute top-5 right-5 w-11 h-11 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      aria-hidden="true"
+                    >
                       <ArrowUpRight className="w-5 h-5 text-white" />
                     </div>
 
                     <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
-                      <p className="text-xl sm:text-2xl font-bold text-white">{t.name}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-white">
+                        {t.name}
+                      </p>
                       <p className="text-sm text-white/60 mt-1">{t.desc}</p>
                     </div>
                   </div>
@@ -386,7 +486,10 @@ export default async function LandingPage() {
         >
           <div
             className="absolute right-0 top-0 w-1/2 h-full pointer-events-none"
-            style={{ background: "radial-gradient(ellipse 80% 60% at 100% 50%, rgba(220,38,38,0.06) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 100% 50%, rgba(220,38,38,0.06) 0%, transparent 70%)",
+            }}
             aria-hidden="true"
           />
           <div className="relative mx-auto max-w-7xl grid md:grid-cols-2 gap-16 items-center">
@@ -400,10 +503,10 @@ export default async function LandingPage() {
                 začať cvičiť
               </h2>
               <p className="mt-8 text-white/50 text-lg leading-relaxed max-w-xl">
-                Naša posilňovňa ponúka viac ako 1&nbsp;000&nbsp;m² tréningovej plochy,
-                špičkové vybavenie a moderné LED prostredie. Po náročnom tréningu si
-                môžeš dopriať relax v saune. Plne integrované s technológiou Tap-it
-                pre rýchly a bezproblémový vstup.
+                Naša posilňovňa ponúka viac ako 1&nbsp;000&nbsp;m² tréningovej
+                plochy, špičkové vybavenie a moderné LED prostredie. Po náročnom
+                tréningu si môžeš dopriať relax v saune. Plne integrované s
+                technológiou Tap-it pre rýchly a bezproblémový vstup.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link
@@ -430,12 +533,15 @@ export default async function LandingPage() {
               <div
                 className="absolute bottom-8 left-8 rounded-2xl p-6 border border-white/[0.1]"
                 style={{
-                  background: "linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
+                  background:
+                    "linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
                   backdropFilter: "blur(20px)",
                   boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
                 }}
               >
-                <p className="text-5xl sm:text-6xl font-black text-white tracking-tight">14 €</p>
+                <p className="text-5xl sm:text-6xl font-black text-white tracking-tight">
+                  14 €
+                </p>
                 <p className="text-sm text-white/50 mt-1">Jednorazový vstup</p>
               </div>
             </FadeIn>
@@ -451,9 +557,11 @@ export default async function LandingPage() {
         >
           <div className="mx-auto max-w-7xl">
             <FadeIn className="text-center mb-16">
-              <h2 id="locations-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
-                Vyber si svoj{" "}
-                <span className="text-red-500">priestor</span>
+              <h2
+                id="locations-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
+                Vyber si svoj <span className="text-red-500">priestor</span>
               </h2>
             </FadeIn>
 
@@ -467,10 +575,16 @@ export default async function LandingPage() {
                       loading="lazy"
                       className="absolute inset-0 w-full h-full object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />
+                    <div
+                      className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"
+                      aria-hidden="true"
+                    />
 
                     {/* arrow icon top-right */}
-                    <div className="absolute top-6 right-6 w-12 h-12 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center" aria-hidden="true">
+                    <div
+                      className="absolute top-6 right-6 w-12 h-12 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center"
+                      aria-hidden="true"
+                    >
                       <ArrowUpRight className="w-5 h-5 text-white" />
                     </div>
 
@@ -490,13 +604,21 @@ export default async function LandingPage() {
                         border: "1px solid rgba(255,255,255,0.1)",
                       }}
                     >
-                      <p className="text-3xl sm:text-4xl font-black text-white">{loc.name}</p>
+                      <p className="text-3xl sm:text-4xl font-black text-white">
+                        {loc.name}
+                      </p>
                       <p className="text-sm text-white/60 mt-2">
-                        {loc.address} | <span className="font-semibold text-white/80">{loc.area}</span> rozloha
+                        {loc.address} |{" "}
+                        <span className="font-semibold text-white/80">
+                          {loc.area}
+                        </span>{" "}
+                        rozloha
                       </p>
                       <div className="mt-3 space-y-0.5">
                         {loc.hours.map((h) => (
-                          <p key={h} className="text-sm text-white/50">{h}</p>
+                          <p key={h} className="text-sm text-white/50">
+                            {h}
+                          </p>
                         ))}
                       </div>
                     </div>
@@ -516,16 +638,22 @@ export default async function LandingPage() {
         >
           <div className="mx-auto max-w-7xl">
             <FadeIn className="text-center mb-16">
-              <h2 id="trainers-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
-                Osobní{" "}
-                <span className="text-red-500">tréneri</span>
+              <h2
+                id="trainers-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
+                Osobní <span className="text-red-500">tréneri</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg sm:text-xl max-w-2xl mx-auto">
-                Skúsení a profesionálni osobní tréneri pripravení posunúť tvoj výkon
+                Skúsení a profesionálni osobní tréneri pripravení posunúť tvoj
+                výkon
               </p>
             </FadeIn>
 
-            <ul className="grid grid-cols-1 sm:grid-cols-3 gap-6 list-none p-0" role="list">
+            <ul
+              className="grid grid-cols-1 sm:grid-cols-3 gap-6 list-none p-0"
+              role="list"
+            >
               {TRAINERS.map((t, i) => (
                 <FadeIn key={t.name} as="li" delay={i * 120}>
                   <div className="group">
@@ -539,10 +667,16 @@ export default async function LandingPage() {
                         loading="lazy"
                         className="w-full aspect-[3/4] object-cover transition-[transform] duration-700 group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" aria-hidden="true" />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"
+                        aria-hidden="true"
+                      />
 
                       {/* arrow icon top-right like 77fitness */}
-                      <div className="absolute top-5 right-5 w-12 h-12 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center" aria-hidden="true">
+                      <div
+                        className="absolute top-5 right-5 w-12 h-12 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center"
+                        aria-hidden="true"
+                      >
                         <ArrowUpRight className="w-5 h-5 text-white" />
                       </div>
 
@@ -554,7 +688,9 @@ export default async function LandingPage() {
 
                     {/* name + phone below card */}
                     <div className="mt-5 text-center">
-                      <p className="text-xl sm:text-2xl font-bold text-white">{t.name}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-white">
+                        {t.name}
+                      </p>
                       <a
                         href={`tel:${t.phone.replace(/\s/g, "")}`}
                         className="block text-base text-white/40 hover:text-white transition-colors mt-1 focus-visible:ring-2 focus-visible:ring-white rounded outline-none"
@@ -573,23 +709,35 @@ export default async function LandingPage() {
         <section
           id="gallery"
           className="py-28 px-4 lg:px-8"
-          style={{ background: "linear-gradient(180deg, #080808 0%, #0a0808 50%, #080808 100%)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, #080808 0%, #0a0808 50%, #080808 100%)",
+          }}
           aria-labelledby="gallery-heading"
         >
           <div className="mx-auto max-w-7xl">
             <FadeIn className="text-center mb-14">
-              <h2 id="gallery-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
-                Vysokokvalitné{" "}
-                <span className="text-red-500">vybavenie</span>
+              <h2
+                id="gallery-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
+                Vysokokvalitné <span className="text-red-500">vybavenie</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg max-w-xl mx-auto">
-                Moderné stroje a unikátne prostredie pre tvoj progres a motiváciu.
+                Moderné stroje a unikátne prostredie pre tvoj progres a
+                motiváciu.
               </p>
             </FadeIn>
 
-            <FadeIn className="grid grid-cols-2 sm:grid-cols-3 gap-4" delay={80}>
+            <FadeIn
+              className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+              delay={80}
+            >
               {GALLERY.map((img) => (
-                <div key={img.alt} className="overflow-hidden rounded-3xl border border-white/[0.06] group bg-black/40">
+                <div
+                  key={img.alt}
+                  className="overflow-hidden rounded-3xl border border-white/[0.06] group bg-black/40"
+                >
                   <img
                     src={img.src}
                     alt={img.alt}
@@ -613,18 +761,24 @@ export default async function LandingPage() {
         >
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: "radial-gradient(ellipse 60% 50% at 50% 40%, rgba(220,38,38,0.06) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 50% at 50% 40%, rgba(220,38,38,0.06) 0%, transparent 70%)",
+            }}
             aria-hidden="true"
           />
 
           <div className="relative mx-auto max-w-5xl">
             <FadeIn className="text-center mb-14">
-              <h2 id="pricing-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
-                Vyber si{" "}
-                <span className="text-red-500">členstvo</span>
+              <h2
+                id="pricing-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
+                Vyber si <span className="text-red-500">členstvo</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg max-w-lg mx-auto">
-                Ponúkame rôzne možnosti — jednorazový vstup, mesačné či ročné balíčky.
+                Ponúkame rôzne možnosti — jednorazový vstup, mesačné či ročné
+                balíčky.
               </p>
             </FadeIn>
 
@@ -648,15 +802,27 @@ export default async function LandingPage() {
                         Najobľúbenejší
                       </span>
                     )}
-                    <p className="text-sm font-semibold text-white/60 uppercase tracking-wider">{p.name}</p>
+                    <p className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+                      {p.name}
+                    </p>
                     <p className="mt-3">
-                      <span className="text-5xl font-black text-white">{p.price}</span>
-                      <span className="text-base text-white/30 ml-2">{p.period}</span>
+                      <span className="text-5xl font-black text-white">
+                        {p.price}
+                      </span>
+                      <span className="text-base text-white/30 ml-2">
+                        {p.period}
+                      </span>
                     </p>
                     <ul className="mt-8 space-y-3.5 flex-1" role="list">
                       {p.features.map((f) => (
-                        <li key={f} className="text-base text-white/50 flex items-center gap-3">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" aria-hidden="true" />
+                        <li
+                          key={f}
+                          className="text-base text-white/50 flex items-center gap-3"
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"
+                            aria-hidden="true"
+                          />
                           {f}
                         </li>
                       ))}
@@ -682,23 +848,33 @@ export default async function LandingPage() {
         <section
           id="entry"
           className="py-32 px-4 lg:px-8 relative overflow-hidden"
-          style={{ background: "linear-gradient(180deg, #0c0c0c, #1a0505 40%, #1a0505 60%, #0c0c0c)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, #0c0c0c, #1a0505 40%, #1a0505 60%, #0c0c0c)",
+          }}
           aria-labelledby="entry-heading"
         >
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(220,38,38,0.09) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(220,38,38,0.09) 0%, transparent 70%)",
+            }}
             aria-hidden="true"
           />
 
           <div className="relative mx-auto max-w-4xl text-center">
             <FadeIn>
-              <h2 id="entry-heading" className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]">
+              <h2
+                id="entry-heading"
+                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+              >
                 Bezproblémový vstup{" "}
                 <span className="text-red-500">s Tap-it</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed">
-                Zabudni na kartičky. Tvoj telefón je tvoja permanentka — rýchlo, bezpečne a pohodlne.
+                Zabudni na kartičky. Tvoj telefón je tvoja permanentka — rýchlo,
+                bezpečne a pohodlne.
               </p>
             </FadeIn>
 
@@ -709,7 +885,8 @@ export default async function LandingPage() {
                     <div
                       className="w-20 h-20 rounded-2xl flex items-center justify-center"
                       style={{
-                        background: "linear-gradient(135deg, rgba(220,38,38,0.2), rgba(220,38,38,0.05))",
+                        background:
+                          "linear-gradient(135deg, rgba(220,38,38,0.2), rgba(220,38,38,0.05))",
                         border: "1px solid rgba(220,38,38,0.2)",
                         boxShadow: "0 0 30px rgba(220,38,38,0.12)",
                       }}
@@ -717,8 +894,12 @@ export default async function LandingPage() {
                     >
                       <Icon className="w-8 h-8 text-red-400" />
                     </div>
-                    <p className="text-base sm:text-lg font-bold text-white">{n}.&nbsp;{title}</p>
-                    <p className="text-sm text-white/35 leading-relaxed">{desc}</p>
+                    <p className="text-base sm:text-lg font-bold text-white">
+                      {n}.&nbsp;{title}
+                    </p>
+                    <p className="text-sm text-white/35 leading-relaxed">
+                      {desc}
+                    </p>
                   </div>
                 </FadeIn>
               ))}
@@ -734,7 +915,6 @@ export default async function LandingPage() {
             </FadeIn>
           </div>
         </section>
-
       </main>
 
       {/* ════════════════════ FOOTER ════════════════════════════════════ */}
@@ -766,7 +946,9 @@ export default async function LandingPage() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">Navigácia</p>
+            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">
+              Navigácia
+            </p>
             <nav className="space-y-3" aria-label="Footer navigation">
               {NAV_LINKS.map(([href, label]) => (
                 <a
@@ -781,21 +963,42 @@ export default async function LandingPage() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">Kontakt</p>
+            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">
+              Kontakt
+            </p>
             <div className="space-y-4 text-sm text-white/30">
               <p className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-white/20" aria-hidden="true" />
-                <span>123 Fitness Boulevard<br />Metro City, NY 10023</span>
+                <MapPin
+                  className="w-4 h-4 mt-0.5 shrink-0 text-white/20"
+                  aria-hidden="true"
+                />
+                <span>
+                  123 Fitness Boulevard
+                  <br />
+                  Metro City, NY 10023
+                </span>
               </p>
               <p className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 shrink-0 text-white/20" aria-hidden="true" />
-                <a href="tel:+15551234567" className="hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">
+                <Phone
+                  className="w-4 h-4 shrink-0 text-white/20"
+                  aria-hidden="true"
+                />
+                <a
+                  href="tel:+15551234567"
+                  className="hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+                >
                   (555) 123-4567
                 </a>
               </p>
               <p className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 shrink-0 text-white/20" aria-hidden="true" />
-                <a href="mailto:info@premiumgyms.com" className="hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">
+                <Mail
+                  className="w-4 h-4 shrink-0 text-white/20"
+                  aria-hidden="true"
+                />
+                <a
+                  href="mailto:info@premiumgyms.com"
+                  className="hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+                >
                   info@premiumgyms.com
                 </a>
               </p>
@@ -803,12 +1006,34 @@ export default async function LandingPage() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">Informácie</p>
+            <p className="text-sm font-semibold text-white/60 mb-5 uppercase tracking-wider">
+              Informácie
+            </p>
             <div className="space-y-3 text-sm text-white/30">
-              <a href="#" className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">Všeobecné obchodné podmienky</a>
-              <a href="#" className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">Ochrana osobných údajov</a>
-              <a href="#" className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">Prevádzkový poriadok</a>
-              <a href="#" className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none">Cookies</a>
+              <Link
+                href="/terms"
+                className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+              >
+                Všeobecné obchodné podmienky
+              </Link>
+              <Link
+                href="/privacy"
+                className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+              >
+                Ochrana osobných údajov
+              </Link>
+              <Link
+                href="/rules"
+                className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+              >
+                Prevádzkový poriadok
+              </Link>
+              <Link
+                href="/cookies"
+                className="block hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+              >
+                Cookies
+              </Link>
             </div>
           </div>
         </div>
@@ -825,4 +1050,3 @@ export default async function LandingPage() {
     </SplashWrapper>
   );
 }
-

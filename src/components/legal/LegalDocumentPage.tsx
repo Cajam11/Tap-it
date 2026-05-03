@@ -36,11 +36,17 @@ export default async function LegalDocumentPage({
   let isAdmin = false;
 
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, avatar_url, role")
-      .eq("id", user.id)
-      .maybeSingle();
+    const [profileResponse, adminContext] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("full_name, avatar_url, role")
+        .eq("id", user.id)
+        .maybeSingle(),
+      getCurrentAdminContext(supabase),
+    ]);
+
+    const { data: profile } = profileResponse;
+    isAdmin = adminContext.isAdmin;
 
     navUser = {
       id: user.id,
@@ -63,9 +69,6 @@ export default async function LegalDocumentPage({
       avatar_url:
         typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
     };
-
-    const adminContext = await getCurrentAdminContext(supabase);
-    isAdmin = adminContext.isAdmin;
   }
 
   return (

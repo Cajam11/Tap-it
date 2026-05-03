@@ -38,10 +38,11 @@ export default function TermsPage() {
       <section id="zakladne-ustanovenia" className="scroll-mt-32">
         <h2>1. Základné ustanovenia</h2>
         <p>
-          1.1. Tieto Všeobecné obchodné podmienky (ďalej len „VOP") upravujú
-          vzájomné práva a povinnosti medzi prevádzkovateľom fitnescentier
-          Premium Gyms (ďalej len „Prevádzkovateľ") a fyzickými osobami (ďalej
-          len „Člen" alebo „Návštevník") pri využívaní služieb fitnescentier.
+          1.1. Tieto Všeobecné obchodné podmienky (ďalej len „VOP&quot;)
+          upravujú vzájomné práva a povinnosti medzi prevádzkovateľom
+          fitnescentier Premium Gyms (ďalej len „Prevádzkovateľ&quot;) a
+          fyzickými osobami (ďalej len „Člen&quot; alebo „Návštevník&quot;) pri
+          využívaní služieb fitnescentier.
         </p>
         <p>
           1.2. Prevádzkovateľom je spoločnosť prevádzkujúca fitnescentrá pod

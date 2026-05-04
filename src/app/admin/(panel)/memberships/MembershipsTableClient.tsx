@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AdminMembershipChangeModal } from "@/components/admin/AdminMembershipChangeModal";
 
 interface MembershipsTableClientProps {
@@ -166,10 +167,14 @@ export function MembershipsTableClient({
                     className="border-b border-white/10 last:border-b-0"
                   >
                     <td className="px-4 py-3 text-white">
-                      {profile.full_name ?? "-"}
+                      <Link href={`/admin/users/${profile.id}`} className="hover:underline hover:text-white/80 transition-colors">
+                        {profile.full_name ?? "-"}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-white/80">
-                      {profile.email ?? "-"}
+                      <Link href={`/admin/users/${profile.id}`} className="hover:underline hover:text-white/60 transition-colors">
+                        {profile.email ?? "-"}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-white/80">
                       {membershipRecord?.name ?? "none"}

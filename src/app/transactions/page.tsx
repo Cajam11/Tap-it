@@ -45,6 +45,7 @@ export default async function TransactionsPage() {
       type,
       status,
       created_at,
+      metadata,
       memberships (
         name
       )
@@ -57,6 +58,8 @@ export default async function TransactionsPage() {
   if (error) {
     console.error("Chyba pri načítaní transakcií:", error);
   }
+
+  type Transaction = NonNullable<typeof transactions>[number];
 
   const navProfile = {
     full_name: typeof profileRes.data?.full_name === "string" ? profileRes.data.full_name : null,
@@ -94,6 +97,15 @@ export default async function TransactionsPage() {
     }).format(amount);
   };
 
+  const getMetadataObject = (metadata: Transaction["metadata"]) => {
+    return metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
+  };
+
+  const getTransactionReason = (tx: Transaction) => {
+    const metadata = getMetadataObject(tx.metadata);
+    return typeof metadata.reason === "string" ? metadata.reason : null;
+  };
+
   return (
     <>
       <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
@@ -116,14 +128,16 @@ export default async function TransactionsPage() {
                   <thead>
                     <tr className="bg-white/5 text-xs text-white/60 uppercase tracking-wider border-b border-white/10">
                       <th className="px-6 py-5 font-medium">Dátum</th>
-                      <th className="px-6 py-5 font-medium">Služba / Členstvo</th>
+                      <th className="px-6 py-5 font-medium">Popis</th>
                       <th className="px-6 py-5 font-medium">Typ</th>
                       <th className="px-6 py-5 font-medium">Stav</th>
                       <th className="px-6 py-5 font-medium text-right">Suma</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((tx) => (
+                    {transactions.map((tx) => {
+                      const reason = getTransactionReason(tx);
+                      return (
                       <tr key={tx.id} className="hover:bg-white/[0.02] border-b border-white/5 last:border-0 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-white/60">
                           {new Intl.DateTimeFormat("sk-SK", {
@@ -131,14 +145,33 @@ export default async function TransactionsPage() {
                             timeStyle: "short",
                           }).format(new Date(tx.created_at))}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-medium text-white/90">
-                            {(Array.isArray(tx.memberships) ? tx.memberships[0]?.name : (tx.memberships as { name: string })?.name) || "Neznáme členstvo (Zmazané)"}
-                          </span>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-white/90">
+                              {(Array.isArray(tx.memberships) ? tx.memberships[0]?.name : (tx.memberships as { name: string })?.name) || "—"}
+                            </span>
+                            {reason && (
+                              <span className="text-xs text-white/50 italic">
+                                Dôvod: {reason}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(tx.type)}`}>
-                            {tx.type === "purchase" ? "Nákup" : tx.type === "refund" ? "Vrátenie" : tx.type}
+                            {(() => {
+                              const metadata = typeof tx.metadata === 'object' ? tx.metadata : {};
+                              const action = metadata?.action === 'cancel' ? 'cancel' : tx.type;
+                              
+                              const actionLabel: Record<string, string> = {
+                                'cancel': 'Zrušenie',
+                                'purchase': 'Nákup',
+                                'refund': 'Vrátenie',
+                                'manual': 'Manuálne',
+                              };
+                              
+                              return actionLabel[action] || action;
+                            })()}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -150,7 +183,8 @@ export default async function TransactionsPage() {
                           {tx.type === "refund" ? "+" : "-"}{formatCurrency(tx.amount, tx.currency)}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -81,12 +81,6 @@ export default async function AdminDashboardPage() {
     .select("*", { count: "exact", head: true })
     .gte("check_in", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-  const { data: recentEntries } = await supabase
-    .from("entries")
-    .select("user_id, check_in, check_out, duration_min")
-    .order("check_in", { ascending: false })
-    .limit(10);
-
     return (
       <div className="space-y-8">
         {/* Header */}
@@ -176,44 +170,7 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Live Scan Logs */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-semibold text-white">Live Scan Logs</h3>
-                <p className="text-xs text-white/40 mt-1">Recent entries</p>
-              </div>
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            </div>
-            
-            <div className="space-y-3">
-              {recentEntries && recentEntries.length > 0 ? (
-                recentEntries.slice(0, 5).map((entry, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-white/[0.05] transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center text-xs text-white font-semibold">
-                        ✓
-                      </span>
-                      <div>
-                        <p className="text-white/80">User {entry.user_id?.slice(0, 8)}</p>
-                        <p className="text-xs text-white/40">
-                          Entry {new Date(entry.check_in).toLocaleTimeString("sk-SK")}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-white/50">
-                      {entry.duration_min ? `${entry.duration_min}m` : "—"}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-white/50 text-sm">No recent entries</p>
-              )}
-              <Link href="/admin/logs" className="text-red-400 text-xs hover:text-red-300 mt-3 block">
-                View All Logs →
-              </Link>
-            </div>
-          </div>
+          <EntriesLogsPanel variant="card" />
         </div>
 
         {/* User Management */}

@@ -14,6 +14,7 @@ type AdminDatabase = {
       memberships: {
         Row: {
           id: string;
+          name: string;
           billing_cycle: "entries" | "monthly" | "yearly" | null;
           entry_count: number | null;
           duration_days: number | null;
@@ -27,6 +28,7 @@ type AdminDatabase = {
           id: string;
           email: string | null;
           full_name: string | null;
+          avatar_url: string | null;
           role: string | null;
           onboarding_completed: boolean | null;
           created_at: string;
@@ -35,6 +37,7 @@ type AdminDatabase = {
           id?: string;
           email?: string | null;
           full_name?: string | null;
+          avatar_url?: string | null;
           role?: string | null;
           onboarding_completed?: boolean | null;
           created_at?: string;
@@ -42,9 +45,36 @@ type AdminDatabase = {
         Update: {
           email?: string | null;
           full_name?: string | null;
+          avatar_url?: string | null;
           role?: string | null;
           onboarding_completed?: boolean | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          check_in: string;
+          check_out: string | null;
+          duration_min: number | null;
+          is_valid: boolean;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          check_in?: string;
+          check_out?: string | null;
+          duration_min?: number | null;
+          is_valid?: boolean;
+        };
+        Update: {
+          user_id?: string;
+          check_in?: string;
+          check_out?: string | null;
+          duration_min?: number | null;
+          is_valid?: boolean;
         };
         Relationships: [];
       };

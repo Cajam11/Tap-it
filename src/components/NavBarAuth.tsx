@@ -4,7 +4,16 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LogOut, User as UserIcon, Settings, CreditCard, Receipt, HelpCircle, BarChart3 } from "lucide-react";
+import { isAdminRole } from "@/lib/admin-authz";
+import {
+  LogOut,
+  User as UserIcon,
+  Settings,
+  CreditCard,
+  Receipt,
+  HelpCircle,
+  BarChart3,
+} from "lucide-react";
 
 type NavUser = {
   id: string;
@@ -27,19 +36,67 @@ interface NavBarAuthProps {
   isAdmin?: boolean;
 }
 
-export default function NavBarAuth({ navLinks, initialUser = null, initialProfile = null, isAdmin = false }: NavBarAuthProps) {
+export default function NavBarAuth({
+  navLinks,
+  initialUser = null,
+  initialProfile = null,
+  isAdmin = false,
+}: NavBarAuthProps) {
   const router = useRouter();
   const [user, setUser] = useState<NavUser | null>(initialUser);
   const [profile, setProfile] = useState<NavProfile>(initialProfile);
+  const [adminAccess, setAdminAccess] = useState<boolean>(isAdmin);
   const [avatarRevision, setAvatarRevision] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    async function resolveAdminAccess() {
+      if (!user) {
+        setAdminAccess(false);
+        return;
+      }
+
+      if (isAdmin) {
+        setAdminAccess(true);
+        return;
+      }
+
+      const supabase = createClient();
+      const { data: roleRow } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!isCancelled) {
+        setAdminAccess(isAdminRole(roleRow?.role));
+      }
+    }
+
+    resolveAdminAccess();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAdmin, user]);
+
+  useEffect(() => {
     function handleProfileUpdated(event: Event) {
-      const customEvent = event as CustomEvent<{ full_name?: string | null; avatar_url?: string | null }>;
-      const nextName = typeof customEvent.detail?.full_name === "string" ? customEvent.detail.full_name : null;
-      const nextAvatar = typeof customEvent.detail?.avatar_url === "string" ? customEvent.detail.avatar_url : null;
+      const customEvent = event as CustomEvent<{
+        full_name?: string | null;
+        avatar_url?: string | null;
+      }>;
+      const nextName =
+        typeof customEvent.detail?.full_name === "string"
+          ? customEvent.detail.full_name
+          : null;
+      const nextAvatar =
+        typeof customEvent.detail?.avatar_url === "string"
+          ? customEvent.detail.avatar_url
+          : null;
 
       setProfile((prev) => ({
         ...(prev ?? {}),
@@ -59,12 +116,19 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                 avatar_url: nextAvatar ?? undefined,
               },
             }
-          : prev
+          : prev,
       );
     }
 
-    window.addEventListener("profile-updated", handleProfileUpdated as EventListener);
-    return () => window.removeEventListener("profile-updated", handleProfileUpdated as EventListener);
+    window.addEventListener(
+      "profile-updated",
+      handleProfileUpdated as EventListener,
+    );
+    return () =>
+      window.removeEventListener(
+        "profile-updated",
+        handleProfileUpdated as EventListener,
+      );
   }, []);
 
   // Close dropdown on outside click
@@ -89,9 +153,13 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
 
   // Najprv pozeráme do našej databázy (profile), ak tam nič nie je, až potom do Google (user_metadata)
   const fullName =
-    profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "";
   const avatarUrl =
-    profile?.avatar_url || (user?.user_metadata?.avatar_url as string | undefined);
+    profile?.avatar_url ||
+    (user?.user_metadata?.avatar_url as string | undefined);
   const avatarSrc = (() => {
     if (!avatarUrl) {
       return undefined;
@@ -203,7 +271,7 @@ export default function NavBarAuth({ navLinks, initialUser = null, initialProfil
                     <HelpCircle className="w-4 h-4" />
                     Pomoc
                   </Link>
-                  {isAdmin && (
+                  {adminAccess && (
                     <>
                       <div className="border-t border-white/10 my-1" />
                       <Link

@@ -13,7 +13,7 @@ export default function LegalSidebarToc({ toc }: { toc: TocItem[] }) {
   useEffect(() => {
     const root = document.getElementById("document-scroll-container");
     if (!root) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -26,12 +26,14 @@ export default function LegalSidebarToc({ toc }: { toc: TocItem[] }) {
         root,
         // Tento rootMargin zabezpečí, že sa sekcia aktivuje, keď príde bližšie k hornej časti obrazovky
         rootMargin: "-10% 0px -70% 0px",
-      }
+      },
     );
 
     // Initial check a fallback na prvú sekciu
-    if (toc.length > 0 && !activeId) {
-      setActiveId(toc[0].href.replace("#", ""));
+    if (toc.length > 0) {
+      setActiveId(
+        (currentActiveId) => currentActiveId || toc[0].href.replace("#", ""),
+      );
     }
 
     toc.forEach((item) => {
@@ -84,7 +86,9 @@ export default function LegalSidebarToc({ toc }: { toc: TocItem[] }) {
             )}
             <span
               className={`font-semibold transition-colors ${
-                isActive ? "text-red-500" : "text-white/70 group-hover:text-red-400"
+                isActive
+                  ? "text-red-500"
+                  : "text-white/70 group-hover:text-red-400"
               }`}
             >
               {index + 1}.

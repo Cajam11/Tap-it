@@ -52,10 +52,18 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   if (host.startsWith('admin.')) {
     const pathname = request.nextUrl.pathname;
-    // Rewrite to /admin path if not already there
+
+    // Keep API/auth internals at their real paths. Rewriting them under /admin
+    // would turn /api/admin/... into /admin/api/admin/... and produce 404s.
+    const shouldRewriteToAdmin =
+      !pathname.startsWith('/api') &&
+      !pathname.startsWith('/auth') &&
+      !pathname.startsWith('/_next') &&
+      !pathname.startsWith('/admin');
+
     if (pathname === '/') {
       return NextResponse.rewrite(new URL('/admin', request.url));
-    } else if (!pathname.startsWith('/admin')) {
+    } else if (shouldRewriteToAdmin) {
       return NextResponse.rewrite(new URL(`/admin${pathname}`, request.url));
     }
   }

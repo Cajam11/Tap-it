@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAdminContext } from "@/lib/admin-access";
@@ -445,11 +446,13 @@ export default async function LandingPage() {
               {GROUP_TRAININGS.map((t, i) => (
                 <FadeIn key={t.name} delay={i * 80} className={t.span}>
                   <div className="relative rounded-3xl overflow-hidden group h-full cursor-default border border-white/[0.06]">
-                    <img
+                    <Image
                       src={t.img}
                       alt={t.name}
+                      fill
                       loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"
+                      className="object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                     />
                     <div
                       className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"
@@ -520,12 +523,13 @@ export default async function LandingPage() {
 
             <FadeIn delay={150} className="relative">
               <div className="overflow-hidden rounded-3xl">
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1550345332-09e3ac987658?w=800&q=80"
                   alt="Trainer"
                   width={800}
                   height={1000}
                   loading="lazy"
+                  sizes="(min-width: 768px) 50vw, 100vw"
                   className="w-full aspect-[3/4] object-cover"
                 />
               </div>
@@ -569,11 +573,13 @@ export default async function LandingPage() {
               {LOCATIONS.map((loc, i) => (
                 <FadeIn key={loc.name} delay={i * 120}>
                   <div className="relative rounded-3xl overflow-hidden group h-[420px] sm:h-[480px] border border-white/[0.06]">
-                    <img
+                    <Image
                       src={loc.img}
                       alt={loc.name}
+                      fill
                       loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      className="object-cover transition-[transform] duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                     />
                     <div
                       className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"
@@ -659,12 +665,13 @@ export default async function LandingPage() {
                   <div className="group">
                     {/* image card */}
                     <div className="relative rounded-3xl overflow-hidden border border-white/[0.06] hover:border-white/[0.12] transition-colors duration-300">
-                      <img
+                      <Image
                         src={t.img}
                         alt={t.name}
                         width={600}
                         height={750}
                         loading="lazy"
+                        sizes="(min-width: 640px) 33vw, 100vw"
                         className="w-full aspect-[3/4] object-cover transition-[transform] duration-700 group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
                       />
                       <div
@@ -738,12 +745,13 @@ export default async function LandingPage() {
                   key={img.alt}
                   className="overflow-hidden rounded-3xl border border-white/[0.06] group bg-black/40"
                 >
-                  <img
+                  <Image
                     src={img.src}
                     alt={img.alt}
                     width={800}
                     height={600}
                     loading="lazy"
+                    sizes="(min-width: 640px) 33vw, 50vw"
                     className="w-full h-full aspect-[4/3] object-cover object-center scale-100 transition-[transform] duration-700 group-hover:scale-110 motion-reduce:group-hover:scale-100"
                   />
                 </div>

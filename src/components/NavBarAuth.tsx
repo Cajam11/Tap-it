@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -212,12 +213,15 @@ export default function NavBarAuth({
                 className="flex items-center gap-2.5 rounded-full px-1.5 py-1 hover:bg-white/[0.08] transition-colors focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
               >
                 {avatarSrc ? (
-                  <img
+                  <Image
                     key={avatarSrc}
                     src={avatarSrc}
                     alt=""
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full object-cover ring-2 ring-white/10"
                     referrerPolicy="no-referrer"
+                    unoptimized
                   />
                 ) : (
                   <span className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-bold">

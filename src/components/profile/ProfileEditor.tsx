@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -50,35 +51,54 @@ const EQUIPMENT_OPTIONS: Array<{ value: Equipment; label: string }> = [
   { value: "full_gym", label: "Plna gym" },
 ];
 
-export default function ProfileEditor({ 
-  initialProfile, 
+export default function ProfileEditor({
+  initialProfile,
   hideFullName = false,
   hideAvatar = false,
   title = "Nastavenia uctu",
-  subtitle = "Uprav si meno, avatar a treningove preferencie."
+  subtitle = "Uprav si meno, avatar a treningove preferencie.",
 }: ProfileEditorProps) {
   const [fullName, setFullName] = useState(initialProfile.full_name);
   const [bio, setBio] = useState(initialProfile.bio);
   const [goal, setGoal] = useState<Goal>(initialProfile.goal);
   const [level, setLevel] = useState<Level>(initialProfile.experience_level);
-  const [sessionsPerWeek, setSessionsPerWeek] = useState(initialProfile.sessions_per_week);
-  const [sessionLengthMin, setSessionLengthMin] = useState(initialProfile.session_length_min);
-  const [equipmentLevel, setEquipmentLevel] = useState<Equipment>(initialProfile.equipment_level);
+  const [sessionsPerWeek, setSessionsPerWeek] = useState(
+    initialProfile.sessions_per_week,
+  );
+  const [sessionLengthMin, setSessionLengthMin] = useState(
+    initialProfile.session_length_min,
+  );
+  const [equipmentLevel, setEquipmentLevel] = useState<Equipment>(
+    initialProfile.equipment_level,
+  );
   const [heightCm, setHeightCm] = useState(initialProfile.height_cm ?? 0);
   const [weightKg, setWeightKg] = useState(initialProfile.weight_kg ?? 0);
-  const [showInGymList, setShowInGymList] = useState(initialProfile.show_in_gym_list ?? true);
-  const [showNameInGymList, setShowNameInGymList] = useState(initialProfile.show_name_in_gym_list ?? false);
-  const [showAvatarInGymList, setShowAvatarInGymList] = useState(initialProfile.show_avatar_in_gym_list ?? false);
+  const [showInGymList, setShowInGymList] = useState(
+    initialProfile.show_in_gym_list ?? true,
+  );
+  const [showNameInGymList, setShowNameInGymList] = useState(
+    initialProfile.show_name_in_gym_list ?? false,
+  );
+  const [showAvatarInGymList, setShowAvatarInGymList] = useState(
+    initialProfile.show_avatar_in_gym_list ?? false,
+  );
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile.avatar_url);
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialProfile.avatar_url);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    initialProfile.avatar_url,
+  );
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
+    initialProfile.avatar_url,
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const initialLetter = useMemo(() => (fullName.trim().charAt(0) || "U").toUpperCase(), [fullName]);
+  const initialLetter = useMemo(
+    () => (fullName.trim().charAt(0) || "U").toUpperCase(),
+    [fullName],
+  );
 
   useEffect(() => {
     return () => {
@@ -148,7 +168,9 @@ export default function ProfileEditor({
         .map((file) => `${avatarFolder}/${file.name}`);
 
       if (existingPaths.length > 0) {
-        const { error: removeError } = await supabase.storage.from("avatars").remove(existingPaths);
+        const { error: removeError } = await supabase.storage
+          .from("avatars")
+          .remove(existingPaths);
         if (removeError) {
           setSaving(false);
           setError("Nepodarilo sa odstranit stary avatar.");
@@ -205,11 +227,17 @@ export default function ProfileEditor({
     }
 
     // Insert weight change into weight_logs if weight changed
-    if (Number.isFinite(weightKg) && weightKg > 0 && weightKg !== initialProfile.weight_kg) {
-      const { error: weightLogError } = await supabase.from("weight_logs").insert({
-        user_id: user.id,
-        weight_kg: weightKg,
-      });
+    if (
+      Number.isFinite(weightKg) &&
+      weightKg > 0 &&
+      weightKg !== initialProfile.weight_kg
+    ) {
+      const { error: weightLogError } = await supabase
+        .from("weight_logs")
+        .insert({
+          user_id: user.id,
+          weight_kg: weightKg,
+        });
 
       if (weightLogError) {
         console.warn("Warning: Failed to log weight change:", weightLogError);
@@ -222,11 +250,16 @@ export default function ProfileEditor({
       bio: bio.trim() || null,
     };
 
-    const { error: metadataError } = await supabase.auth.updateUser({ data: metadata });
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: metadata,
+    });
 
     if (metadataError) {
       setSaving(false);
-      setError("Profil ulozeny, ale metadata sa neaktualizovali: " + metadataError.message);
+      setError(
+        "Profil ulozeny, ale metadata sa neaktualizovali: " +
+          metadataError.message,
+      );
       return;
     }
 
@@ -241,7 +274,7 @@ export default function ProfileEditor({
           full_name: fullName.trim(),
           avatar_url: nextAvatarUrl,
         },
-      })
+      }),
     );
   }
 
@@ -250,8 +283,12 @@ export default function ProfileEditor({
       {/* Header */}
       <div className="flex items-start gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-white/45">Moj profil</p>
-          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white">{title}</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+            Moj profil
+          </p>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white">
+            {title}
+          </h1>
           <p className="mt-2 text-sm text-white/55">{subtitle}</p>
         </div>
       </div>
@@ -271,25 +308,45 @@ export default function ProfileEditor({
       {/* Avatar Section */}
       {!hideAvatar && (
         <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-          <h2 className="mb-4 text-sm uppercase tracking-wider text-white/60">Profil</h2>
+          <h2 className="mb-4 text-sm uppercase tracking-wider text-white/60">
+            Profil
+          </h2>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
                 {avatarPreviewUrl ? (
-                  <img src={avatarPreviewUrl} alt="Profilovy avatar" className="h-full w-full object-cover" />
+                  <Image
+                    src={avatarPreviewUrl}
+                    alt="Profilovy avatar"
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <span className="text-3xl font-bold text-white">{initialLetter}</span>
+                  <span className="text-3xl font-bold text-white">
+                    {initialLetter}
+                  </span>
                 )}
               </div>
               <label className="inline-flex cursor-pointer items-center rounded-xl border border-white/15 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors">
                 Zmenit fotku
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
               </label>
             </div>
 
             <div className="flex-1 self-center -mt-8 space-y-2">
-              <h1 className="text-3xl font-bold text-white">{initialProfile.full_name || "Anonymous"}</h1>
-              <p className="text-base text-white/70 font-medium">{initialProfile.email}</p>
+              <h1 className="text-3xl font-bold text-white">
+                {initialProfile.full_name || "Anonymous"}
+              </h1>
+              <p className="text-base text-white/70 font-medium">
+                {initialProfile.email}
+              </p>
             </div>
           </div>
         </section>
@@ -297,11 +354,18 @@ export default function ProfileEditor({
 
       {/* Personal Info Section */}
       <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Osobne udaje</h2>
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Osobne udaje
+        </h2>
         <div className="space-y-5">
           {!hideFullName && (
             <div className="space-y-2">
-              <label htmlFor="full_name" className="block text-sm font-medium text-white/70">Zobrazovane meno</label>
+              <label
+                htmlFor="full_name"
+                className="block text-sm font-medium text-white/70"
+              >
+                Zobrazovane meno
+              </label>
               <input
                 id="full_name"
                 value={fullName}
@@ -313,7 +377,12 @@ export default function ProfileEditor({
           )}
 
           <div className="space-y-2">
-            <label htmlFor="bio" className="block text-sm font-medium text-white/70">Bio</label>
+            <label
+              htmlFor="bio"
+              className="block text-sm font-medium text-white/70"
+            >
+              Bio
+            </label>
             <textarea
               id="bio"
               value={bio}
@@ -327,12 +396,19 @@ export default function ProfileEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="height" className="block text-sm font-medium text-white/70">Vyska (cm)</label>
+              <label
+                htmlFor="height"
+                className="block text-sm font-medium text-white/70"
+              >
+                Vyska (cm)
+              </label>
               <input
                 id="height"
                 type="number"
                 value={heightCm || ""}
-                onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : 0)}
+                onChange={(e) =>
+                  setHeightCm(e.target.value ? Number(e.target.value) : 0)
+                }
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                 placeholder="napr. 175"
                 min={100}
@@ -341,12 +417,19 @@ export default function ProfileEditor({
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="weight" className="block text-sm font-medium text-white/70">Vaha (kg)</label>
+              <label
+                htmlFor="weight"
+                className="block text-sm font-medium text-white/70"
+              >
+                Vaha (kg)
+              </label>
               <input
                 id="weight"
                 type="number"
                 value={weightKg || ""}
-                onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : 0)}
+                onChange={(e) =>
+                  setWeightKg(e.target.value ? Number(e.target.value) : 0)
+                }
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                 placeholder="napr. 75"
                 min={30}
@@ -359,10 +442,14 @@ export default function ProfileEditor({
 
       {/* Fitness Goals Section */}
       <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Fitness ciele</h2>
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Fitness ciele
+        </h2>
         <div className="space-y-5">
           <div>
-            <p className="mb-3 text-sm font-medium text-white/70">Hlavny ciel</p>
+            <p className="mb-3 text-sm font-medium text-white/70">
+              Hlavny ciel
+            </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {GOAL_OPTIONS.map((option) => (
                 <button
@@ -382,7 +469,9 @@ export default function ProfileEditor({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-medium text-white/70">Uroven skusenosti</p>
+            <p className="mb-3 text-sm font-medium text-white/70">
+              Uroven skusenosti
+            </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {LEVEL_OPTIONS.map((option) => (
                 <button
@@ -405,10 +494,17 @@ export default function ProfileEditor({
 
       {/* Training Preferences Section */}
       <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Trening</h2>
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Trening
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="sessions" className="mb-1.5 block text-sm text-white/70">Treningy tyzdenne</label>
+            <label
+              htmlFor="sessions"
+              className="mb-1.5 block text-sm text-white/70"
+            >
+              Treningy tyzdenne
+            </label>
             <input
               id="sessions"
               type="range"
@@ -418,11 +514,15 @@ export default function ProfileEditor({
               onChange={(e) => setSessionsPerWeek(Number(e.target.value))}
               className="w-full"
             />
-            <p className="mt-1 text-sm text-white/70">{sessionsPerWeek}x za tyzden</p>
+            <p className="mt-1 text-sm text-white/70">
+              {sessionsPerWeek}x za tyzden
+            </p>
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-medium text-white/70">Dlzka treningu</p>
+            <p className="mb-3 text-sm font-medium text-white/70">
+              Dlzka treningu
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {[30, 45, 60, 75].map((minutes) => (
                 <button
@@ -445,7 +545,9 @@ export default function ProfileEditor({
 
       {/* Equipment Section */}
       <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Vybavenie</h2>
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Vybavenie
+        </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {EQUIPMENT_OPTIONS.map((option) => (
             <button
@@ -466,7 +568,9 @@ export default function ProfileEditor({
 
       {/* Privacy Section */}
       <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
-        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">Sukromie vo fitku</h2>
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Sukromie vo fitku
+        </h2>
         <div className="space-y-4">
           <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 cursor-pointer">
             <input
@@ -476,14 +580,18 @@ export default function ProfileEditor({
               className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
             />
             <span>
-              <span className="block text-sm font-medium text-white">Zobrazit ma v zozname ludi vo fitku</span>
+              <span className="block text-sm font-medium text-white">
+                Zobrazit ma v zozname ludi vo fitku
+              </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ked je vypnute, nebudes viditelny ani ako anonymous.
               </span>
             </span>
           </label>
 
-          <label className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+          <label
+            className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}
+          >
             <input
               type="checkbox"
               checked={showNameInGymList}
@@ -492,14 +600,18 @@ export default function ProfileEditor({
               className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
             />
             <span>
-              <span className="block text-sm font-medium text-white">Zobrazit moje meno</span>
+              <span className="block text-sm font-medium text-white">
+                Zobrazit moje meno
+              </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ak je vypnute, ostatni uvidia iba Anonymous.
               </span>
             </span>
           </label>
 
-          <label className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+          <label
+            className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}
+          >
             <input
               type="checkbox"
               checked={showAvatarInGymList}
@@ -508,7 +620,9 @@ export default function ProfileEditor({
               className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
             />
             <span>
-              <span className="block text-sm font-medium text-white">Zobrazit moj avatar</span>
+              <span className="block text-sm font-medium text-white">
+                Zobrazit moj avatar
+              </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ked je vypnute, zobrazi sa predvolena anonymous ikona.
               </span>
@@ -533,7 +647,6 @@ export default function ProfileEditor({
           {saving ? "Ukladam..." : "Ulozit zmeny"}
         </button>
       </div>
-
     </div>
   );
 }

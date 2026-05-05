@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -50,11 +51,9 @@ export default async function MembershipPaymentPage({
     redirect("/login");
   }
 
-  const { data: activeMembership } = await getCurrentActiveMembership<{ id: string }>(
-    supabase,
-    user.id,
-    "id"
-  );
+  const { data: activeMembership } = await getCurrentActiveMembership<{
+    id: string;
+  }>(supabase, user.id, "id");
 
   if (activeMembership) {
     redirect("/membership");
@@ -71,7 +70,7 @@ export default async function MembershipPaymentPage({
       ? profileRes.data.full_name
       : typeof user.user_metadata?.full_name === "string"
         ? user.user_metadata.full_name
-        : user.email?.split("@")[0] ?? "Pouzivatel";
+        : (user.email?.split("@")[0] ?? "Pouzivatel");
 
   const avatarUrl =
     typeof profileRes.data?.avatar_url === "string"
@@ -84,28 +83,49 @@ export default async function MembershipPaymentPage({
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profileRes.data?.full_name === "string" ? profileRes.data.full_name : null,
-    avatar_url: typeof profileRes.data?.avatar_url === "string" ? profileRes.data.avatar_url : null,
+    full_name:
+      typeof profileRes.data?.full_name === "string"
+        ? profileRes.data.full_name
+        : null,
+    avatar_url:
+      typeof profileRes.data?.avatar_url === "string"
+        ? profileRes.data.avatar_url
+        : null,
   };
 
   const resolvedSearchParams = await searchParams;
   const selectedPlanName = resolvedSearchParams?.plan ?? "";
-  const selectedPlan = MEMBERSHIP_PLANS.find((plan) => plan.name === selectedPlanName);
+  const selectedPlan = MEMBERSHIP_PLANS.find(
+    (plan) => plan.name === selectedPlanName,
+  );
 
   if (!selectedPlan) {
-    await setFlashMessage({ kind: "error", text: "Platba zlyhala. Skús to znova." });
+    await setFlashMessage({
+      kind: "error",
+      text: "Platba zlyhala. Skús to znova.",
+    });
     redirect("/membership");
   }
 
   return (
     <>
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={NAV_LINKS}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="min-h-screen bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-3xl space-y-8">
@@ -113,16 +133,31 @@ export default async function MembershipPaymentPage({
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profilovy avatar" className="h-full w-full object-cover" />
+                  <Image
+                    src={avatarUrl}
+                    alt="Profilovy avatar"
+                    width={80}
+                    height={80}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <span className="text-2xl font-black text-white">{(fullName.trim().charAt(0) || "U").toUpperCase()}</span>
+                  <span className="text-2xl font-black text-white">
+                    {(fullName.trim().charAt(0) || "U").toUpperCase()}
+                  </span>
                 )}
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">PLATBA ČLENSTVA</p>
-                <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">{fullName}</h1>
-                <p className="mt-1 text-sm text-white/60">{user.email ?? "Bez emailu"}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                  PLATBA ČLENSTVA
+                </p>
+                <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+                  {fullName}
+                </h1>
+                <p className="mt-1 text-sm text-white/60">
+                  {user.email ?? "Bez emailu"}
+                </p>
               </div>
             </div>
           </section>
@@ -130,10 +165,16 @@ export default async function MembershipPaymentPage({
           <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-white">Potvrdenie platby</h2>
             <p className="mt-3 text-white/70">
-              Vybraný plán: <span className="font-semibold text-white">{getPlanDisplayName(selectedPlan.name)}</span>
+              Vybraný plán:{" "}
+              <span className="font-semibold text-white">
+                {getPlanDisplayName(selectedPlan.name)}
+              </span>
             </p>
             <p className="mt-1 text-white/70">
-              Cena: <span className="font-semibold text-white">{selectedPlan.price} {selectedPlan.period}</span>
+              Cena:{" "}
+              <span className="font-semibold text-white">
+                {selectedPlan.price} {selectedPlan.period}
+              </span>
             </p>
 
             <ul className="mt-5 space-y-2 text-sm text-white/70">
@@ -148,7 +189,8 @@ export default async function MembershipPaymentPage({
                 publishableKey={stripePublishableKey}
               />
               <p className="mt-3 text-xs text-white/50">
-                Členstvo sa aktivuje automaticky po Stripe webhook potvrdení platby.
+                Členstvo sa aktivuje automaticky po Stripe webhook potvrdení
+                platby.
               </p>
             </div>
 

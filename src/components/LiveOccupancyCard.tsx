@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import FadeIn from "@/components/FadeIn";
 import { createClient } from "@/lib/supabase/client";
@@ -51,7 +52,8 @@ export default function LiveOccupancyCard({
   const supabase = useMemo(() => createClient(), []);
   const [current, setCurrent] = useState<number>(Math.max(0, initialCount));
   const [members, setMembers] = useState<LivePresenceMember[]>(initialMembers);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] =
+    useState<boolean>(false);
   const tone = occupancyTone(current);
 
   useEffect(() => {
@@ -92,7 +94,8 @@ export default function LiveOccupancyCard({
           return {
             user_id: record.user_id,
             display_name: record.display_name,
-            avatar_url: typeof record.avatar_url === "string" ? record.avatar_url : null,
+            avatar_url:
+              typeof record.avatar_url === "string" ? record.avatar_url : null,
             check_in: record.check_in,
           };
         })
@@ -124,7 +127,7 @@ export default function LiveOccupancyCard({
             setCurrent((prev) => Math.max(0, prev - 1));
             void refreshMembers();
           }
-        }
+        },
       )
       .subscribe((status) => {
         setIsRealtimeConnected(status === "SUBSCRIBED");
@@ -143,75 +146,141 @@ export default function LiveOccupancyCard({
       <div
         className={`rounded-3xl border border-white/[0.08] ${compact ? "p-5" : "p-8"}`}
         style={{
-          background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
-          boxShadow: "0 0 50px rgba(220,38,38,0.07), inset 0 1px 0 rgba(255,255,255,0.06)",
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
+          boxShadow:
+            "0 0 50px rgba(220,38,38,0.07), inset 0 1px 0 rgba(255,255,255,0.06)",
         }}
       >
-        <div className={`flex items-center ${compact ? "justify-between" : "justify-between"} mb-3`}>
-          <span id="capacity-heading" className={compact ? "text-sm font-semibold text-white/80" : "text-base font-semibold text-white/80"}>
+        <div
+          className={`flex items-center ${compact ? "justify-between" : "justify-between"} mb-3`}
+        >
+          <span
+            id="capacity-heading"
+            className={
+              compact
+                ? "text-sm font-semibold text-white/80"
+                : "text-base font-semibold text-white/80"
+            }
+          >
             Aktuálna obsadenosť
           </span>
-          <span className={`text-xs px-3 py-1 rounded-full font-medium ${tone.badge}`}>
+          <span
+            className={`text-xs px-3 py-1 rounded-full font-medium ${tone.badge}`}
+          >
             {tone.label}
           </span>
         </div>
         <div className={compact ? "flex items-end justify-between gap-6" : ""}>
           <div>
-            <p className={`${compact ? "text-6xl" : "text-7xl"} font-black tabular-nums mt-4 tracking-tight ${tone.value}`}>
+            <p
+              className={`${compact ? "text-6xl" : "text-7xl"} font-black tabular-nums mt-4 tracking-tight ${tone.value}`}
+            >
               {current}
             </p>
-            <p className={compact ? "text-sm text-white/30 mt-1" : "text-sm text-white/30 mt-2 mb-5"}>Počet ľudí vo fitku práve teraz</p>
+            <p
+              className={
+                compact
+                  ? "text-sm text-white/30 mt-1"
+                  : "text-sm text-white/30 mt-2 mb-5"
+              }
+            >
+              Počet ľudí vo fitku práve teraz
+            </p>
           </div>
           {compact ? (
             <div className="text-right">
-              <p className="text-[11px] text-white/30 mb-1">Prahy: do 50 zelená, nad 50 oranžová, nad 100 červená</p>
-              <p className="text-[11px] text-white/20 mt-3">⚡ Realtime · {isRealtimeConnected ? "aktualizácia v reálnom čase" : "pripájam realtime"}</p>
+              <p className="text-[11px] text-white/30 mb-1">
+                Prahy: do 50 zelená, nad 50 oranžová, nad 100 červená
+              </p>
+              <p className="text-[11px] text-white/20 mt-3">
+                ⚡ Realtime ·{" "}
+                {isRealtimeConnected
+                  ? "aktualizácia v reálnom čase"
+                  : "pripájam realtime"}
+              </p>
             </div>
           ) : null}
         </div>
         {!compact ? (
           <>
-            <p className="text-[11px] text-white/30 mb-1">Prahy: do 50 zelená, nad 50 oranžová, nad 100 červená</p>
+            <p className="text-[11px] text-white/30 mb-1">
+              Prahy: do 50 zelená, nad 50 oranžová, nad 100 červená
+            </p>
             <p className="text-[11px] text-white/20 mt-6 text-center">
-              ⚡ Powered by Tap-it · {isRealtimeConnected ? "aktualizácia v reálnom čase" : "pripájam realtime"}
+              ⚡ Powered by Tap-it ·{" "}
+              {isRealtimeConnected
+                ? "aktualizácia v reálnom čase"
+                : "pripájam realtime"}
             </p>
           </>
         ) : null}
 
         {showMemberList ? (
-          <div className={`mt-6 rounded-2xl border border-white/10 bg-black/20 ${compact ? "p-3" : "p-4"}`}>
+          <div
+            className={`mt-6 rounded-2xl border border-white/10 bg-black/20 ${compact ? "p-3" : "p-4"}`}
+          >
             <div className="mb-3 flex items-center justify-between">
-              <p className={compact ? "text-xs font-semibold text-white/85" : "text-sm font-semibold text-white/85"}>Kto je teraz vo fitku</p>
-              <span className="text-xs text-white/40">{members.length} online</span>
+              <p
+                className={
+                  compact
+                    ? "text-xs font-semibold text-white/85"
+                    : "text-sm font-semibold text-white/85"
+                }
+              >
+                Kto je teraz vo fitku
+              </p>
+              <span className="text-xs text-white/40">
+                {members.length} online
+              </span>
             </div>
 
             {members.length === 0 ? (
-              <p className="text-sm text-white/45">Aktuálne nikto nie je prihlásený vo fitku.</p>
+              <p className="text-sm text-white/45">
+                Aktuálne nikto nie je prihlásený vo fitku.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {members.map((member) => {
-                  const initial = member.display_name.trim().charAt(0).toUpperCase() || "A";
+                  const initial =
+                    member.display_name.trim().charAt(0).toUpperCase() || "A";
 
                   return (
                     <li
                       key={`${member.user_id}-${member.check_in}`}
                       className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] ${compact ? "px-2.5 py-2" : "px-3 py-2"}`}
                     >
-                      <div className={`${compact ? "h-8 w-8" : "h-9 w-9"} flex items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/10 text-xs font-bold text-white`}>
+                      <div
+                        className={`${compact ? "h-8 w-8" : "h-9 w-9"} flex items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/10 text-xs font-bold text-white`}
+                      >
                         {member.avatar_url ? (
-                          <img
+                          <Image
                             src={member.avatar_url}
                             alt={member.display_name}
+                            width={compact ? 32 : 36}
+                            height={compact ? 32 : 36}
                             className="h-full w-full object-cover"
                             loading="lazy"
+                            unoptimized
                           />
                         ) : (
                           <span>{initial}</span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className={compact ? "truncate text-xs font-medium text-white" : "truncate text-sm font-medium text-white"}>{member.display_name}</p>
-                        <p className="text-xs text-white/45">Check-in {new Date(member.check_in).toLocaleTimeString()}</p>
+                        <p
+                          className={
+                            compact
+                              ? "truncate text-xs font-medium text-white"
+                              : "truncate text-sm font-medium text-white"
+                          }
+                        >
+                          {member.display_name}
+                        </p>
+                        <p className="text-xs text-white/45">
+                          Check-in{" "}
+                          {new Date(member.check_in).toLocaleTimeString()}
+                        </p>
                       </div>
                     </li>
                   );

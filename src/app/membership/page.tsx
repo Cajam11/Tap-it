@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import FlashMessageBanner from "@/components/FlashMessageBanner";
 import MembershipQrCard from "@/components/membership/MembershipQrCard";
@@ -37,7 +38,7 @@ export default async function MembershipPage() {
     getCurrentActiveMembership<{ membership: { name: string } | null }>(
       supabase,
       user.id,
-      "membership_id, status, membership:memberships(name)"
+      "membership_id, status, membership:memberships(name)",
     ),
   ]);
 
@@ -54,7 +55,7 @@ export default async function MembershipPage() {
       ? profileRes.data.full_name
       : typeof user.user_metadata?.full_name === "string"
         ? user.user_metadata.full_name
-        : user.email?.split("@")[0] ?? "Pouzivatel";
+        : (user.email?.split("@")[0] ?? "Pouzivatel");
 
   const avatarUrl =
     typeof profileRes.data?.avatar_url === "string"
@@ -79,21 +80,39 @@ export default async function MembershipPage() {
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profileRes.data?.full_name === "string" ? profileRes.data.full_name : null,
-    avatar_url: typeof profileRes.data?.avatar_url === "string" ? profileRes.data.avatar_url : null,
+    full_name:
+      typeof profileRes.data?.full_name === "string"
+        ? profileRes.data.full_name
+        : null,
+    avatar_url:
+      typeof profileRes.data?.avatar_url === "string"
+        ? profileRes.data.avatar_url
+        : null,
   };
 
-  const flashMessage = parseFlashCookieValue((await cookies()).get("tapit_flash")?.value);
+  const flashMessage = parseFlashCookieValue(
+    (await cookies()).get("tapit_flash")?.value,
+  );
 
   return (
     <>
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={NAV_LINKS}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="min-h-screen bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-5xl space-y-8">
@@ -101,7 +120,14 @@ export default async function MembershipPage() {
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profilovy avatar" className="h-full w-full object-cover" />
+                  <Image
+                    src={avatarUrl}
+                    alt="Profilovy avatar"
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <span className="text-3xl font-black text-white">
                     {(fullName.trim().charAt(0) || "U").toUpperCase()}
@@ -110,9 +136,15 @@ export default async function MembershipPage() {
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">ČLENSTVO</p>
-                <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">{fullName}</h1>
-                <p className="mt-1 text-sm text-white/60">{user.email ?? "Bez emailu"}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                  ČLENSTVO
+                </p>
+                <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+                  {fullName}
+                </h1>
+                <p className="mt-1 text-sm text-white/60">
+                  {user.email ?? "Bez emailu"}
+                </p>
               </div>
             </div>
           </section>
@@ -121,8 +153,12 @@ export default async function MembershipPage() {
 
           {!showQr && (
             <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-              <h2 className="text-2xl font-bold text-white">Aktívne členstvo</h2>
-              <p className="mt-3 text-white/70">Momentálne nemáš aktívne členstvo. Vyber si jedno nižšie.</p>
+              <h2 className="text-2xl font-bold text-white">
+                Aktívne členstvo
+              </h2>
+              <p className="mt-3 text-white/70">
+                Momentálne nemáš aktívne členstvo. Vyber si jedno nižšie.
+              </p>
 
               <div className="mt-8 grid gap-4 md:grid-cols-3 md:items-stretch">
                 {MEMBERSHIP_PLANS.map((plan) => {
@@ -138,7 +174,9 @@ export default async function MembershipPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-xl font-semibold text-white">{getPlanDisplayName(plan.name)}</h3>
+                        <h3 className="text-xl font-semibold text-white">
+                          {getPlanDisplayName(plan.name)}
+                        </h3>
                         {isActive ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-1 text-xs text-red-300">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Aktívna
@@ -146,7 +184,9 @@ export default async function MembershipPage() {
                         ) : null}
                       </div>
 
-                      <p className="mt-3 text-3xl font-black text-white">{plan.price}</p>
+                      <p className="mt-3 text-3xl font-black text-white">
+                        {plan.price}
+                      </p>
                       <p className="text-sm text-white/50">{plan.period}</p>
 
                       <ul className="mt-4 space-y-2 text-sm text-white/70">

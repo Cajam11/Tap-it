@@ -1,9 +1,19 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import WeightChart from "@/components/profile/WeightChart";
 import { createClient } from "@/lib/supabase/server";
-import { Award, CalendarCheck2, Clock3, Dumbbell, ShieldCheck, Trophy, LineChart as LineChartIcon, Settings } from "lucide-react";
+import {
+  Award,
+  CalendarCheck2,
+  Clock3,
+  Dumbbell,
+  ShieldCheck,
+  Trophy,
+  LineChart as LineChartIcon,
+  Settings,
+} from "lucide-react";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -18,25 +28,39 @@ type EarnedBadge = {
 };
 
 function normalizeGoal(value: unknown): Goal {
-  const allowed: Goal[] = ["strength", "fitness", "fat_loss", "mobility", "mixed"];
-  return typeof value === "string" && allowed.includes(value as Goal) ? (value as Goal) : "mixed";
+  const allowed: Goal[] = [
+    "strength",
+    "fitness",
+    "fat_loss",
+    "mobility",
+    "mixed",
+  ];
+  return typeof value === "string" && allowed.includes(value as Goal)
+    ? (value as Goal)
+    : "mixed";
 }
 
 function normalizeLevel(value: unknown): Level {
   const allowed: Level[] = ["beginner", "intermediate", "advanced"];
-  return typeof value === "string" && allowed.includes(value as Level) ? (value as Level) : "beginner";
+  return typeof value === "string" && allowed.includes(value as Level)
+    ? (value as Level)
+    : "beginner";
 }
 
 function normalizeEquipment(value: unknown): Equipment {
   const allowed: Equipment[] = ["none", "basic", "full_gym"];
-  return typeof value === "string" && allowed.includes(value as Equipment) ? (value as Equipment) : "basic";
+  return typeof value === "string" && allowed.includes(value as Equipment)
+    ? (value as Equipment)
+    : "basic";
 }
 
 function getCurrentStreak(checkIns: string[]) {
   if (!checkIns.length) return 0;
 
   const uniqueDays = Array.from(
-    new Set(checkIns.map((value) => new Date(value).toISOString().slice(0, 10)))
+    new Set(
+      checkIns.map((value) => new Date(value).toISOString().slice(0, 10)),
+    ),
   ).sort((a, b) => (a > b ? -1 : 1));
 
   let streak = 0;
@@ -44,7 +68,9 @@ function getCurrentStreak(checkIns: string[]) {
 
   const latestDate = new Date(uniqueDays[0]);
   const today = new Date();
-  const latestGapDays = Math.floor((today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24));
+  const latestGapDays = Math.floor(
+    (today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   if (latestGapDays > 1) return 0;
   if (latestGapDays === 1) {
@@ -128,7 +154,9 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, onboarding_completed_at, created_at")
+      .select(
+        "email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, onboarding_completed_at, created_at",
+      )
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -171,13 +199,14 @@ export default async function ProfilePage() {
   const profile = profileRes.data;
 
   const initialProfile = {
-    email: typeof profile?.email === "string" ? profile.email : user.email ?? "",
+    email:
+      typeof profile?.email === "string" ? profile.email : (user.email ?? ""),
     full_name:
       typeof profile?.full_name === "string"
         ? profile.full_name
         : typeof user.user_metadata?.full_name === "string"
           ? user.user_metadata.full_name
-          : user.email?.split("@")[0] ?? "",
+          : (user.email?.split("@")[0] ?? ""),
     avatar_url:
       typeof profile?.avatar_url === "string"
         ? profile.avatar_url
@@ -200,20 +229,27 @@ export default async function ProfilePage() {
     goal: normalizeGoal(profile?.goal),
     experience_level: normalizeLevel(profile?.experience_level),
     sessions_per_week:
-      typeof profile?.sessions_per_week === "number" ? profile.sessions_per_week : 3,
+      typeof profile?.sessions_per_week === "number"
+        ? profile.sessions_per_week
+        : 3,
     session_length_min:
-      typeof profile?.session_length_min === "number" ? profile.session_length_min : 45,
+      typeof profile?.session_length_min === "number"
+        ? profile.session_length_min
+        : 45,
     equipment_level: normalizeEquipment(profile?.equipment_level),
   };
 
   const monthTrainings = (monthEntriesRes.data ?? []).length;
   const totalTrainings = totalCountRes.count ?? 0;
   const monthMinutes = (monthEntriesRes.data ?? []).reduce(
-    (acc, row) => acc + (typeof row.duration_min === "number" ? row.duration_min : 0),
-    0
+    (acc, row) =>
+      acc + (typeof row.duration_min === "number" ? row.duration_min : 0),
+    0,
   );
 
-  const streakEntries = (streakEntriesRes.data ?? []).map((item) => item.check_in);
+  const streakEntries = (streakEntriesRes.data ?? []).map(
+    (item) => item.check_in,
+  );
   const lastTrainingAt = streakEntries[0] ?? null;
   const streak = getCurrentStreak(streakEntries);
 
@@ -229,10 +265,14 @@ export default async function ProfilePage() {
       : null;
 
   const memberSinceRaw =
-    (typeof profile?.created_at === "string" ? profile.created_at : null) ?? user.created_at;
+    (typeof profile?.created_at === "string" ? profile.created_at : null) ??
+    user.created_at;
 
   const memberSince = memberSinceRaw
-    ? new Date(memberSinceRaw).toLocaleDateString("sk-SK", { year: "numeric", month: "long" })
+    ? new Date(memberSinceRaw).toLocaleDateString("sk-SK", {
+        year: "numeric",
+        month: "long",
+      })
     : "neuvedene";
 
   const dynamicBadges = buildDynamicBadges({
@@ -250,13 +290,18 @@ export default async function ProfilePage() {
       {
         key: `db_${badge.name}`,
         name: badge.name,
-        description: typeof badge.description === "string" ? badge.description : "Odznak ziskany aktivitou.",
+        description:
+          typeof badge.description === "string"
+            ? badge.description
+            : "Odznak ziskany aktivitou.",
       },
     ];
   });
 
   const uniqueBadges = Array.from(
-    new Map([...dbBadges, ...dynamicBadges].map((badge) => [badge.name, badge])).values()
+    new Map(
+      [...dbBadges, ...dynamicBadges].map((badge) => [badge.name, badge]),
+    ).values(),
   ).slice(0, 8);
 
   const weightLogs = (weightLogsRes.data ?? []).reverse();
@@ -265,19 +310,31 @@ export default async function ProfilePage() {
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
-    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+    full_name:
+      typeof profile?.full_name === "string" ? profile.full_name : null,
+    avatar_url:
+      typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
   };
 
   return (
     <>
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={NAV_LINKS}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="relative min-h-screen overflow-hidden bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
@@ -296,48 +353,81 @@ export default async function ProfilePage() {
               <div className="flex flex-col items-center gap-4 lg:items-start">
                 <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 ring-4 ring-red-500/20">
                   {initialProfile.avatar_url ? (
-                    <img src={initialProfile.avatar_url} alt="Profilovy avatar" className="h-full w-full object-cover" />
+                    <Image
+                      src={initialProfile.avatar_url}
+                      alt="Profilovy avatar"
+                      width={128}
+                      height={128}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <span className="text-4xl font-black text-white">
-                      {(initialProfile.full_name.trim().charAt(0) || "U").toUpperCase()}
+                      {(
+                        initialProfile.full_name.trim().charAt(0) || "U"
+                      ).toUpperCase()}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-white/40">Member since {memberSince}</p>
+                <p className="text-xs text-white/40">
+                  Member since {memberSince}
+                </p>
                 <div className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-xs text-white/70">
-                  {hasActiveMembership ? "Aktivne clenstvo" : "Bez aktivneho clenstva"}
+                  {hasActiveMembership
+                    ? "Aktivne clenstvo"
+                    : "Bez aktivneho clenstva"}
                 </div>
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Profil</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                  Profil
+                </p>
                 <h1 className="mt-2 text-4xl font-black leading-tight tracking-tight text-white">
                   {initialProfile.full_name}
                 </h1>
-                <p className="mt-2 text-sm text-white/55">{initialProfile.email}</p>
+                <p className="mt-2 text-sm text-white/55">
+                  {initialProfile.email}
+                </p>
 
                 <p className="mt-5 max-w-3xl text-white/75">
-                  {initialProfile.bio || "Zatial bez bio. Doplnenie bude dostupne v nastaveniach profilu."}
+                  {initialProfile.bio ||
+                    "Zatial bez bio. Doplnenie bude dostupne v nastaveniach profilu."}
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">Ciel</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{initialProfile.goal}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">Uroven</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{initialProfile.experience_level}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">Vyska / Vaha</p>
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Ciel
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.height_cm ?? "-"} cm / {initialProfile.weight_kg ?? "-"} kg
+                      {initialProfile.goal}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">Vybavenie</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{initialProfile.equipment_level}</p>
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Uroven
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {initialProfile.experience_level}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Vyska / Vaha
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {initialProfile.height_cm ?? "-"} cm /{" "}
+                      {initialProfile.weight_kg ?? "-"} kg
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Vybavenie
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {initialProfile.equipment_level}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -350,7 +440,9 @@ export default async function ProfilePage() {
                 <p className="text-sm text-white/55">Treningy tento mesiac</p>
                 <CalendarCheck2 className="h-5 w-5 text-red-400" />
               </div>
-              <p className="mt-4 text-3xl font-black text-white">{monthTrainings}</p>
+              <p className="mt-4 text-3xl font-black text-white">
+                {monthTrainings}
+              </p>
             </article>
 
             <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -358,7 +450,9 @@ export default async function ProfilePage() {
                 <p className="text-sm text-white/55">Minut tento mesiac</p>
                 <Clock3 className="h-5 w-5 text-red-400" />
               </div>
-              <p className="mt-4 text-3xl font-black text-white">{monthMinutes}</p>
+              <p className="mt-4 text-3xl font-black text-white">
+                {monthMinutes}
+              </p>
             </article>
 
             <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -366,7 +460,9 @@ export default async function ProfilePage() {
                 <p className="text-sm text-white/55">Aktualny streak</p>
                 <Trophy className="h-5 w-5 text-red-400" />
               </div>
-              <p className="mt-4 text-3xl font-black text-white">{streak} dni</p>
+              <p className="mt-4 text-3xl font-black text-white">
+                {streak} dni
+              </p>
             </article>
 
             <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -375,7 +471,9 @@ export default async function ProfilePage() {
                 <ShieldCheck className="h-5 w-5 text-red-400" />
               </div>
               <p className="mt-4 text-lg font-bold text-white">
-                {hasActiveMembership ? membershipName ?? "Aktivne" : "Neaktivne"}
+                {hasActiveMembership
+                  ? (membershipName ?? "Aktivne")
+                  : "Neaktivne"}
               </p>
             </article>
           </section>
@@ -390,9 +488,16 @@ export default async function ProfilePage() {
               {uniqueBadges.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {uniqueBadges.map((badge) => (
-                    <div key={badge.key} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                      <p className="text-sm font-semibold text-white">{badge.name}</p>
-                      <p className="mt-1 text-xs text-white/60">{badge.description}</p>
+                    <div
+                      key={badge.key}
+                      className="rounded-xl border border-white/10 bg-black/20 p-4"
+                    >
+                      <p className="text-sm font-semibold text-white">
+                        {badge.name}
+                      </p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {badge.description}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -409,13 +514,26 @@ export default async function ProfilePage() {
                 <h2 className="text-lg font-bold">Aktivita</h2>
               </div>
               <div className="space-y-3 text-sm">
-                <p className="text-white/70">Celkovo treningov: <span className="font-semibold text-white">{totalTrainings}</span></p>
                 <p className="text-white/70">
-                  Posledny trening: <span className="font-semibold text-white">
-                    {lastTrainingAt ? new Date(lastTrainingAt).toLocaleDateString("sk-SK") : "zatial ziadny"}
+                  Celkovo treningov:{" "}
+                  <span className="font-semibold text-white">
+                    {totalTrainings}
                   </span>
                 </p>
-                <p className="text-white/70">Dlzka preferencie: <span className="font-semibold text-white">{initialProfile.session_length_min} min</span></p>
+                <p className="text-white/70">
+                  Posledny trening:{" "}
+                  <span className="font-semibold text-white">
+                    {lastTrainingAt
+                      ? new Date(lastTrainingAt).toLocaleDateString("sk-SK")
+                      : "zatial ziadny"}
+                  </span>
+                </p>
+                <p className="text-white/70">
+                  Dlzka preferencie:{" "}
+                  <span className="font-semibold text-white">
+                    {initialProfile.session_length_min} min
+                  </span>
+                </p>
               </div>
             </article>
           </section>

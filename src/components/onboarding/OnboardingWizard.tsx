@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { completeOnboarding } from "@/app/(auth)/actions";
@@ -15,12 +16,20 @@ type Goal = "strength" | "fitness" | "fat_loss" | "mobility" | "mixed";
 type Level = "beginner" | "intermediate" | "advanced";
 type Equipment = "none" | "basic" | "full_gym";
 
-function clampNumber(value: number, min: number, max: number, fallback: number) {
+function clampNumber(
+  value: number,
+  min: number,
+  max: number,
+  fallback: number,
+) {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(min, Math.min(max, value));
 }
 
-export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: Props) {
+export default function OnboardingWizard({
+  initialFullName,
+  initialAvatarUrl,
+}: Props) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +40,9 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
   const [weightKgInput, setWeightKgInput] = useState("75");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl] = useState<string | null>(initialAvatarUrl);
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
+    initialAvatarUrl,
+  );
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
@@ -40,7 +51,10 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
   const [sessionLengthMin, setSessionLengthMin] = useState(45);
   const [equipmentLevel, setEquipmentLevel] = useState<Equipment>("basic");
 
-  const progressPct = useMemo(() => Math.round((step / TOTAL_STEPS) * 100), [step]);
+  const progressPct = useMemo(
+    () => Math.round((step / TOTAL_STEPS) * 100),
+    [step],
+  );
 
   useEffect(() => {
     return () => {
@@ -142,7 +156,9 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
         // Non-blocking: allow completing onboarding without avatar upload
         nextAvatarUrl = avatarUrl;
       } else {
-        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+        const { data } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(filePath);
         nextAvatarUrl = data.publicUrl;
       }
     }
@@ -177,7 +193,9 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
     <section className="mx-auto w-full max-w-xl rounded-3xl border border-white/10 bg-[#0f0f0f]/80 backdrop-blur-xl p-6 sm:p-10 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
       <div className="mb-8">
         <div className="mb-3 flex items-center justify-between text-sm font-medium text-white/50">
-          <span>Krok {step} z {TOTAL_STEPS}</span>
+          <span>
+            Krok {step} z {TOTAL_STEPS}
+          </span>
           <span className="text-white/80">{progressPct}%</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
@@ -191,20 +209,22 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
       {step === 1 && (
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Rýchly setup profilu</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight mb-2">
+              Rýchly setup profilu
+            </h1>
             <p className="text-white/50 leading-relaxed">
-              Všetko hotové do 1 minúty. Nastavíme profil, ciel a preferencie tréningu, 
-              aby sme ti mohli priniesť čo najlepší zážitok.
+              Všetko hotové do 1 minúty. Nastavíme profil, ciel a preferencie
+              tréningu, aby sme ti mohli priniesť čo najlepší zážitok.
             </p>
           </div>
           <div className="rounded-2xl bg-white/5 p-5 border border-white/5 flex items-center gap-4">
-             <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-               <span className="text-2xl">⚡</span>
-             </div>
-             <div>
-               <h3 className="text-white font-medium">Bleskový proces</h3>
-               <p className="text-sm text-white/50">Len 4 jednoduché otázky.</p>
-             </div>
+            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <div>
+              <h3 className="text-white font-medium">Bleskový proces</h3>
+              <p className="text-sm text-white/50">Len 4 jednoduché otázky.</p>
+            </div>
           </div>
         </div>
       )}
@@ -215,10 +235,13 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
           <div className="flex items-center gap-4">
             {avatarPreviewUrl ? (
-              <img
+              <Image
                 src={avatarPreviewUrl}
                 alt="Profilova fotka"
+                width={64}
+                height={64}
                 className="h-16 w-16 rounded-full object-cover ring-2 ring-white/20"
+                unoptimized
               />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-xl font-bold text-white">
@@ -228,12 +251,20 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
             <label className="cursor-pointer rounded-xl border border-white/15 px-4 py-2 text-sm text-white hover:bg-white/5">
               Nahrat fotku
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </label>
           </div>
 
           <div>
-            <label htmlFor="fullName" className="mb-1.5 block text-sm text-white/70">
+            <label
+              htmlFor="fullName"
+              className="mb-1.5 block text-sm text-white/70"
+            >
               Zobrazovane meno
             </label>
             <input
@@ -263,7 +294,10 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="heightCm" className="mb-1.5 block text-sm text-white/70">
+              <label
+                htmlFor="heightCm"
+                className="mb-1.5 block text-sm text-white/70"
+              >
                 Vyska (cm)
               </label>
               <input
@@ -278,7 +312,10 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
             </div>
 
             <div>
-              <label htmlFor="weightKg" className="mb-1.5 block text-sm text-white/70">
+              <label
+                htmlFor="weightKg"
+                className="mb-1.5 block text-sm text-white/70"
+              >
                 Vaha (kg)
               </label>
               <input
@@ -353,10 +390,15 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
       {step === 4 && (
         <div className="space-y-5">
-          <h2 className="text-2xl font-semibold text-white">Treningove preferencie</h2>
+          <h2 className="text-2xl font-semibold text-white">
+            Treningove preferencie
+          </h2>
 
           <div>
-            <label htmlFor="sessions" className="mb-1.5 block text-sm text-white/70">
+            <label
+              htmlFor="sessions"
+              className="mb-1.5 block text-sm text-white/70"
+            >
               Treningy tyzdenne
             </label>
             <input
@@ -368,7 +410,9 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
               onChange={(e) => setSessionsPerWeek(Number(e.target.value))}
               className="w-full"
             />
-            <p className="mt-1 text-sm text-white/70">{sessionsPerWeek}x za tyzden</p>
+            <p className="mt-1 text-sm text-white/70">
+              {sessionsPerWeek}x za tyzden
+            </p>
           </div>
 
           <div>
@@ -419,14 +463,44 @@ export default function OnboardingWizard({ initialFullName, initialAvatarUrl }: 
 
       {step === 5 && (
         <div className="space-y-5">
-          <h2 className="text-2xl font-semibold text-white">Hotovo, skontroluj setup</h2>
+          <h2 className="text-2xl font-semibold text-white">
+            Hotovo, skontroluj setup
+          </h2>
           <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/80">
-            <p><span className="text-white/50">Meno:</span> {fullName.trim()}</p>
-            <p><span className="text-white/50">Vyska:</span> {clampNumber(Number(heightCmInput.replace(",", ".")), 120, 240, 175)} cm</p>
-            <p><span className="text-white/50">Vaha:</span> {clampNumber(Number(weightKgInput.replace(",", ".")), 35, 250, 75)} kg</p>
-            <p><span className="text-white/50">Ciel:</span> {goal ?? "Mix"}</p>
-            <p><span className="text-white/50">Uroven:</span> {level ?? "Zaciatocnik"}</p>
-            <p><span className="text-white/50">Treningy:</span> {sessionsPerWeek}x tyzdenne / {sessionLengthMin} min</p>
+            <p>
+              <span className="text-white/50">Meno:</span> {fullName.trim()}
+            </p>
+            <p>
+              <span className="text-white/50">Vyska:</span>{" "}
+              {clampNumber(
+                Number(heightCmInput.replace(",", ".")),
+                120,
+                240,
+                175,
+              )}{" "}
+              cm
+            </p>
+            <p>
+              <span className="text-white/50">Vaha:</span>{" "}
+              {clampNumber(
+                Number(weightKgInput.replace(",", ".")),
+                35,
+                250,
+                75,
+              )}{" "}
+              kg
+            </p>
+            <p>
+              <span className="text-white/50">Ciel:</span> {goal ?? "Mix"}
+            </p>
+            <p>
+              <span className="text-white/50">Uroven:</span>{" "}
+              {level ?? "Zaciatocnik"}
+            </p>
+            <p>
+              <span className="text-white/50">Treningy:</span> {sessionsPerWeek}
+              x tyzdenne / {sessionLengthMin} min
+            </p>
           </div>
           <p className="text-white/60">
             Po dokonceni ta presmerujeme na hlavnu stranku.

@@ -13,6 +13,7 @@ export default function TermsPage() {
       title="VŠEOBECNÉ OBCHODNÉ PODMIENKY"
       subtitle="Premium Gyms – Powered by Tap-it"
       effectiveDate="1. januára 2026"
+      pdfFilename="terms-and-conditions.pdf"
       toc={[
         { href: "#zakladne-ustanovenia", label: "Základné ustanovenia" },
         { href: "#clenstvo-a-vstup", label: "Členstvo a vstup" },

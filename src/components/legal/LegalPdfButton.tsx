@@ -2,11 +2,28 @@
 
 import { Download } from "lucide-react";
 
-export default function LegalPdfButton() {
+interface LegalPdfButtonProps {
+  pdfFilename?: string;
+}
+
+export default function LegalPdfButton({ pdfFilename }: LegalPdfButtonProps) {
+  const handleDownload = () => {
+    if (pdfFilename) {
+      const link = document.createElement("a");
+      link.href = `/legal-documents/${pdfFilename}`;
+      link.download = pdfFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      window.print();
+    }
+  };
+
   return (
     <button
       type="button"
-      onClick={() => window.print()}
+      onClick={handleDownload}
       className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/25 hover:bg-white/[0.06] hover:text-white focus-visible:ring-2 focus-visible:ring-white outline-none print:hidden"
       aria-label="Stiahnuť ako PDF"
       title="Stiahnuť ako PDF"

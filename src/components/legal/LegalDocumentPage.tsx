@@ -10,6 +10,7 @@ type LegalDocumentPageProps = {
   title: string;
   subtitle: string;
   effectiveDate: string;
+  pdfFilename?: string;
   toc: Array<{ href: string; label: string }>;
   footerLinks: Array<{
     href: string;
@@ -23,6 +24,7 @@ export default async function LegalDocumentPage({
   title,
   subtitle,
   effectiveDate,
+  pdfFilename,
   toc,
   footerLinks,
   children,
@@ -93,15 +95,15 @@ export default async function LegalDocumentPage({
               <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-3 leading-tight">
                 {title}
               </h1>
-              <p className="text-lg font-medium text-white/60">
-                {subtitle}
-              </p>
+              <p className="text-lg font-medium text-white/60">{subtitle}</p>
             </div>
             <div className="text-left md:text-right shrink-0 pb-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-1">
                 Posledná aktualizácia
               </p>
-              <p className="text-sm font-medium text-white/50">{effectiveDate}</p>
+              <p className="text-sm font-medium text-white/50">
+                {effectiveDate}
+              </p>
             </div>
           </header>
 
@@ -116,7 +118,7 @@ export default async function LegalDocumentPage({
 
               <div className="pt-8 border-t border-white/10 flex flex-col gap-6 mt-4">
                 <div>
-                  <LegalPdfButton />
+                  <LegalPdfButton pdfFilename={pdfFilename} />
                 </div>
                 <div className="flex flex-col gap-3 text-sm font-medium text-white/50">
                   {footerLinks.map((item) => (
@@ -125,16 +127,27 @@ export default async function LegalDocumentPage({
                       href={item.href}
                       className="hover:text-red-400 transition-colors inline-flex items-center gap-2 group"
                     >
-                      {item.direction === "left" && <span className="group-hover:-translate-x-1 transition-transform">←</span>}
+                      {item.direction === "left" && (
+                        <span className="group-hover:-translate-x-1 transition-transform">
+                          ←
+                        </span>
+                      )}
                       {item.label}
-                      {item.direction === "right" && <span className="group-hover:translate-x-1 transition-transform">→</span>}
+                      {item.direction === "right" && (
+                        <span className="group-hover:translate-x-1 transition-transform">
+                          →
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>
               </div>
             </aside>
 
-            <div id="document-scroll-container" className="flex-1 overflow-y-auto pr-4 pb-20 pt-2">
+            <div
+              id="document-scroll-container"
+              className="flex-1 overflow-y-auto pr-4 pb-20 pt-2"
+            >
               <div
                 className="max-w-3xl space-y-12 text-[1.05rem] leading-relaxed text-white/80 
                 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-white [&_h2]:tracking-tight [&_h2]:mb-6 [&_h2]:mt-0 

@@ -13,6 +13,7 @@ export default function CookiesPage() {
       title="ZÁSADY POUŽÍVANIA COOKIES"
       subtitle="Premium Gyms – Powered by Tap-it"
       effectiveDate="1. januára 2026"
+      pdfFilename="cookie-policy.pdf"
       toc={[
         { href: "#co-su-cookies", label: "Čo sú cookies" },
         { href: "#ake-cookies-pouzivame", label: "Aké cookies používame" },

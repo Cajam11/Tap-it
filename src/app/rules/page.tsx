@@ -13,6 +13,7 @@ export default function RulesPage() {
       title="PREVÁDZKOVÝ PORIADOK"
       subtitle="Premium Gyms – Powered by Tap-it"
       effectiveDate="1. januára 2026"
+      pdfFilename="operating-regulations.pdf"
       toc={[
         { href: "#vstup-do-fitnescentra", label: "Vstup do fitnescentra" },
         { href: "#oblecenie-a-vybavenie", label: "Oblečenie a vybavenie" },

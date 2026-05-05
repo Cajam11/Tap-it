@@ -13,6 +13,7 @@ export default function PrivacyPage() {
       title="OCHRANA OSOBNÝCH ÚDAJOV"
       subtitle="Premium Gyms – Powered by Tap-it"
       effectiveDate="1. januára 2026"
+      pdfFilename="privacy-policy.pdf"
       toc={[
         {
           href: "#prevadzkovatel-osobnych-udajov",

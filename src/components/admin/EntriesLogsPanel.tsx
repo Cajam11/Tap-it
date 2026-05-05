@@ -186,20 +186,20 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
   }, [supabase, fetchAndAddEntry]);
 
   const isCard = variant === "card";
-  const visibleLogs = logs.slice(0, isCard ? 6 : 10);
+  const visibleLogs = logs.slice(0, isCard ? 10 : 10);
 
   return (
     <aside
       className={
         isCard
-          ? "rounded-2xl border border-white/10 bg-white/[0.05] p-6"
+          ? "flex h-full flex-col rounded-3xl border border-white/10 bg-white/[0.05] p-6"
           : "h-full w-[380px] shrink-0 border-l border-white/5 bg-[#0b0b0c] p-3"
       }
     >
       <div
         className={
           isCard
-            ? "flex h-full min-h-[360px] flex-col"
+            ? "flex h-full flex-col"
             : "flex h-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-[#121213] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_24px_60px_rgba(0,0,0,0.45)]"
         }
       >
@@ -217,7 +217,7 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
           />
         </div>
 
-        <div className={`flex-1 space-y-1 ${isCard ? "" : "overflow-hidden"}`}>
+        <div className={`flex-1 space-y-1 overflow-y-auto pr-2 ${isCard ? "" : "overflow-hidden"}`}>
           {visibleLogs.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3 text-sm text-white/45">
               No scan logs yet.
@@ -258,7 +258,7 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
           )}
         </div>
 
-        <div className={isCard ? "pt-4" : "pt-3 text-center"}>
+        <div className={isCard ? "pt-4 mt-auto" : "pt-3 text-center"}>
           <Link href="/admin/logs" className="text-sm font-medium text-red-400 transition-colors hover:text-red-300">
             View All Logs
           </Link>

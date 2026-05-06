@@ -8,12 +8,20 @@ import { hasServerAdminAccess } from "@/lib/admin-access";
 
 const ALLOWED_ROLES = new Set(["user", "recepcny", "manager", "owner"]);
 
-export async function updateUserRole(formData: FormData) {
+type UpdateUserRoleResult = {
+  success?: true;
+  message?: string;
+  error?: string;
+};
+
+export async function updateUserRoleWithFeedback(
+  formData: FormData,
+): Promise<UpdateUserRoleResult> {
   const userId = String(formData.get("userId") ?? "").trim();
   const nextRole = String(formData.get("role") ?? "").trim();
 
   if (!userId || !ALLOWED_ROLES.has(nextRole)) {
-    redirect("/admin/users?status=error&message=Neplatny_vstup");
+    return { error: "Neplatny vstup" };
   }
 
   const supabase = await createClient();
@@ -22,16 +30,16 @@ export async function updateUserRole(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/admin/login");
+    return { error: "Nie ste prihlaseni" };
   }
 
   const isOwner = await hasServerAdminAccess(supabase, "owner");
   if (!isOwner) {
-    redirect("/admin/users?status=error&message=Nedostatocne_prava");
+    return { error: "Nedostatocne prava" };
   }
 
   if (user.id === userId && nextRole !== "owner") {
-    redirect("/admin/users?status=error&message=Owner_si_nemoze_odobrat_owner_rolu");
+    return { error: "Owner si nemoze odobrat owner rolu" };
   }
 
   const admin = createAdminClient();
@@ -41,9 +49,28 @@ export async function updateUserRole(formData: FormData) {
     .eq("id", userId);
 
   if (error) {
-    redirect("/admin/users?status=error&message=Zmena_roly_zlyhala");
+    return { error: "Zmena roly zlyhala" };
   }
 
   revalidatePath("/admin/users");
+  return { success: true, message: "Rola bola aktualizovana" };
+}
+
+export async function updateUserRole(formData: FormData) {
+  const result = await updateUserRoleWithFeedback(formData);
+
+  if (result.error) {
+    if (result.error === "Neplatny vstup") {
+      redirect("/admin/users?status=error&message=Neplatny_vstup");
+    }
+    if (result.error === "Nedostatocne prava") {
+      redirect("/admin/users?status=error&message=Nedostatocne_prava");
+    }
+    if (result.error === "Owner si nemoze odobrat owner rolu") {
+      redirect("/admin/users?status=error&message=Owner_si_nemoze_odobrat_owner_rolu");
+    }
+    redirect("/admin/users?status=error&message=Zmena_roly_zlyhala");
+  }
+
   redirect("/admin/users?status=success&message=Rola_bola_aktualizovana");
 }

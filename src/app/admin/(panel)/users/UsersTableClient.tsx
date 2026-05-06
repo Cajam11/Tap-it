@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type FormEvent } from 'react';
 import Link from 'next/link';
 import { searchUsers } from './search.server';
-import { updateUserRole } from './actions';
+import { updateUserRoleWithFeedback } from './actions';
 import { Search, X } from 'lucide-react';
 
 const ALLOWED_ROLES = ["user", "recepcny", "manager", "owner"] as const;
@@ -58,6 +58,11 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [flashMessage, setFlashMessage] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [role, setRole] = useState('all');
   const [onboarding, setOnboarding] = useState('all');
@@ -89,10 +94,46 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
     return () => clearTimeout(timer);
   }, [loadUsers]);
 
+  useEffect(() => {
+    if (!flashMessage) {
+      return;
+    }
+
+    const timer = setTimeout(() => setFlashMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [flashMessage]);
+
   const handleReset = () => {
     setQ('');
     setRole('all');
     setOnboarding('all');
+  };
+
+  const handleRoleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const userId = String(formData.get("userId") ?? "");
+
+    setSavingUserId(userId);
+    try {
+      const result = await updateUserRoleWithFeedback(formData);
+      if (result.error) {
+        setFlashMessage({ type: "error", message: result.error });
+        return;
+      }
+
+      setFlashMessage({
+        type: "success",
+        message: result.message || "Rola bola aktualizovana",
+      });
+      await loadUsers();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Neznama chyba";
+      setFlashMessage({ type: "error", message });
+    } finally {
+      setSavingUserId(null);
+    }
   };
 
   return (
@@ -190,6 +231,18 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
         </div>
       )}
 
+      {flashMessage && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            flashMessage.type === "success"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-red-500/30 bg-red-500/10 text-red-300"
+          }`}
+        >
+          {flashMessage.message}
+        </div>
+      )}
+
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <p className="text-sm text-white/60">
           Pocet profilov: <span className="font-semibold text-white">{rows.length}</span>
@@ -263,11 +316,12 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
                   <td className="px-4 py-3 text-white/60">{formatDate(row.created_at)}</td>
                   <td className="px-4 py-3">
                     {isOwner ? (
-                      <form action={updateUserRole} className="flex items-center gap-2">
+                      <form onSubmit={handleRoleSubmit} className="flex items-center gap-2">
                         <input type="hidden" name="userId" value={row.id} />
                         <select
                           name="role"
                           defaultValue={normalizeRole(row.role)}
+                          disabled={savingUserId === row.id}
                           className="admin-role-select rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
                         >
                           {ALLOWED_ROLES.map((r) => (
@@ -278,9 +332,13 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
                         </select>
                         <button
                           type="submit"
-                          className="rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+                          disabled={savingUserId === row.id}
+                          className="relative min-w-[72px] rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
                         >
-                          Ulozit
+                          <span className="invisible">Ukladam...</span>
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            {savingUserId === row.id ? "Ukladam..." : "Ulozit"}
+                          </span>
                         </button>
                       </form>
                     ) : (

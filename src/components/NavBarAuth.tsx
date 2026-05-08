@@ -14,6 +14,7 @@ import {
   Receipt,
   HelpCircle,
   BarChart3,
+  TrendingUp,
 } from "lucide-react";
 
 type NavUser = {
@@ -266,6 +267,14 @@ export default function NavBarAuth({
                   >
                     <Receipt className="w-4 h-4" />
                     Transakcie
+                  </Link>
+                  <Link
+                    href="/stats"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Štatistiky
                   </Link>
                   <Link
                     href="/help"

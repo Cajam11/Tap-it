@@ -11,39 +11,52 @@ interface ActivityCalendarProps {
 }
 
 interface DayData {
-  date: Date;
+  dateKey: string;
   minutes: number;
   count: number;
 }
 
-export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+function toUtcDayKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
-  function ymd(d: Date) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
+function parseCheckInDayKey(value: string): string | null {
+  const fromIsoPrefix = value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (fromIsoPrefix) return fromIsoPrefix;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return toUtcDayKey(parsed);
+}
+
+export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
+  const [currentMonthStart, setCurrentMonthStart] = useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  });
 
   const dayMap = useMemo(() => {
     const map = new Map<string, DayData>();
 
     entries.forEach((entry) => {
-      const date = new Date(entry.check_in);
-      const key = ymd(date);
+      const dayKey = parseCheckInDayKey(entry.check_in);
+      if (!dayKey) return;
 
-      if (!map.has(key)) {
-        map.set(key, {
-          date,
-          minutes: 0,
-          count: 0,
+      const current = map.get(dayKey);
+      if (!current) {
+        map.set(dayKey, {
+          dateKey: dayKey,
+          minutes: entry.duration_min ?? 0,
+          count: 1,
         });
+        return;
       }
 
-      const day = map.get(key)!;
-      day.minutes += entry.duration_min ?? 0;
-      day.count += 1;
+      current.minutes += entry.duration_min ?? 0;
+      current.count += 1;
     });
 
     return map;
@@ -66,33 +79,27 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
     return "bg-red-600/60 hover:bg-red-600/70";
   };
 
-  // Generate calendar days
-  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const lastDay = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  );
-  const daysInMonth = lastDay.getDate();
-  // Convert getDay() (0=Sunday) to our week format (0=Monday)
-  // JavaScript: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
-  // Our format: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
-  const jsDay = firstDay.getDay();
+  const year = currentMonthStart.getUTCFullYear();
+  const monthIndex = currentMonthStart.getUTCMonth();
+  const firstDay = new Date(Date.UTC(year, monthIndex, 1));
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0));
+  const daysInMonth = lastDay.getUTCDate();
+
+  const jsDay = firstDay.getUTCDay();
   const startingDayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
 
+  const monthKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
   const calendarDays: (DayData | null)[] = [];
 
-  // Add empty cells for days before month starts
-  for (let i = 0; i < startingDayOfWeek; i++) {
+  for (let i = 0; i < startingDayOfWeek; i += 1) {
     calendarDays.push(null);
   }
 
-  // Add all days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    const key = ymd(date);
-    const dayData = dayMap.get(key) || {
-      date,
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(Date.UTC(year, monthIndex, day));
+    const key = toUtcDayKey(date);
+    const dayData = dayMap.get(key) ?? {
+      dateKey: key,
       minutes: 0,
       count: 0,
     };
@@ -104,105 +111,110 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
     weeks.push(calendarDays.slice(i, i + 7));
   }
 
-  const monthName = currentDate.toLocaleDateString("sk-SK", {
+  const monthName = currentMonthStart.toLocaleDateString("sk-SK", {
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 
   const currentMonthMinutes = Array.from(dayMap.values())
-    .filter(
-      (day) =>
-        day.date.getMonth() === currentDate.getMonth() &&
-        day.date.getFullYear() === currentDate.getFullYear()
-    )
+    .filter((day) => day.dateKey.startsWith(monthKey))
     .reduce((sum, day) => sum + day.minutes, 0);
 
   const handlePrevMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    setCurrentMonthStart(
+      (prev) =>
+        new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() - 1, 1)),
     );
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    setCurrentMonthStart(
+      (prev) =>
+        new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 1)),
     );
   };
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-white/45">Tréningový Kalendár</p>
-          <p className="text-sm font-semibold text-white mt-1 capitalize">{monthName}</p>
+          <p className="text-xs uppercase tracking-wide text-white/45">
+            Treningovy kalendar
+          </p>
+          <p className="mt-1 text-sm font-semibold capitalize text-white">
+            {monthName}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="text-right mr-2">
+          <div className="mr-2 text-right">
             <p className="text-xs text-white/50">Spolu</p>
-            <p className="text-lg font-bold text-red-500">{currentMonthMinutes}m</p>
+            <p className="text-lg font-bold text-red-500">
+              {currentMonthMinutes}m
+            </p>
           </div>
           <button
+            type="button"
             onClick={handlePrevMonth}
-            className="p-1.5 rounded-lg border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-colors text-white/70 hover:text-white"
-            aria-label="Predchádzajúci mesiac"
+            className="rounded-lg border border-white/10 p-1.5 text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
+            aria-label="Predchadzajuci mesiac"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <button
+            type="button"
             onClick={handleNextMonth}
-            className="p-1.5 rounded-lg border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-colors text-white/70 hover:text-white"
-            aria-label="Ďalší mesiac"
+            className="rounded-lg border border-white/10 p-1.5 text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
+            aria-label="Dalsi mesiac"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="bg-white/[0.01] rounded-lg p-3">
+      <div className="rounded-lg bg-white/[0.01] p-3">
         <div className="grid grid-cols-7 gap-1">
-          {/* Weekday headers */}
-          {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((label) => (
-            <div
-              key={label}
-              className="text-center text-[10px] font-semibold text-white/40 py-1"
-            >
-              {label}
-            </div>
-          ))}
+          {["Po", "Ut", "St", "Ct", "Pi", "So", "Ne"].map(
+            (label, labelIndex) => (
+              <div
+                key={`${label}-${labelIndex}`}
+                className="py-1 text-center text-[10px] font-semibold text-white/40"
+              >
+                {label}
+              </div>
+            ),
+          )}
 
-          {/* Calendar days */}
           {weeks.map((week, weekIndex) =>
             week.map((day, dayIndex) => (
               <div
                 key={`${weekIndex}-${dayIndex}`}
-                className={`aspect-square rounded-md border transition-all cursor-help flex flex-col items-center justify-center text-[11px] ${
+                className={`flex aspect-square cursor-help flex-col items-center justify-center rounded-md border text-[11px] transition-all ${
                   day === null
-                    ? "bg-transparent border-transparent"
-                    : `border-white/10 ${getColor(day.minutes)} group`
+                    ? "border-transparent bg-transparent"
+                    : `border-white/10 ${getColor(day.minutes)}`
                 }`}
                 title={
                   day
-                    ? `${day.date.toLocaleDateString("sk-SK")}: ${day.minutes}min`
+                    ? `${day.dateKey}: ${day.minutes} min, ${day.count} vstupov`
                     : undefined
                 }
               >
                 {day && (
                   <>
-                    <span className="font-semibold text-white/80 leading-none">
-                      {day.date.getDate()}
+                    <span className="leading-none text-white/80">
+                      {Number(day.dateKey.slice(8, 10))}
                     </span>
                     {day.minutes > 0 && (
-                      <span className="text-[9px] text-white/60 mt-0.5">
+                      <span className="mt-0.5 text-[9px] text-white/60">
                         {day.minutes}m
                       </span>
                     )}
                   </>
                 )}
               </div>
-            ))
+            )),
           )}
         </div>
       </div>

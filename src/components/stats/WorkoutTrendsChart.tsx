@@ -10,120 +10,142 @@ interface WorkoutTrendsChartProps {
 }
 
 interface WeekData {
-  week: number;
+  key: string;
+  label: string;
   count: number;
   minutes: number;
-  label: string;
+}
+
+function toUtcDayKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function startOfIsoWeekUtc(date: Date): Date {
+  const normalized = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  const day = normalized.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  normalized.setUTCDate(normalized.getUTCDate() + diffToMonday);
+  return normalized;
+}
+
+function shiftWeeks(date: Date, weekDelta: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + weekDelta * 7);
+  return next;
 }
 
 export default function WorkoutTrendsChart({
   entries,
 }: WorkoutTrendsChartProps) {
   const weeklyData = useMemo(() => {
-    const weeks = new Map<string, WeekData>();
-    const today = new Date();
-    const currentYear = today.getFullYear();
+    const aggregate = new Map<string, { count: number; minutes: number }>();
 
     entries.forEach((entry) => {
-      const date = new Date(entry.check_in);
+      const parsed = new Date(entry.check_in);
+      if (Number.isNaN(parsed.getTime())) return;
 
-      // Only count entries from current year
-      if (date.getFullYear() !== currentYear) return;
-
-      const weekNum = Math.ceil(
-        (date.getDate() +
-          new Date(date.getFullYear(), date.getMonth(), 1).getDay()) /
-          7
-      );
-      const monthIndex = date.getMonth();
-
-      // Create week-month based key
-      const weekDate = new Date(date);
-      weekDate.setDate(
-        weekDate.getDate() - weekDate.getDay() - (7 * (13 - Math.ceil(date.getDate() / 7)))
-      ); // Approximate
-
-      const key = `${monthIndex}-w${weekNum}`;
-
-      if (!weeks.has(key)) {
-        weeks.set(key, {
-          week: weekNum,
-          count: 0,
-          minutes: 0,
-          label: `W${weekNum}`,
-        });
-      }
-
-      const weekData = weeks.get(key)!;
-      weekData.count += 1;
-      weekData.minutes += entry.duration_min ?? 0;
+      const weekStart = startOfIsoWeekUtc(parsed);
+      const weekKey = toUtcDayKey(weekStart);
+      const current = aggregate.get(weekKey) ?? { count: 0, minutes: 0 };
+      current.count += 1;
+      current.minutes += entry.duration_min ?? 0;
+      aggregate.set(weekKey, current);
     });
 
-    // Get last 12 weeks
-    const sorted = Array.from(weeks.values())
-      .sort((a, b) => a.week - b.week)
-      .slice(-12);
+    const currentWeekStart = startOfIsoWeekUtc(new Date());
+    const points: WeekData[] = [];
 
-    return sorted;
+    for (let i = 11; i >= 0; i -= 1) {
+      const weekStart = shiftWeeks(currentWeekStart, -i);
+      const weekKey = toUtcDayKey(weekStart);
+      const weekData = aggregate.get(weekKey);
+
+      points.push({
+        key: weekKey,
+        label: weekStart.toLocaleDateString("sk-SK", {
+          day: "2-digit",
+          month: "2-digit",
+          timeZone: "UTC",
+        }),
+        count: weekData?.count ?? 0,
+        minutes: weekData?.minutes ?? 0,
+      });
+    }
+
+    return points;
   }, [entries]);
 
-  const maxCount = Math.max(...weeklyData.map((w) => w.count), 1);
-  const maxMinutes = Math.max(...weeklyData.map((w) => w.minutes), 60);
+  const hasAnyData = weeklyData.some((week) => week.count > 0);
 
-  const chartWidth = 280;
-  const chartHeight = 150;
+  const maxCount = Math.max(...weeklyData.map((week) => week.count), 1);
+  const maxMinutes = Math.max(...weeklyData.map((week) => week.minutes), 60);
+
+  const chartWidth = 300;
+  const chartHeight = 160;
   const padding = 30;
-
   const graphWidth = chartWidth - padding * 2;
   const graphHeight = chartHeight - padding * 2;
 
-  if (weeklyData.length === 0) {
+  if (!hasAnyData) {
     return (
-      <div className="h-48 flex items-center justify-center text-white/40 text-sm">
-        Žiadne údaje o tréningoch
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
+        <p className="mb-4 text-xs uppercase tracking-wide text-white/45">
+          Trendy treningov
+        </p>
+        <div className="flex h-40 items-center justify-center text-sm text-white/40">
+          Ziadne udaje o treningoch za poslednych 12 tyzdnov.
+        </div>
       </div>
     );
   }
 
+  const denominator = Math.max(weeklyData.length - 1, 1);
+
   const countPoints = weeklyData.map((data, i) => {
-    const x = (i / (weeklyData.length - 1)) * graphWidth + padding;
+    const x = (i / denominator) * graphWidth + padding;
     const y = chartHeight - (data.count / maxCount) * graphHeight - padding;
     return `${x},${y}`;
   });
 
   const minutePoints = weeklyData.map((data, i) => {
-    const x = (i / (weeklyData.length - 1)) * graphWidth + padding;
+    const x = (i / denominator) * graphWidth + padding;
     const y = chartHeight - (data.minutes / maxMinutes) * graphHeight - padding;
     return `${x},${y}`;
   });
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-      <p className="text-xs uppercase tracking-wide text-white/45 mb-4">Trendy tréningov</p>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Visit count chart */}
+      <p className="mb-4 text-xs uppercase tracking-wide text-white/45">
+        Trendy treningov
+      </p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div>
-          <p className="text-sm font-semibold text-white/75 mb-3">Počet návštev (12 týždňov)</p>
+          <p className="mb-3 text-sm font-semibold text-white/75">
+            Pocet navstev (12 tyzdnov)
+          </p>
           <svg
             width="100%"
             height="140"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             className="w-full"
           >
-            {/* Grid lines */}
             {[0, 1, 2, 3].map((i) => (
               <line
-                key={`grid-h-${i}`}
+                key={`count-grid-${i}`}
                 x1={padding}
-                y1={padding + ((graphHeight / 3) * i)}
+                y1={padding + (graphHeight / 3) * i}
                 x2={chartWidth - padding}
-                y2={padding + ((graphHeight / 3) * i)}
+                y2={padding + (graphHeight / 3) * i}
                 stroke="rgba(255,255,255,0.05)"
                 strokeDasharray="2,2"
               />
             ))}
 
-            {/* Y axis */}
             <line
               x1={padding}
               y1={padding}
@@ -132,8 +154,6 @@ export default function WorkoutTrendsChart({
               stroke="rgba(255,255,255,0.1)"
               strokeWidth="1"
             />
-
-            {/* X axis */}
             <line
               x1={padding}
               y1={chartHeight - padding}
@@ -143,7 +163,6 @@ export default function WorkoutTrendsChart({
               strokeWidth="1"
             />
 
-            {/* Line */}
             <polyline
               points={countPoints.join(" ")}
               fill="none"
@@ -153,12 +172,11 @@ export default function WorkoutTrendsChart({
               strokeLinejoin="round"
             />
 
-            {/* Points */}
             {countPoints.map((point, i) => {
               const [x, y] = point.split(",").map(Number);
               return (
                 <circle
-                  key={i}
+                  key={`count-point-${weeklyData[i].key}`}
                   cx={x}
                   cy={y}
                   r="3"
@@ -170,29 +188,28 @@ export default function WorkoutTrendsChart({
           </svg>
         </div>
 
-        {/* Minutes chart */}
         <div>
-          <p className="text-sm font-semibold text-white/75 mb-3">Minúty za týždeň (12 týždňov)</p>
+          <p className="mb-3 text-sm font-semibold text-white/75">
+            Minuty za tyzden (12 tyzdnov)
+          </p>
           <svg
             width="100%"
             height="140"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             className="w-full"
           >
-            {/* Grid lines */}
             {[0, 1, 2, 3].map((i) => (
               <line
-                key={`grid-h-${i}`}
+                key={`minute-grid-${i}`}
                 x1={padding}
-                y1={padding + ((graphHeight / 3) * i)}
+                y1={padding + (graphHeight / 3) * i}
                 x2={chartWidth - padding}
-                y2={padding + ((graphHeight / 3) * i)}
+                y2={padding + (graphHeight / 3) * i}
                 stroke="rgba(255,255,255,0.05)"
                 strokeDasharray="2,2"
               />
             ))}
 
-            {/* Y axis */}
             <line
               x1={padding}
               y1={padding}
@@ -201,8 +218,6 @@ export default function WorkoutTrendsChart({
               stroke="rgba(255,255,255,0.1)"
               strokeWidth="1"
             />
-
-            {/* X axis */}
             <line
               x1={padding}
               y1={chartHeight - padding}
@@ -212,32 +227,34 @@ export default function WorkoutTrendsChart({
               strokeWidth="1"
             />
 
-            {/* Line */}
             <polyline
               points={minutePoints.join(" ")}
               fill="none"
-              stroke="rgb(168, 85, 247)"
+              stroke="rgb(251, 146, 60)"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
 
-            {/* Points */}
             {minutePoints.map((point, i) => {
               const [x, y] = point.split(",").map(Number);
               return (
                 <circle
-                  key={i}
+                  key={`minute-point-${weeklyData[i].key}`}
                   cx={x}
                   cy={y}
                   r="3"
-                  fill="rgb(168, 85, 247)"
+                  fill="rgb(251, 146, 60)"
                   opacity="0.9"
                 />
               );
             })}
           </svg>
         </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between text-[10px] text-white/40">
+        <span>{weeklyData[0]?.label}</span>
+        <span>{weeklyData[weeklyData.length - 1]?.label}</span>
       </div>
     </div>
   );

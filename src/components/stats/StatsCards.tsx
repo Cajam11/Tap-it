@@ -1,18 +1,12 @@
 "use client";
 
-import {
-  CalendarCheck2,
-  Clock3,
-  Flame,
-  TrendingUp,
-} from "lucide-react";
+import { CalendarCheck2, Clock3, Flame, TrendingUp } from "lucide-react";
 
 interface StatsCardsProps {
   monthTrainings: number;
   monthMinutes: number;
   totalTrainings: number;
   streak: number;
-  lastTrainingAt: string | null;
 }
 
 export default function StatsCards({
@@ -20,29 +14,27 @@ export default function StatsCards({
   monthMinutes,
   totalTrainings,
   streak,
-  lastTrainingAt,
 }: StatsCardsProps) {
-  const avgMinutesPerSession =
-    monthTrainings > 0 ? Math.round(monthMinutes / monthTrainings) : 0;
+  const formatter = new Intl.NumberFormat("sk-SK");
 
   const stats = [
     {
-      label: "Tréningy tento mesiac",
+      label: "Treningy tento mesiac",
       value: monthTrainings,
       icon: CalendarCheck2,
     },
     {
-      label: "Minút tento mesiac",
+      label: "Minuty tento mesiac",
       value: monthMinutes,
       icon: Clock3,
     },
     {
-      label: "Aktuálny streak",
+      label: "Aktualny streak",
       value: streak,
       icon: Flame,
     },
     {
-      label: "Celkem treningů",
+      label: "Celkovo treningov",
       value: totalTrainings,
       icon: TrendingUp,
     },
@@ -61,7 +53,9 @@ export default function StatsCards({
               <p className="text-xs text-white/55">{stat.label}</p>
               <Icon className="h-4 w-4 text-red-400" />
             </div>
-            <p className="mt-3 text-2xl font-black text-white">{stat.value}</p>
+            <p className="mt-3 text-2xl font-black text-white">
+              {formatter.format(stat.value)}
+            </p>
           </article>
         );
       })}

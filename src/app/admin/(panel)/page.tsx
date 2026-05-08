@@ -153,8 +153,6 @@ export default async function AdminDashboardPage() {
   const maxDailyVisits = Math.max(1, ...dailyVisitSeries.map((day) => day.value));
   const weeklyVisitsTotal = dailyVisitSeries.reduce((sum, day) => sum + day.value, 0);
   const dailyVisitsAverage = Math.round((weeklyVisitsTotal / dailyVisitSeries.length) * 10) / 10;
-  const todayVisitCount = dailyVisitSeries[dailyVisitSeries.length - 1]?.value || 0;
-
     return (
       <div className="flex flex-col h-full gap-6">
         {/* Header */}

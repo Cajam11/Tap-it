@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
+import { Award, Trophy } from "lucide-react";
 import NavBarAuth from "@/components/NavBarAuth";
 import WeightChart from "@/components/profile/WeightChart";
 import ActivityCalendar from "@/components/stats/ActivityCalendar";
 import WorkoutTrendsChart from "@/components/stats/WorkoutTrendsChart";
 import StatsCards from "@/components/stats/StatsCards";
 import { createClient } from "@/lib/supabase/server";
-import { Trophy, Award } from "lucide-react";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -15,33 +15,75 @@ type EarnedBadge = {
   description: string;
 };
 
-function getCurrentStreak(checkIns: string[]) {
-  if (!checkIns.length) return 0;
+type EntryRow = {
+  check_in: string;
+  duration_min: number | null;
+};
 
-  const uniqueDays = Array.from(
-    new Set(
-      checkIns.map((value) => new Date(value).toISOString().slice(0, 10)),
-    ),
-  ).sort((a, b) => (a > b ? -1 : 1));
+type DbQueryErrorLike = {
+  code?: string | null;
+  message?: string | null;
+};
 
-  let streak = 0;
-  const cursor = new Date();
-
-  const latestDate = new Date(uniqueDays[0]);
-  const today = new Date();
-  const latestGapDays = Math.floor(
-    (today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24),
+function isMissingTableError(
+  error: DbQueryErrorLike | null | undefined,
+  tableName: string,
+): boolean {
+  return Boolean(
+    error?.code === "PGRST205" &&
+      typeof error.message === "string" &&
+      error.message.includes(`'public.${tableName}'`),
   );
+}
 
-  if (latestGapDays > 1) return 0;
-  if (latestGapDays === 1) {
-    cursor.setDate(cursor.getDate() - 1);
+function toUtcDayKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function parseCheckInDayKey(value: string): string | null {
+  const fromIsoPrefix = value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (fromIsoPrefix) return fromIsoPrefix;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return toUtcDayKey(parsed);
+}
+
+function shiftUtcDayKey(dayKey: string, days: number): string {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return toUtcDayKey(date);
+}
+
+function getCurrentStreak(checkIns: string[]): number {
+  const uniqueDays = new Set<string>();
+
+  checkIns.forEach((checkIn) => {
+    const dayKey = parseCheckInDayKey(checkIn);
+    if (dayKey) uniqueDays.add(dayKey);
+  });
+
+  if (uniqueDays.size === 0) return 0;
+
+  const sortedDays = Array.from(uniqueDays).sort((a, b) => (a < b ? 1 : -1));
+  const latestDay = sortedDays[0];
+  const todayKey = toUtcDayKey(new Date());
+  const yesterdayKey = shiftUtcDayKey(todayKey, -1);
+
+  if (latestDay !== todayKey && latestDay !== yesterdayKey) {
+    return 0;
   }
 
-  const daySet = new Set(uniqueDays);
-  while (daySet.has(cursor.toISOString().slice(0, 10))) {
+  let streak = 0;
+  let cursor = latestDay === todayKey ? todayKey : yesterdayKey;
+
+  while (uniqueDays.has(cursor)) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor = shiftUtcDayKey(cursor, -1);
   }
 
   return streak;
@@ -83,7 +125,7 @@ function buildDynamicBadges(stats: {
     badges.push({
       key: "month_8",
       name: "Weekly Regular",
-      description: "Aspoň 8 treningov za mesiac.",
+      description: "Aspo 8 treningov za mesiac.",
     });
   }
 
@@ -91,7 +133,7 @@ function buildDynamicBadges(stats: {
     badges.push({
       key: "month_16",
       name: "Monthly Machine",
-      description: "Aspoň 16 treningov za mesiac.",
+      description: "Aspo 16 treningov za mesiac.",
     });
   }
 
@@ -140,9 +182,10 @@ export default async function StatsPage() {
     redirect("/login");
   }
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const monthStartUtc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+  );
 
   const [
     monthEntriesRes,
@@ -157,7 +200,7 @@ export default async function StatsPage() {
       .from("entries")
       .select("duration_min, check_in")
       .eq("user_id", user.id)
-      .gte("check_in", monthStart.toISOString()),
+      .gte("check_in", monthStartUtc.toISOString()),
     supabase
       .from("entries")
       .select("id", { count: "exact", head: true })
@@ -169,7 +212,7 @@ export default async function StatsPage() {
       .order("check_in", { ascending: false }),
     supabase
       .from("user_memberships")
-      .select("status, end_date, membership:memberships(name)")
+      .select("status, end_date")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("start_date", { ascending: false })
@@ -194,6 +237,31 @@ export default async function StatsPage() {
       .maybeSingle(),
   ]);
 
+  if (monthEntriesRes.error || totalCountRes.error || streakEntriesRes.error) {
+    console.error("Failed to load core stats data", {
+      monthEntriesError: monthEntriesRes.error,
+      totalCountError: totalCountRes.error,
+      streakEntriesError: streakEntriesRes.error,
+    });
+    throw new Error("Nepodarilo sa nacitat statistiky.");
+  }
+
+  if (membershipRes.error) {
+    console.error("Failed to load membership data", membershipRes.error);
+  }
+  if (dbBadgesRes.error && !isMissingTableError(dbBadgesRes.error, "user_badges")) {
+    console.error("Failed to load badges", dbBadgesRes.error);
+  }
+  if (weightLogsRes.error) {
+    console.error("Failed to load weight logs", weightLogsRes.error);
+  }
+  if (profileRes.error) {
+    console.error("Failed to load profile", profileRes.error);
+  }
+
+  const allEntries = (streakEntriesRes.data ?? []).filter(
+    (item): item is EntryRow => typeof item.check_in === "string",
+  );
   const monthTrainings = (monthEntriesRes.data ?? []).length;
   const totalTrainings = totalCountRes.count ?? 0;
   const monthMinutes = (monthEntriesRes.data ?? []).reduce(
@@ -202,14 +270,19 @@ export default async function StatsPage() {
     0,
   );
 
-  const streakEntries = (streakEntriesRes.data ?? []).map(
-    (item) => item.check_in,
-  );
-  const lastTrainingAt = streakEntries[0] ?? null;
+  const streakEntries = allEntries.map((item) => item.check_in);
   const streak = getCurrentStreak(streakEntries);
 
   const membershipRow = membershipRes.data;
-  const hasActiveMembership = Boolean(membershipRow);
+  const membershipEndTimestamp = membershipRow?.end_date
+    ? new Date(membershipRow.end_date).getTime()
+    : null;
+  const hasActiveMembership = Boolean(
+    membershipRow &&
+      (membershipEndTimestamp === null ||
+        Number.isNaN(membershipEndTimestamp) ||
+        membershipEndTimestamp >= Date.now()),
+  );
 
   const dynamicBadges = buildDynamicBadges({
     monthTrainings,
@@ -240,7 +313,21 @@ export default async function StatsPage() {
     ).values(),
   );
 
-  const weightLogs = (weightLogsRes.data ?? []).reverse();
+  const weightLogs = (weightLogsRes.data ?? [])
+    .filter(
+      (
+        log,
+      ): log is { id: string | number; weight_kg: number; created_at: string } =>
+        (typeof log.id === "string" || typeof log.id === "number") &&
+        typeof log.weight_kg === "number" &&
+        typeof log.created_at === "string",
+    )
+    .map((log) => ({
+      id: String(log.id),
+      weight_kg: log.weight_kg,
+      created_at: log.created_at,
+    }))
+    .reverse();
 
   const profile = profileRes.data;
   const navUser = {
@@ -277,63 +364,58 @@ export default async function StatsPage() {
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-6xl space-y-6">
-          {/* Header (open space) */}
-          <div className="mb-6">
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col pb-4">
+          <div className="mb-5 shrink-0">
             <p className="text-xs uppercase tracking-[0.2em] text-white/45">
-              Štatistiky
+              Statistiky
             </p>
-            <h1 className="text-4xl sm:text-5xl font-black leading-tight tracking-tight text-white mt-2">
-              Váš Tréninkový Prehl'ad
+            <h1 className="mt-2 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
+              Vas treningovy prehlad
             </h1>
-            <p className="text-white/60 text-sm mt-2">
-              Detailný prehľad vašej aktivity a pokroku
+            <p className="mt-2 text-sm text-white/60">
+              Detailny prehlad vasej aktivity a pokroku
             </p>
           </div>
 
-          {/* Main Stats Cards */}
-          <section>
+          <section className="mb-5 shrink-0">
             <StatsCards
               monthTrainings={monthTrainings}
               monthMinutes={monthMinutes}
               totalTrainings={totalTrainings}
               streak={streak}
-              lastTrainingAt={lastTrainingAt}
             />
           </section>
 
-          {/* Two Column Layout: Calendar + Trends */}
-          <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch">
-            {/* Left Column - Calendar + Badges (stacked, badges bottom-aligned) */}
-            <div className="lg:col-span-1 flex flex-col justify-between h-full">
-              <div>
-                <ActivityCalendar entries={streakEntriesRes.data ?? []} />
+          <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+            <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
+              <div className="shrink-0">
+                <ActivityCalendar entries={allEntries} />
               </div>
 
-              <div className="mt-4">
+              <div className="min-h-0 flex-1">
                 {uniqueBadges.length > 0 ? (
-                  <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Trophy className="w-5 h-5 text-red-500" />
+                  <section className="flex h-full min-h-0 flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl sm:p-8">
+                    <div className="mb-4 shrink-0 flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-red-500" />
                       <p className="text-xs uppercase tracking-[0.2em] text-white/45">
-                        Vaše Odznaky
+                        Vase odznaky
                       </p>
                     </div>
 
-                    <div className="max-h-[22rem] overflow-auto pr-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {uniqueBadges.map((badge) => (
                           <div
                             key={badge.key}
-                            className="rounded-2xl border border-red-500/30 bg-white/[0.02] p-4 hover:border-red-500/50 hover:bg-red-500/10 transition-all"
+                            className="rounded-xl border border-red-500/30 bg-white/[0.02] p-3 transition-all hover:border-red-500/50 hover:bg-red-500/8"
                           >
-                            <div className="flex items-start gap-3">
-                              <Award className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex items-start gap-2">
+                              <Award className="mt-0.5 h-3 w-3 flex-shrink-0 text-red-500" />
                               <div className="flex-1">
-                                <h3 className="font-semibold text-white text-xs">
+                                <h3 className="text-[12px] font-semibold leading-tight text-white">
                                   {badge.name}
                                 </h3>
-                                <p className="text-[11px] text-white/50 mt-1.5">
+                                <p className="mt-1 text-[10px] text-white/50">
                                   {badge.description}
                                 </p>
                               </div>
@@ -344,38 +426,40 @@ export default async function StatsPage() {
                     </div>
                   </section>
                 ) : (
-                  <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl text-center">
-                    <Trophy className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                    <p className="text-white/50 text-sm">
-                      Zatiaľ nemáte žiadne odznaky. Pokračujte v tréningu a odomknete ich!
+                  <section className="flex h-full min-h-0 flex-col justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl sm:p-8">
+                    <Trophy className="mx-auto mb-3 h-8 w-8 text-white/20" />
+                    <p className="text-sm text-white/50">
+                      Zatial nemate ziadne odznaky. Pokracujte v treningu a
+                      odomknete ich.
                     </p>
                   </section>
                 )}
               </div>
             </div>
 
-            {/* Right Column - Activity Info (trends on top, weight chart bottom) */}
-            <div className="lg:col-span-2 flex flex-col justify-between h-full space-y-6">
-              <div>
-                <WorkoutTrendsChart entries={streakEntriesRes.data ?? []} />
+            <div className="flex min-h-0 flex-col gap-6 lg:col-span-2">
+              <div className="shrink-0">
+                <WorkoutTrendsChart entries={allEntries} />
               </div>
 
               {weightLogs.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-                  <p className="text-xs uppercase tracking-wide text-white/45 mb-4">Váhový trend</p>
-                  <WeightChart
-                    logs={weightLogs.map((log) => ({
-                      id: log.id,
-                      weight_kg: log.weight_kg,
-                      created_at: log.created_at,
-                    }))}
-                  />
+                <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
+                  <p className="mb-4 shrink-0 text-xs uppercase tracking-wide text-white/45">
+                    Vahovy trend
+                  </p>
+                  <div className="min-h-0 flex-1">
+                    <WeightChart
+                      logs={weightLogs.map((log) => ({
+                        id: log.id,
+                        weight_kg: log.weight_kg,
+                        created_at: log.created_at,
+                      }))}
+                    />
+                  </div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* bottom badges removed — badges are rendered under the calendar for aligned layout */}
         </div>
       </main>
     </>

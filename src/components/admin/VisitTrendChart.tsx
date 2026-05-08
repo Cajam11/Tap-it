@@ -89,14 +89,17 @@ export default function VisitTrendChart({ dailyVisitSeries, maxDailyVisits }: Vi
                     {/* Bar Container */}
                     <div className="relative flex h-full w-full max-w-[48px] items-end justify-center">
                       <div
-                        className={`w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        className={`w-full transition-all duration-500 ${
                           isToday
                             ? "bg-gradient-to-t from-red-600/80 to-red-400 shadow-[0_0_24px_rgba(248,113,113,0.25)] border-t border-red-300/60 rounded-t-xl"
                             : day.value > 0 
                               ? "bg-gradient-to-t from-white/[0.03] to-white/[0.08] border-t border-white/10 group-hover:from-red-600/40 group-hover:to-red-400/50 group-hover:border-red-300/40 rounded-t-xl"
                               : "bg-white/[0.02] border-t border-white/5 rounded-t-md" // Nulové hodnoty
                         }`}
-                        style={{ height: heightPercent === 0 ? "4px" : `${heightPercent}%` }}
+                        style={{
+                          height: heightPercent === 0 ? "4px" : `${heightPercent}%`,
+                          transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
+                        }}
                       />
                     </div>
 

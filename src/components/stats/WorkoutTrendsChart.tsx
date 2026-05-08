@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 interface WorkoutTrendsChartProps {
   entries: Array<{
     check_in: string;
     duration_min: number | null;
   }>;
+  className?: string;
 }
 
 interface WeekData {
@@ -41,6 +43,7 @@ function shiftWeeks(date: Date, weekDelta: number): Date {
 
 export default function WorkoutTrendsChart({
   entries,
+  className,
 }: WorkoutTrendsChartProps) {
   const weeklyData = useMemo(() => {
     const aggregate = new Map<string, { count: number; minutes: number }>();
@@ -93,11 +96,16 @@ export default function WorkoutTrendsChart({
 
   if (!hasAnyData) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-        <p className="mb-4 text-xs uppercase tracking-wide text-white/45">
+      <div
+        className={cn(
+          "flex flex-col h-full rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm",
+          className,
+        )}
+      >
+        <p className="mb-4 shrink-0 text-xs uppercase tracking-wide text-white/45">
           Trendy treningov
         </p>
-        <div className="flex h-40 items-center justify-center text-sm text-white/40">
+        <div className="flex flex-1 min-h-0 items-center justify-center text-sm text-white/40">
           Ziadne udaje o treningoch za poslednych 12 tyzdnov.
         </div>
       </div>
@@ -119,20 +127,26 @@ export default function WorkoutTrendsChart({
   });
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-      <p className="mb-4 text-xs uppercase tracking-wide text-white/45">
+    <div
+      className={cn(
+        "flex flex-col h-full rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm",
+        className,
+      )}
+    >
+      <p className="mb-4 shrink-0 text-xs uppercase tracking-wide text-white/45">
         Trendy treningov
       </p>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div>
-          <p className="mb-3 text-sm font-semibold text-white/75">
+      <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="flex flex-col">
+          <p className="mb-3 text-sm font-semibold text-white/75 shrink-0">
             Pocet navstev (12 tyzdnov)
           </p>
           <svg
             width="100%"
-            height="140"
+            height="100%"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-            className="w-full"
+            preserveAspectRatio="none"
+            className="w-full flex-1 min-h-[100px] max-h-[140px]"
           >
             {[0, 1, 2, 3].map((i) => (
               <line
@@ -188,15 +202,16 @@ export default function WorkoutTrendsChart({
           </svg>
         </div>
 
-        <div>
-          <p className="mb-3 text-sm font-semibold text-white/75">
+        <div className="flex flex-col">
+          <p className="mb-3 text-sm font-semibold text-white/75 shrink-0">
             Minuty za tyzden (12 tyzdnov)
           </p>
           <svg
             width="100%"
-            height="140"
+            height="100%"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-            className="w-full"
+            preserveAspectRatio="none"
+            className="w-full flex-1 min-h-[100px] max-h-[140px]"
           >
             {[0, 1, 2, 3].map((i) => (
               <line
@@ -252,7 +267,7 @@ export default function WorkoutTrendsChart({
           </svg>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-[10px] text-white/40">
+      <div className="mt-3 flex shrink-0 items-center justify-between text-[10px] text-white/40">
         <span>{weeklyData[0]?.label}</span>
         <span>{weeklyData[weeklyData.length - 1]?.label}</span>
       </div>

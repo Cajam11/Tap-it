@@ -19,10 +19,16 @@ interface WeightLog {
 
 interface WeightChartProps {
   logs: WeightLog[];
+  heightClassName?: string;
 }
 
-export default function WeightChart({ logs }: WeightChartProps) {
+export default function WeightChart({
+  logs,
+  heightClassName,
+}: WeightChartProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const chartHeightClass =
+    heightClassName ?? "h-[220px] sm:h-64 lg:h-72";
 
   useEffect(() => {
     // Malicke oneskorenie pre krasny efekt nabehnutia chartu a zabranenie hydration mismatchu
@@ -53,7 +59,9 @@ export default function WeightChart({ logs }: WeightChartProps) {
 
   if (!isMounted) {
     return (
-      <div className="flex h-64 w-full animate-pulse flex-col items-start justify-end gap-6 rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+      <div
+        className={`flex w-full animate-pulse flex-col items-start justify-end gap-6 rounded-2xl border border-white/5 bg-white/[0.02] p-6 ${chartHeightClass}`}
+      >
         <div className="h-[1px] w-full bg-white/5" />
         <div className="h-[1px] w-full bg-white/5" />
         <div className="h-[1px] w-full bg-white/5" />
@@ -71,7 +79,9 @@ export default function WeightChart({ logs }: WeightChartProps) {
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className="flex h-64 w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-sm text-white/40">
+      <div
+        className={`flex w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-sm text-white/40 ${chartHeightClass}`}
+      >
         <p>Zatiaľ nemáš žiadne záznamy o váhe.</p>
       </div>
     );
@@ -88,7 +98,7 @@ export default function WeightChart({ logs }: WeightChartProps) {
   }
 
   return (
-    <div className="h-64 w-full">
+    <div className={`${chartHeightClass} w-full`}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 20, right: 20, left: -25, bottom: 0 }}>
           <defs>

@@ -360,12 +360,12 @@ export default async function StatsPage() {
         initialProfile={navProfile}
       />
 
-      <main className="relative h-screen overflow-hidden bg-[#080808] px-4 pt-28 sm:px-6 lg:px-8">
+      <main className="relative min-h-screen overflow-x-hidden bg-[#080808] px-4 pb-8 pt-28 sm:px-6 sm:pb-10 lg:px-8 lg:pb-12">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col pb-4">
-          <div className="mb-5 shrink-0">
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 pb-4">
+          <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/45">
               Statistiky
             </p>
@@ -377,7 +377,7 @@ export default async function StatsPage() {
             </p>
           </div>
 
-          <section className="mb-5 shrink-0">
+          <section>
             <StatsCards
               monthTrainings={monthTrainings}
               monthMinutes={monthMinutes}
@@ -386,36 +386,36 @@ export default async function StatsPage() {
             />
           </section>
 
-          <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-3 lg:items-stretch">
-            <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
+          <div className="grid gap-6 lg:gap-x-6 lg:gap-y-4 lg:grid-cols-3 lg:grid-rows-[300px_320px] lg:items-stretch">
+            <div className="flex flex-col gap-4 lg:col-span-1 lg:row-span-2 lg:row-start-1 lg:h-full lg:min-h-0 lg:overflow-hidden">
               <div className="shrink-0">
                 <ActivityCalendar entries={allEntries} />
               </div>
 
-              <div className="min-h-0 flex-1">
+              <div className="lg:min-h-0 lg:flex lg:flex-1 lg:items-end lg:overflow-hidden">
                 {uniqueBadges.length > 0 ? (
-                  <section className="flex h-full min-h-0 flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl sm:p-8">
-                    <div className="mb-4 shrink-0 flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-red-500" />
+                  <section className="flex h-full min-h-0 w-full flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl sm:p-5 lg:max-h-[240px] lg:p-5">
+                    <div className="mb-3 shrink-0 flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-red-500" />
                       <p className="text-xs uppercase tracking-[0.2em] text-white/45">
                         Vase odznaky
                       </p>
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto pr-2">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                         {uniqueBadges.map((badge) => (
                           <div
                             key={badge.key}
-                            className="rounded-xl border border-red-500/30 bg-white/[0.02] p-3 transition-all hover:border-red-500/50 hover:bg-red-500/8"
+                            className="flex h-[72px] rounded-md border border-red-500/30 bg-white/[0.02] p-2 transition-all hover:border-red-500/50 hover:bg-red-500/8 sm:h-[78px] sm:p-2.5"
                           >
-                            <div className="flex items-start gap-2">
-                              <Award className="mt-0.5 h-3 w-3 flex-shrink-0 text-red-500" />
+                            <div className="flex items-start gap-1.5">
+                              <Award className="mt-0.5 h-2.5 w-2.5 flex-shrink-0 text-red-500 sm:h-3 sm:w-3" />
                               <div className="flex-1">
-                                <h3 className="text-[12px] font-semibold leading-tight text-white">
+                                <h3 className="text-xs font-semibold leading-tight text-white">
                                   {badge.name}
                                 </h3>
-                                <p className="mt-1 text-[10px] text-white/50">
+                                <p className="mt-0.5 text-[10px] leading-snug text-white/55">
                                   {badge.description}
                                 </p>
                               </div>
@@ -426,7 +426,7 @@ export default async function StatsPage() {
                     </div>
                   </section>
                 ) : (
-                  <section className="flex h-full min-h-0 flex-col justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl sm:p-8">
+                  <section className="flex h-full min-h-0 w-full flex-col justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-center backdrop-blur-xl lg:max-h-[240px]">
                     <Trophy className="mx-auto mb-3 h-8 w-8 text-white/20" />
                     <p className="text-sm text-white/50">
                       Zatial nemate ziadne odznaky. Pokracujte v treningu a
@@ -437,14 +437,14 @@ export default async function StatsPage() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col gap-6 lg:col-span-2">
-              <div className="shrink-0">
-                <WorkoutTrendsChart entries={allEntries} />
-              </div>
+            <div className="lg:col-span-2 lg:col-start-2 lg:row-start-1">
+              <WorkoutTrendsChart entries={allEntries} />
+            </div>
 
-              {weightLogs.length > 0 && (
-                <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-                  <p className="mb-4 shrink-0 text-xs uppercase tracking-wide text-white/45">
+            {weightLogs.length > 0 && (
+              <div className="lg:col-span-2 lg:col-start-2 lg:row-start-2 lg:min-h-0">
+                <div className="flex h-full min-h-0 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-sm sm:p-5 lg:p-6">
+                  <p className="mb-3 shrink-0 text-xs uppercase tracking-wide text-white/45 sm:mb-4">
                     Vahovy trend
                   </p>
                   <div className="min-h-0 flex-1">
@@ -454,11 +454,12 @@ export default async function StatsPage() {
                         weight_kg: log.weight_kg,
                         created_at: log.created_at,
                       }))}
+                      heightClassName="h-[180px] sm:h-52 lg:h-56"
                     />
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

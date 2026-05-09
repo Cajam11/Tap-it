@@ -2,14 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface ActivityCalendarProps {
   entries: Array<{
     check_in: string;
     duration_min: number | null;
   }>;
-  className?: string;
 }
 
 interface DayData {
@@ -34,10 +32,7 @@ function parseCheckInDayKey(value: string): string | null {
   return toUtcDayKey(parsed);
 }
 
-export default function ActivityCalendar({
-  entries,
-  className,
-}: ActivityCalendarProps) {
+export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
   const [currentMonthStart, setCurrentMonthStart] = useState(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -116,11 +111,6 @@ export default function ActivityCalendar({
     weeks.push(calendarDays.slice(i, i + 7));
   }
 
-  // Ensure calendar always has 6 rows to prevent height jumping between months
-  while (weeks.length < 6) {
-    weeks.push(Array(7).fill(null));
-  }
-
   const monthName = currentMonthStart.toLocaleDateString("sk-SK", {
     month: "long",
     year: "numeric",
@@ -146,13 +136,8 @@ export default function ActivityCalendar({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] px-5 pt-5 pb-3 backdrop-blur-sm h-full",
-        className,
-      )}
-    >
-      <div className="mb-4 flex shrink-0 items-center justify-between">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-white/45">
             Treningovy kalendar
@@ -188,13 +173,13 @@ export default function ActivityCalendar({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-white/[0.01] px-2 pt-2 pb-0 sm:px-3 sm:pt-3 sm:pb-0">
-        <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-[auto_repeat(6,minmax(0,1fr))] gap-1">
+      <div className="rounded-lg bg-white/[0.01] p-3">
+        <div className="grid grid-cols-7 gap-1">
           {["Po", "Ut", "St", "Ct", "Pi", "So", "Ne"].map(
             (label, labelIndex) => (
               <div
                 key={`${label}-${labelIndex}`}
-                className="pb-1 text-center text-[9px] sm:text-[10px] font-semibold text-white/40"
+                className="py-1 text-center text-[10px] font-semibold text-white/40"
               >
                 {label}
               </div>
@@ -205,7 +190,7 @@ export default function ActivityCalendar({
             week.map((day, dayIndex) => (
               <div
                 key={`${weekIndex}-${dayIndex}`}
-                className={`flex w-full cursor-help flex-col items-center justify-center rounded-md border transition-all h-[22px] sm:h-[26px] lg:h-[24px] overflow-hidden ${
+                className={`flex aspect-square cursor-help flex-col items-center justify-center rounded-md border text-[11px] transition-all ${
                   day === null
                     ? "border-transparent bg-transparent"
                     : `border-white/10 ${getColor(day.minutes)}`
@@ -218,11 +203,11 @@ export default function ActivityCalendar({
               >
                 {day && (
                   <>
-                    <span className="leading-none text-white/80 text-[10px] sm:text-[11px]">
+                    <span className="leading-none text-white/80">
                       {Number(day.dateKey.slice(8, 10))}
                     </span>
                     {day.minutes > 0 && (
-                      <span className="mt-[1px] text-[7px] sm:text-[8px] leading-none text-white/60">
+                      <span className="mt-0.5 text-[9px] text-white/60">
                         {day.minutes}m
                       </span>
                     )}

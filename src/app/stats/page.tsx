@@ -31,8 +31,8 @@ function isMissingTableError(
 ): boolean {
   return Boolean(
     error?.code === "PGRST205" &&
-    typeof error.message === "string" &&
-    error.message.includes(`'public.${tableName}'`),
+      typeof error.message === "string" &&
+      error.message.includes(`'public.${tableName}'`),
   );
 }
 
@@ -249,10 +249,7 @@ export default async function StatsPage() {
   if (membershipRes.error) {
     console.error("Failed to load membership data", membershipRes.error);
   }
-  if (
-    dbBadgesRes.error &&
-    !isMissingTableError(dbBadgesRes.error, "user_badges")
-  ) {
+  if (dbBadgesRes.error && !isMissingTableError(dbBadgesRes.error, "user_badges")) {
     console.error("Failed to load badges", dbBadgesRes.error);
   }
   if (weightLogsRes.error) {
@@ -282,9 +279,9 @@ export default async function StatsPage() {
     : null;
   const hasActiveMembership = Boolean(
     membershipRow &&
-    (membershipEndTimestamp === null ||
-      Number.isNaN(membershipEndTimestamp) ||
-      membershipEndTimestamp >= Date.now()),
+      (membershipEndTimestamp === null ||
+        Number.isNaN(membershipEndTimestamp) ||
+        membershipEndTimestamp >= Date.now()),
   );
 
   const dynamicBadges = buildDynamicBadges({
@@ -320,11 +317,7 @@ export default async function StatsPage() {
     .filter(
       (
         log,
-      ): log is {
-        id: string | number;
-        weight_kg: number;
-        created_at: string;
-      } =>
+      ): log is { id: string | number; weight_kg: number; created_at: string } =>
         (typeof log.id === "string" || typeof log.id === "number") &&
         typeof log.weight_kg === "number" &&
         typeof log.created_at === "string",
@@ -367,11 +360,11 @@ export default async function StatsPage() {
         initialProfile={navProfile}
       />
 
-      <main className="relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#080808] px-4 pt-28 sm:px-6 lg:h-[100dvh] lg:overflow-hidden lg:px-8">
+      <main className="relative h-screen overflow-hidden bg-[#080808] px-4 pt-28 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto flex flex-1 lg:min-h-0 w-full max-w-6xl flex-col pb-6">
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col pb-4">
           <div className="mb-5 shrink-0">
             <p className="text-xs uppercase tracking-[0.2em] text-white/45">
               Statistiky
@@ -393,36 +386,36 @@ export default async function StatsPage() {
             />
           </section>
 
-          <div className="grid flex-1 min-h-0 gap-6 lg:grid-cols-3 lg:items-stretch">
-            <div className="flex flex-col min-h-0 gap-6 lg:col-span-1">
-              <div className="flex-none">
+          <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+            <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
+              <div className="shrink-0">
                 <ActivityCalendar entries={allEntries} />
               </div>
 
-              <div className="flex flex-1 flex-col min-h-0">
+              <div className="min-h-0 flex-1">
                 {uniqueBadges.length > 0 ? (
-                  <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 backdrop-blur-xl">
-                    <div className="mb-3 sm:mb-4 flex shrink-0 items-center gap-2">
-                      <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
-                      <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/45">
+                  <section className="flex h-full min-h-0 flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl sm:p-8">
+                    <div className="mb-4 shrink-0 flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-red-500" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/45">
                         Vase odznaky
                       </p>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
-                      <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-2">
+                    <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {uniqueBadges.map((badge) => (
                           <div
                             key={badge.key}
-                            className="rounded-xl border border-red-500/30 bg-white/[0.02] p-2.5 sm:p-3 transition-all hover:border-red-500/50 hover:bg-red-500/8"
+                            className="rounded-xl border border-red-500/30 bg-white/[0.02] p-3 transition-all hover:border-red-500/50 hover:bg-red-500/8"
                           >
-                            <div className="flex items-start gap-1.5 sm:gap-2">
-                              <Award className="mt-0.5 h-3 w-3 shrink-0 text-red-500" />
-                              <div className="flex-1 min-w-0">
-                                <h3 className="truncate text-[11px] sm:text-[12px] font-semibold leading-tight text-white">
+                            <div className="flex items-start gap-2">
+                              <Award className="mt-0.5 h-3 w-3 flex-shrink-0 text-red-500" />
+                              <div className="flex-1">
+                                <h3 className="text-[12px] font-semibold leading-tight text-white">
                                   {badge.name}
                                 </h3>
-                                <p className="mt-0.5 sm:mt-1 line-clamp-2 text-[9px] sm:text-[10px] text-white/50">
+                                <p className="mt-1 text-[10px] text-white/50">
                                   {badge.description}
                                 </p>
                               </div>
@@ -433,7 +426,7 @@ export default async function StatsPage() {
                     </div>
                   </section>
                 ) : (
-                  <section className="flex h-full min-h-0 flex-col justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6 text-center backdrop-blur-xl">
+                  <section className="flex h-full min-h-0 flex-col justify-center rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl sm:p-8">
                     <Trophy className="mx-auto mb-3 h-8 w-8 text-white/20" />
                     <p className="text-sm text-white/50">
                       Zatial nemate ziadne odznaky. Pokracujte v treningu a
@@ -444,19 +437,18 @@ export default async function StatsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col min-h-0 gap-6 lg:col-span-2">
-              <div className="flex-none">
+            <div className="flex min-h-0 flex-col gap-6 lg:col-span-2">
+              <div className="shrink-0">
                 <WorkoutTrendsChart entries={allEntries} />
               </div>
 
               {weightLogs.length > 0 && (
-                <div className="flex flex-[1.1] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
+                <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
                   <p className="mb-4 shrink-0 text-xs uppercase tracking-wide text-white/45">
                     Vahovy trend
                   </p>
                   <div className="min-h-0 flex-1">
                     <WeightChart
-                      className="h-full"
                       logs={weightLogs.map((log) => ({
                         id: log.id,
                         weight_kg: log.weight_kg,

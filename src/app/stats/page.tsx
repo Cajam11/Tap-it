@@ -18,6 +18,7 @@ type EarnedBadge = {
 type EntryRow = {
   check_in: string;
   duration_min: number | null;
+  check_out?: string | null;
 };
 
 type DbQueryErrorLike = {
@@ -31,8 +32,8 @@ function isMissingTableError(
 ): boolean {
   return Boolean(
     error?.code === "PGRST205" &&
-      typeof error.message === "string" &&
-      error.message.includes(`'public.${tableName}'`),
+    typeof error.message === "string" &&
+    error.message.includes(`'public.${tableName}'`),
   );
 }
 
@@ -207,7 +208,7 @@ export default async function StatsPage() {
       .eq("user_id", user.id),
     supabase
       .from("entries")
-      .select("check_in, duration_min")
+      .select("check_in, check_out, duration_min")
       .eq("user_id", user.id)
       .order("check_in", { ascending: false }),
     supabase
@@ -249,7 +250,10 @@ export default async function StatsPage() {
   if (membershipRes.error) {
     console.error("Failed to load membership data", membershipRes.error);
   }
-  if (dbBadgesRes.error && !isMissingTableError(dbBadgesRes.error, "user_badges")) {
+  if (
+    dbBadgesRes.error &&
+    !isMissingTableError(dbBadgesRes.error, "user_badges")
+  ) {
     console.error("Failed to load badges", dbBadgesRes.error);
   }
   if (weightLogsRes.error) {
@@ -260,8 +264,8 @@ export default async function StatsPage() {
   }
 
   const allEntries = (streakEntriesRes.data ?? []).filter(
-    (item): item is EntryRow => typeof item.check_in === "string",
-  );
+    (item) => typeof item?.check_in === "string",
+  ) as EntryRow[];
   const monthTrainings = (monthEntriesRes.data ?? []).length;
   const totalTrainings = totalCountRes.count ?? 0;
   const monthMinutes = (monthEntriesRes.data ?? []).reduce(
@@ -279,9 +283,9 @@ export default async function StatsPage() {
     : null;
   const hasActiveMembership = Boolean(
     membershipRow &&
-      (membershipEndTimestamp === null ||
-        Number.isNaN(membershipEndTimestamp) ||
-        membershipEndTimestamp >= Date.now()),
+    (membershipEndTimestamp === null ||
+      Number.isNaN(membershipEndTimestamp) ||
+      membershipEndTimestamp >= Date.now()),
   );
 
   const dynamicBadges = buildDynamicBadges({
@@ -317,7 +321,11 @@ export default async function StatsPage() {
     .filter(
       (
         log,
-      ): log is { id: string | number; weight_kg: number; created_at: string } =>
+      ): log is {
+        id: string | number;
+        weight_kg: number;
+        created_at: string;
+      } =>
         (typeof log.id === "string" || typeof log.id === "number") &&
         typeof log.weight_kg === "number" &&
         typeof log.created_at === "string",
@@ -389,7 +397,10 @@ export default async function StatsPage() {
           <div className="grid gap-6 lg:gap-x-6 lg:gap-y-4 lg:grid-cols-3 lg:grid-rows-[300px_320px] lg:items-stretch">
             <div className="flex flex-col gap-4 lg:col-span-1 lg:row-span-2 lg:row-start-1 lg:h-full lg:min-h-0 lg:overflow-hidden">
               <div className="shrink-0">
-                <ActivityCalendar entries={allEntries} />
+                <ActivityCalendar
+                  entries={allEntries}
+                  userName={profile?.full_name || user.email || "User"}
+                />
               </div>
 
               <div className="lg:min-h-0 lg:flex lg:flex-1 lg:items-end lg:overflow-hidden">

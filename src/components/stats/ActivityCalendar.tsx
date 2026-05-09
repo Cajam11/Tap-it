@@ -1,19 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+
+interface Entry {
+  check_in: string;
+  duration_min: number | null;
+  check_out?: string | null;
+}
 
 interface ActivityCalendarProps {
-  entries: Array<{
-    check_in: string;
-    duration_min: number | null;
-  }>;
+  entries: Entry[];
+  userName?: string;
 }
 
 interface DayData {
   dateKey: string;
   minutes: number;
   count: number;
+  entries: Entry[];
 }
 
 function toUtcDayKey(date: Date): string {
@@ -32,11 +38,40 @@ function parseCheckInDayKey(value: string): string | null {
   return toUtcDayKey(parsed);
 }
 
-export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
+function formatTime(isoString: string | null | undefined): string {
+  if (!isoString) return "-";
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("sk-SK", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
+  } catch {
+    return "-";
+  }
+}
+
+function formatDuration(minutes: number | null): string {
+  if (!minutes) return "-";
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  return `${mins}m`;
+}
+
+export default function ActivityCalendar({
+  entries,
+  userName = "User",
+}: ActivityCalendarProps) {
   const [currentMonthStart, setCurrentMonthStart] = useState(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   });
+
+  const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
 
   const dayMap = useMemo(() => {
     const map = new Map<string, DayData>();
@@ -51,12 +86,22 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
           dateKey: dayKey,
           minutes: entry.duration_min ?? 0,
           count: 1,
+          entries: [entry],
         });
         return;
       }
 
       current.minutes += entry.duration_min ?? 0;
       current.count += 1;
+      current.entries.push(entry);
+    });
+
+    // Sort entries within each day by check_in time
+    map.forEach((day) => {
+      day.entries.sort(
+        (a, b) =>
+          new Date(a.check_in).getTime() - new Date(b.check_in).getTime(),
+      );
     });
 
     return map;
@@ -102,6 +147,7 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
       dateKey: key,
       minutes: 0,
       count: 0,
+      entries: [],
     };
     calendarDays.push(dayData);
   }
@@ -188,18 +234,24 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
 
           {weeks.map((week, weekIndex) =>
             week.map((day, dayIndex) => (
-              <div
+              <button
                 key={`${weekIndex}-${dayIndex}`}
-                className={`flex aspect-square cursor-help flex-col items-center justify-center rounded-md border text-[11px] transition-all ${
+                onClick={() => {
+                  if (day && day.count > 0) {
+                    setSelectedDay(day);
+                  }
+                }}
+                className={`flex aspect-square flex-col items-center justify-center rounded-md border text-[11px] transition-all ${
                   day === null
-                    ? "border-transparent bg-transparent"
-                    : `border-white/10 ${getColor(day.minutes)}`
+                    ? "border-transparent bg-transparent cursor-default"
+                    : `border-white/10 ${getColor(day.minutes)} ${day.count > 0 ? "cursor-pointer hover:scale-105" : "cursor-help"}`
                 }`}
                 title={
                   day
-                    ? `${day.dateKey}: ${day.minutes} min, ${day.count} vstupov`
+                    ? `${day.dateKey}: ${day.minutes} min, ${day.count} vstupov${day.count > 0 ? " (kliknite pre detaily)" : ""}`
                     : undefined
                 }
+                type="button"
               >
                 {day && (
                   <>
@@ -213,11 +265,80 @@ export default function ActivityCalendar({ entries }: ActivityCalendarProps) {
                     )}
                   </>
                 )}
-              </div>
+              </button>
             )),
           )}
         </div>
       </div>
+
+      {/* Modal Portal */}
+      {selectedDay &&
+        selectedDay.count > 0 &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              onClick={() => setSelectedDay(null)}
+            />
+
+            {/* Modal Content */}
+            <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 transform px-4 rounded-2xl border border-white/10 bg-black/95 p-6">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{userName}</h2>
+                    <p className="mt-1 text-sm text-white/60">
+                      {selectedDay.dateKey}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDay(null)}
+                    className="rounded-lg text-white/60 transition-colors hover:text-white"
+                    aria-label="Zavriet"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Entries List */}
+                <div className="max-h-96 space-y-2 overflow-y-auto pr-2">
+                  {selectedDay.entries.map((entry, index) => (
+                    <div
+                      key={`${entry.check_in}-${index}`}
+                      className="rounded-lg border border-white/10 bg-white/[0.05] p-3"
+                    >
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs text-white/50">Príchod</p>
+                          <p className="mt-1 font-semibold text-white">
+                            {formatTime(entry.check_in)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-white/50">Odchod</p>
+                          <p className="mt-1 font-semibold text-white">
+                            {formatTime(entry.check_out)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-white/50">Trvanie</p>
+                          <p className="mt-1 font-semibold text-white">
+                            {formatDuration(entry.duration_min)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

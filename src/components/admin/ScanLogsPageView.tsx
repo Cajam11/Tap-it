@@ -54,7 +54,10 @@ export default function ScanLogsPageView() {
           params.set("q", debouncedSearch);
         }
 
-        const res = await fetch(`/api/admin/entries-logs?${params.toString()}`, { credentials: "same-origin" });
+        const res = await fetch(
+          `/api/admin/entries-logs?${params.toString()}`,
+          { credentials: "same-origin" },
+        );
         if (!res.ok) {
           setEntries([]);
           setTotal(0);
@@ -65,7 +68,9 @@ export default function ScanLogsPageView() {
         const data = (await res.json()) as LogsResponse;
         setEntries(Array.isArray(data.entries) ? data.entries : []);
         setTotal(typeof data.total === "number" ? data.total : 0);
-        setTotalPages(typeof data.totalPages === "number" ? data.totalPages : 0);
+        setTotalPages(
+          typeof data.totalPages === "number" ? data.totalPages : 0,
+        );
       } catch (error) {
         console.error("Failed to fetch scan logs:", error);
         setEntries([]);
@@ -86,14 +91,26 @@ export default function ScanLogsPageView() {
     });
 
   const formatRelativeTime = (value: string) => {
-    const diffMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
-    if (diffMinutes < 1) {
-      return "just now";
-    }
-    if (diffMinutes === 1) {
-      return "1 min ago";
-    }
-    return `${diffMinutes} mins ago`;
+    const diffMinutes = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(value).getTime()) / 60000),
+    );
+    if (diffMinutes < 1) return "just now";
+
+    const minutes = diffMinutes % 60;
+    const hours = Math.floor(diffMinutes / 60) % 24;
+    const days = Math.floor(diffMinutes / (60 * 24)) % 30;
+    const months = Math.floor(diffMinutes / (60 * 24 * 30)) % 12;
+    const years = Math.floor(diffMinutes / (60 * 24 * 365));
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} yr${years > 1 ? "s" : ""}`);
+    if (months > 0) parts.push(`${months} mo`);
+    if (days > 0) parts.push(`${days} d`);
+    if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+    if (minutes > 0) parts.push(`${minutes} min${minutes > 1 ? "s" : ""}`);
+
+    return parts.slice(0, 2).join(" ") + " ago";
   };
 
   const pages = useMemo(() => {
@@ -105,7 +122,10 @@ export default function ScanLogsPageView() {
     const end = Math.min(totalPages, start + 4);
     const normalizedStart = Math.max(1, end - 4);
 
-    return Array.from({ length: end - normalizedStart + 1 }, (_, i) => normalizedStart + i);
+    return Array.from(
+      { length: end - normalizedStart + 1 },
+      (_, i) => normalizedStart + i,
+    );
   }, [page, totalPages]);
 
   return (
@@ -113,7 +133,9 @@ export default function ScanLogsPageView() {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Scan Logs</h1>
-          <p className="mt-2 text-white/60">Vsetky QR scan udalosti s vyhladavanim a strankovanim.</p>
+          <p className="mt-2 text-white/60">
+            Vsetky QR scan udalosti s vyhladavanim a strankovanim.
+          </p>
         </div>
 
         <label className="relative block w-full md:w-[360px]">
@@ -132,13 +154,18 @@ export default function ScanLogsPageView() {
           <p className="text-sm text-white/50">
             {loading ? "Nacitavam..." : `${total} zaznamov`}
           </p>
-          <p className="text-xs text-white/35">Strana {page}{totalPages > 0 ? ` / ${totalPages}` : ""}</p>
+          <p className="text-xs text-white/35">
+            Strana {page}
+            {totalPages > 0 ? ` / ${totalPages}` : ""}
+          </p>
         </div>
 
         <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
           {entries.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5 text-sm text-white/45">
-              {loading ? "Nacitavam logy..." : "Nenasli sa ziadne logy pre tento filter."}
+              {loading
+                ? "Nacitavam logy..."
+                : "Nenasli sa ziadne logy pre tento filter."}
             </div>
           ) : (
             entries.map((entry) => {
@@ -153,16 +180,24 @@ export default function ScanLogsPageView() {
                   key={entry.id}
                   className="flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors hover:bg-white/5"
                 >
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg}`}>
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg}`}
+                  >
                     <Icon className={`h-4 w-4 ${iconText}`} strokeWidth={2.5} />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-white">{entry.full_name || "Unknown"}</div>
-                    <div className="truncate text-xs text-white/45">{label} | {formatRelativeTime(entry.timestamp)}</div>
+                    <div className="truncate text-sm font-semibold text-white">
+                      {entry.full_name || "Unknown"}
+                    </div>
+                    <div className="truncate text-xs text-white/45">
+                      {label} | {formatRelativeTime(entry.timestamp)}
+                    </div>
                   </div>
 
-                  <div className="shrink-0 text-sm tabular-nums text-white/40">{formatTime(entry.timestamp)}</div>
+                  <div className="shrink-0 text-sm tabular-nums text-white/40">
+                    {formatTime(entry.timestamp)}
+                  </div>
                 </div>
               );
             })

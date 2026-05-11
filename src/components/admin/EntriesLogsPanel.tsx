@@ -36,7 +36,9 @@ type IncomingEvent = {
   avatar_url?: string | null;
 };
 
-const normalizeIncomingLog = (value: IncomingEvent | IncomingLegacyEntry): LogEntry[] => {
+const normalizeIncomingLog = (
+  value: IncomingEvent | IncomingLegacyEntry,
+): LogEntry[] => {
   if ("kind" in value && value.kind && value.timestamp) {
     return [
       {
@@ -91,7 +93,8 @@ const upsertEntryEvents = (prev: LogEntry[], nextEvents: LogEntry[]) => {
   });
 
   return Array.from(byId.values()).sort(
-    (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
+    (left, right) =>
+      new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
   );
 };
 
@@ -99,10 +102,13 @@ type EntriesLogsPanelProps = {
   variant?: "aside" | "card";
 };
 
-export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanelProps) {
+export default function EntriesLogsPanel({
+  variant = "aside",
+}: EntriesLogsPanelProps) {
   const supabase = useMemo(() => createClient(), []);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] =
+    useState<boolean>(false);
 
   const formatTime = (value: string) =>
     new Date(value).toLocaleTimeString("sk-SK", {
@@ -111,21 +117,36 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
     });
 
   const formatRelativeTime = (value: string) => {
-    const diffMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
-    if (diffMinutes < 1) {
-      return "just now";
-    }
-    if (diffMinutes === 1) {
-      return "1 min ago";
-    }
-    return `${diffMinutes} mins ago`;
+    const diffMinutes = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(value).getTime()) / 60000),
+    );
+    if (diffMinutes < 1) return "just now";
+
+    const minutes = diffMinutes % 60;
+    const hours = Math.floor(diffMinutes / 60) % 24;
+    const days = Math.floor(diffMinutes / (60 * 24)) % 30;
+    const months = Math.floor(diffMinutes / (60 * 24 * 30)) % 12;
+    const years = Math.floor(diffMinutes / (60 * 24 * 365));
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} yr${years > 1 ? "s" : ""}`);
+    if (months > 0) parts.push(`${months} mo`);
+    if (days > 0) parts.push(`${days} d`);
+    if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+    if (minutes > 0) parts.push(`${minutes} min${minutes > 1 ? "s" : ""}`);
+
+    return parts.slice(0, 2).join(" ") + " ago";
   };
 
-  const getEntryKind = (entry: LogEntry) => (entry.kind === "check_out" ? "Exit" : "Entry");
+  const getEntryKind = (entry: LogEntry) =>
+    entry.kind === "check_out" ? "Exit" : "Entry";
 
   const fetchAndAddEntry = useCallback(async (entryId: string) => {
     try {
-      const res = await fetch(`/api/admin/entry/${entryId}`, { credentials: "same-origin" });
+      const res = await fetch(`/api/admin/entry/${entryId}`, {
+        credentials: "same-origin",
+      });
       if (!res.ok) return;
       const data = await res.json();
       if (data.entry) {
@@ -140,14 +161,18 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
   useEffect(() => {
     const fetchHistoricalLogs = async () => {
       try {
-        const res = await fetch("/api/admin/entries-logs", { credentials: "same-origin" });
+        const res = await fetch("/api/admin/entries-logs", {
+          credentials: "same-origin",
+        });
         if (!res.ok) {
           console.error("Failed to fetch logs:", res.status);
           return;
         }
         const data = await res.json();
         if (data.entries) {
-          const normalized = (data.entries as Array<IncomingEvent | IncomingLegacyEntry>).flatMap(normalizeIncomingLog);
+          const normalized = (
+            data.entries as Array<IncomingEvent | IncomingLegacyEntry>
+          ).flatMap(normalizeIncomingLog);
           setLogs(normalized);
         }
       } catch (error) {
@@ -173,7 +198,7 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
             const newEntry = payload.new as { id: string };
             void fetchAndAddEntry(newEntry.id);
           }
-        }
+        },
       )
       .subscribe((status) => {
         console.debug("logs channel status:", status);
@@ -209,7 +234,11 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
               Live Scan Logs
             </h3>
             <p className="mt-1 text-[11px] text-white/45">
-              {isCard ? "Recent entries" : isRealtimeConnected ? "Realtime active" : "Connecting..."}
+              {isCard
+                ? "Recent entries"
+                : isRealtimeConnected
+                  ? "Realtime active"
+                  : "Connecting..."}
             </p>
           </div>
           <span
@@ -217,7 +246,9 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
           />
         </div>
 
-        <div className={`flex-1 space-y-1 overflow-y-auto pr-2 ${isCard ? "" : "overflow-hidden"}`}>
+        <div
+          className={`flex-1 space-y-1 overflow-y-auto pr-2 ${isCard ? "" : "overflow-hidden"}`}
+        >
           {visibleLogs.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3 text-sm text-white/45">
               No scan logs yet.
@@ -245,7 +276,8 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
                       {entry.full_name || "Unknown"}
                     </div>
                     <div className="truncate text-[11px] text-white/45">
-                      {getEntryKind(entry)} | {formatRelativeTime(entry.timestamp)}
+                      {getEntryKind(entry)} |{" "}
+                      {formatRelativeTime(entry.timestamp)}
                     </div>
                   </div>
 
@@ -259,7 +291,10 @@ export default function EntriesLogsPanel({ variant = "aside" }: EntriesLogsPanel
         </div>
 
         <div className={isCard ? "pt-4 mt-auto" : "pt-3 text-center"}>
-          <Link href="/admin/logs" className="text-sm font-medium text-red-400 transition-colors hover:text-red-300">
+          <Link
+            href="/admin/logs"
+            className="text-sm font-medium text-red-400 transition-colors hover:text-red-300"
+          >
             View All Logs
           </Link>
         </div>

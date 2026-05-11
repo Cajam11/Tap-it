@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
@@ -44,9 +45,9 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         occupancy: {
-          low: "#22c55e",    /* green  < 50% */
-          mid: "#eab308",    /* yellow 50–80% */
-          high: "#ef4444",   /* red    > 80% */
+          low: "#22c55e" /* green  < 50% */,
+          mid: "#eab308" /* yellow 50–80% */,
+          high: "#ef4444" /* red    > 80% */,
         },
       },
       borderRadius: {
@@ -70,7 +71,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 };
 
 export default config;

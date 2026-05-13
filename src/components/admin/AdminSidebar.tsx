@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper } from "lucide-react";
+import { hasMinAdminRole } from "@/lib/admin-authz";
+import type { UserRole } from "@/lib/types";
 
 interface AdminSidebarProps {
   userRole: string;
@@ -39,6 +41,14 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       icon: Clock,
     },
   ];
+
+  if (hasMinAdminRole(userRole as UserRole, "owner")) {
+    navItems.push({
+      label: "News",
+      href: "/admin/news",
+      icon: Newspaper,
+    });
+  }
 
   return (
     <aside className="w-64 bg-[#1a1a1a] border-r border-white/10 flex flex-col h-screen sticky top-0">

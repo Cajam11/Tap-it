@@ -108,3 +108,14 @@ export interface WeightLog {
   weight_kg: number;
   created_at: string;
 }
+
+export interface GymNews {
+  id: string;
+  title: string;
+  content_html: string;
+  image_url: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  created_at: string;
+  updated_at: string;
+}

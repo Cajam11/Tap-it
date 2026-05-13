@@ -26,6 +26,7 @@ import FadeIn from "@/components/FadeIn";
 import { MEMBERSHIP_PLANS } from "@/lib/memberships";
 import LiveOccupancyCard from "@/components/LiveOccupancyCard";
 import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
+import GymNewsSection from "@/components/GymNewsSection";
 
 import SplashWrapper from "@/components/SplashWrapper";
 
@@ -269,6 +270,20 @@ export default async function LandingPage() {
     }
   }
 
+  // Fetch active news
+  const { data: gymNewsData } = await supabase
+    .from("gym_news")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const activeNews = (gymNewsData || []).filter((news) => {
+    // Oznam skryjeme iba v prípade, že už expiroval (platnosť DO prebehla)
+    const isExpired = news.valid_to && new Date(news.valid_to) < new Date();
+    
+    if (isExpired) return false;
+    return true;
+  });
+
   return (
     <SplashWrapper>
       {/* Skip link */}
@@ -413,6 +428,9 @@ export default async function LandingPage() {
             showMemberList={Boolean(user)}
           />
         </section>
+
+        {/* ════════════════════ GYM NEWS ════════════════════════════════ */}
+        <GymNewsSection news={activeNews} />
 
         {/* ════════════════════ GROUP TRAININGS ═════════════════════════ */}
         <section

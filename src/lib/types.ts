@@ -19,6 +19,10 @@ export interface Profile {
   onboarding_completed: boolean | null;
   onboarding_completed_at: string | null;
   role: UserRole;
+  phone: string | null;
+  address: string | null;
+  date_of_birth: string | null;
+  is_verified: boolean;
   gdpr_consent_at: string;
   created_at: string;
 }

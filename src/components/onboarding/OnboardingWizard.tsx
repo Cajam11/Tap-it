@@ -10,7 +10,7 @@ type Props = {
   initialAvatarUrl: string | null;
 };
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 type Goal = "strength" | "fitness" | "fat_loss" | "mobility" | "mixed";
 type Level = "beginner" | "intermediate" | "advanced";
@@ -26,6 +26,20 @@ function clampNumber(
   return Math.max(min, Math.min(max, value));
 }
 
+function padDatePart(value: string) {
+  return value.padStart(2, "0");
+}
+
+function composeDateOfBirth(day: string, month: string, year: string) {
+  if (!day || !month || !year) return "";
+  return `${year}-${padDatePart(month)}-${padDatePart(day)}`;
+}
+
+function composeAddress(city: string, street: string, postalCode: string) {
+  const parts = [city.trim(), street.trim(), postalCode.trim()].filter(Boolean);
+  return parts.join(", ");
+}
+
 export default function OnboardingWizard({
   initialFullName,
   initialAvatarUrl,
@@ -38,6 +52,15 @@ export default function OnboardingWizard({
   const [bio, setBio] = useState("");
   const [heightCmInput, setHeightCmInput] = useState("175");
   const [weightKgInput, setWeightKgInput] = useState("75");
+  
+  const [phone, setPhone] = useState("");
+  const [addressCity, setAddressCity] = useState("");
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressPostalCode, setAddressPostalCode] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl] = useState<string | null>(initialAvatarUrl);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
@@ -80,7 +103,7 @@ export default function OnboardingWizard({
         setFullName(initialFullName || "Pouzivatel");
       }
     }
-    if (step === 3) {
+    if (step === 4) {
       setGoal((current) => current ?? "mixed");
       setLevel((current) => current ?? "beginner");
     }
@@ -92,6 +115,15 @@ export default function OnboardingWizard({
       return fullName.trim().length >= 2;
     }
     if (step === 3) {
+      return (
+        phone.trim().length >= 4 &&
+        addressCity.trim().length >= 2 &&
+        addressStreet.trim().length >= 3 &&
+        addressPostalCode.trim().length >= 4 &&
+        composeDateOfBirth(birthDay, birthMonth, birthYear).length === 10
+      );
+    }
+    if (step === 4) {
       return Boolean(goal && level);
     }
     return true;
@@ -130,6 +162,8 @@ export default function OnboardingWizard({
     const parsedWeight = Number(weightKgInput.replace(",", "."));
     const safeHeightCm = clampNumber(parsedHeight, 120, 240, 175);
     const safeWeightKg = clampNumber(parsedWeight, 35, 250, 75);
+    const safeDateOfBirth = composeDateOfBirth(birthDay, birthMonth, birthYear);
+    const safeAddress = composeAddress(addressCity, addressStreet, addressPostalCode);
 
     const supabase = createClient();
     const {
@@ -170,6 +204,9 @@ export default function OnboardingWizard({
     formData.append("bio", bio.trim() || "");
     formData.append("height_cm", String(safeHeightCm));
     formData.append("weight_kg", String(safeWeightKg));
+    formData.append("phone", phone.trim());
+    formData.append("address", safeAddress);
+    formData.append("date_of_birth", safeDateOfBirth);
     formData.append("goal", goal ?? "mixed");
     formData.append("level", level ?? "beginner");
     formData.append("sessions_per_week", String(sessionsPerWeek));
@@ -334,6 +371,104 @@ export default function OnboardingWizard({
 
       {step === 3 && (
         <div className="space-y-5">
+          <h2 className="text-2xl font-semibold text-white">Právne info a kontakt</h2>
+          <p className="text-white/60 text-sm">
+            Tieto údaje potrebujeme pre bezpečné a právne vybavenie tvojho členstva v našom systéme.
+          </p>
+          <div>
+            <label htmlFor="phone" className="mb-1.5 block text-sm text-white/70">
+              Telefónne číslo
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="+421 900 000 000"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="addressCity" className="block text-sm text-white/70">
+              Mesto
+            </label>
+            <input
+              id="addressCity"
+              type="text"
+              value={addressCity}
+              onChange={(e) => setAddressCity(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Bratislava"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="addressStreet" className="block text-sm text-white/70">
+              Ulica a číslo
+            </label>
+            <input
+              id="addressStreet"
+              type="text"
+              value={addressStreet}
+              onChange={(e) => setAddressStreet(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Námestie SNP 1"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="addressPostalCode" className="block text-sm text-white/70">
+              PSČ
+            </label>
+            <input
+              id="addressPostalCode"
+              type="text"
+              inputMode="numeric"
+              value={addressPostalCode}
+              onChange={(e) => setAddressPostalCode(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="811 06"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-sm text-white/70">Dátum narodenia</label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <input
+                id="birthDay"
+                type="number"
+                min={1}
+                max={31}
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Deň"
+              />
+              <input
+                id="birthMonth"
+                type="number"
+                min={1}
+                max={12}
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Mesiac"
+              />
+              <input
+                id="birthYear"
+                type="number"
+                min={1900}
+                max={new Date().getFullYear()}
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Rok"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-5">
           <h2 className="text-2xl font-semibold text-white">Ciel a uroven</h2>
 
           <div className="space-y-3">
@@ -388,7 +523,7 @@ export default function OnboardingWizard({
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <div className="space-y-5">
           <h2 className="text-2xl font-semibold text-white">
             Treningove preferencie
@@ -461,7 +596,7 @@ export default function OnboardingWizard({
         </div>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <div className="space-y-5">
           <h2 className="text-2xl font-semibold text-white">
             Hotovo, skontroluj setup
@@ -469,6 +604,19 @@ export default function OnboardingWizard({
           <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/80">
             <p>
               <span className="text-white/50">Meno:</span> {fullName.trim()}
+            </p>
+            <p>
+              <span className="text-white/50">Telefón:</span> {phone}
+            </p>
+            <p>
+              <span className="text-white/50">Dátum narod.:</span>{" "}
+              {birthDay && birthMonth && birthYear
+                ? `${padDatePart(birthDay)}.${padDatePart(birthMonth)}.${birthYear}`
+                : "-"}
+            </p>
+            <p>
+              <span className="text-white/50">Adresa:</span>{" "}
+              {composeAddress(addressCity, addressStreet, addressPostalCode) || "-"}
             </p>
             <p>
               <span className="text-white/50">Vyska:</span>{" "}

@@ -1,0 +1,6 @@
+-- Pridanie nových stĺpcov pre detaily používateľa a verifikáciu
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS phone text,
+ADD COLUMN IF NOT EXISTS address text,
+ADD COLUMN IF NOT EXISTS date_of_birth date,
+ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false;

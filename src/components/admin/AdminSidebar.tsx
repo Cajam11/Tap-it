@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck } from "lucide-react";
 import { hasMinAdminRole } from "@/lib/admin-authz";
 import type { UserRole } from "@/lib/types";
 
@@ -24,6 +24,11 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       label: "User Management",
       href: "/admin/users",
       icon: Users,
+    },
+    {
+      label: "Verification",
+      href: "/admin/verification",
+      icon: ShieldCheck,
     },
     {
       label: "Memberships",

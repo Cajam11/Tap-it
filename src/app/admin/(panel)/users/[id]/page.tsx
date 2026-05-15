@@ -13,6 +13,37 @@ import {
 } from "lucide-react";
 import { manualCheckOutUser } from "./actions";
 
+function splitStoredAddress(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw) {
+    return { city: "", street: "", postalCode: "" };
+  }
+
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    return {
+      city: parts[0] ?? "",
+      street: parts[1] ?? "",
+      postalCode: parts.slice(2).join(", "),
+    };
+  }
+
+  return { city: "", street: raw, postalCode: "" };
+}
+
+function formatDateSk(dateIso: string | null | undefined) {
+  if (!dateIso) return "-";
+
+  const date = new Date(dateIso);
+  if (Number.isNaN(date.getTime())) return dateIso;
+
+  return date.toLocaleDateString("sk-SK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export default async function AdminUserProfilePage({
   params,
 }: {
@@ -42,11 +73,16 @@ export default async function AdminUserProfilePage({
     full_name: string | null;
     avatar_url: string | null;
     role: string | null;
+    phone: string | null;
+    address: string | null;
+    date_of_birth: string | null;
+    is_verified: boolean | null;
     onboarding_completed: boolean | null;
     created_at: string;
   };
 
   const profile = rawProfile as Profile | null;
+  const profileAddress = splitStoredAddress(profile?.address);
 
   if (!profile || profileError) {
     return (
@@ -261,6 +297,15 @@ export default async function AdminUserProfilePage({
             <div className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-xs text-white/70">
               Rola: {profile.role || "user"}
             </div>
+            <div
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                profile.is_verified
+                  ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
+                  : "border-amber-400/30 bg-amber-500/10 text-amber-300"
+              }`}
+            >
+              {profile.is_verified ? "Overený účet" : "Neoverený účet"}
+            </div>
           </div>
 
           <div>
@@ -331,6 +376,35 @@ export default async function AdminUserProfilePage({
                 </>
               )}
             </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <p className="text-xs uppercase tracking-wide text-white/45">
+                  Telefón
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {profile.phone || "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <p className="text-xs uppercase tracking-wide text-white/45">
+                  Adresa
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {profileAddress.city || profileAddress.street || profileAddress.postalCode
+                    ? `${profileAddress.city || "-"} / ${profileAddress.street || "-"} / ${profileAddress.postalCode || "-"}`
+                    : "-"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <p className="text-xs uppercase tracking-wide text-white/45">
+                  Dátum narodenia
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {formatDateSk(profile.date_of_birth)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </article>
@@ -384,6 +458,7 @@ export default async function AdminUserProfilePage({
                           )}
                         </div>
                         <div>
+
                           <p className="text-sm font-semibold">
                             {formatDateShort(entry.check_in)}
                           </p>

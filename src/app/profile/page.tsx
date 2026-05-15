@@ -54,6 +54,37 @@ function normalizeEquipment(value: unknown): Equipment {
     : "basic";
 }
 
+function splitStoredAddress(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw) {
+    return { city: "", street: "", postalCode: "" };
+  }
+
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    return {
+      city: parts[0] ?? "",
+      street: parts[1] ?? "",
+      postalCode: parts.slice(2).join(", "),
+    };
+  }
+
+  return { city: "", street: raw, postalCode: "" };
+}
+
+function formatBirthDate(value: string | null | undefined) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("sk-SK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 function getCurrentStreak(checkIns: string[]) {
   if (!checkIns.length) return 0;
 
@@ -155,7 +186,7 @@ export default async function ProfilePage() {
     supabase
       .from("profiles")
       .select(
-        "email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, onboarding_completed_at, created_at",
+        "email, full_name, avatar_url, bio, height_cm, weight_kg, goal, experience_level, sessions_per_week, session_length_min, equipment_level, onboarding_completed_at, created_at, phone, address, date_of_birth, is_verified",
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -197,6 +228,7 @@ export default async function ProfilePage() {
   ]);
 
   const profile = profileRes.data;
+  const profileAddress = splitStoredAddress(profile?.address);
 
   const initialProfile = {
     email:
@@ -237,6 +269,10 @@ export default async function ProfilePage() {
         ? profile.session_length_min
         : 45,
     equipment_level: normalizeEquipment(profile?.equipment_level),
+    phone: typeof profile?.phone === "string" ? profile.phone : null,
+    address: typeof profile?.address === "string" ? profile.address : null,
+    date_of_birth: typeof profile?.date_of_birth === "string" ? profile.date_of_birth : null,
+    is_verified: profile?.is_verified ?? false,
   };
 
   const monthTrainings = (monthEntriesRes.data ?? []).length;
@@ -427,6 +463,38 @@ export default async function ProfilePage() {
                     </p>
                     <p className="mt-1 text-sm font-semibold text-white">
                       {initialProfile.equipment_level}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t border-white/10 pt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Stav účtu
+                    </p>
+                    <p className={`mt-1 text-sm font-semibold ${initialProfile.is_verified ? "text-green-500" : "text-yellow-500"}`}>
+                      {initialProfile.is_verified ? "Overený" : "Čaká na schválenie"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 sm:col-span-1 lg:col-span-1">
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Telefón
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {initialProfile.phone ?? "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 sm:col-span-2 lg:col-span-2">
+                    <p className="text-xs uppercase tracking-wide text-white/45">
+                      Adresa / Dátum narodenia
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {profileAddress.city || profileAddress.street || profileAddress.postalCode
+                        ? `${profileAddress.city || "-"} / ${profileAddress.street || "-"} / ${profileAddress.postalCode || "-"}`
+                        : "-"}
+                    </p>
+                    <p className="mt-1 text-xs text-white/55">
+                      Narodený: {formatBirthDate(initialProfile.date_of_birth)}
                     </p>
                   </div>
                 </div>

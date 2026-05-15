@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, type FormEvent } from 'react';
 import Link from 'next/link';
 import { searchUsers } from './search.server';
-import { updateUserRoleWithFeedback } from './actions';
+import { updateUserRoleWithFeedback, updateUserVerifiedWithFeedback } from './actions';
 import { Search, X } from 'lucide-react';
 
 const ALLOWED_ROLES = ["user", "recepcny", "manager", "owner"] as const;
@@ -21,6 +21,7 @@ type AdminUserRow = {
   email: string | null;
   full_name: string | null;
   role: string | null;
+  is_verified: boolean;
   onboarding_completed: boolean | null;
   created_at: string;
 };
@@ -63,6 +64,7 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
     message: string;
   } | null>(null);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [savingVerifiedUserId, setSavingVerifiedUserId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [role, setRole] = useState('all');
   const [onboarding, setOnboarding] = useState('all');
@@ -136,6 +138,30 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
     }
   };
 
+  const handleVerifySubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const userId = String(formData.get('userId') ?? '');
+
+    setSavingVerifiedUserId(userId);
+    try {
+      const result = await updateUserVerifiedWithFeedback(formData);
+      if (result.error) {
+        setFlashMessage({ type: 'error', message: result.error });
+        return;
+      }
+
+      setFlashMessage({ type: 'success', message: result.message || 'Stav overenia aktualizovany' });
+      await loadUsers();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Neznama chyba';
+      setFlashMessage({ type: 'error', message });
+    } finally {
+      setSavingVerifiedUserId(null);
+    }
+  };
+
   return (
     <section className="space-y-5">
       <div>
@@ -158,7 +184,7 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Meno alebo e-mail"
-              className="w-full rounded-lg border border-white/15 bg-black/40 pl-10 pr-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none transition-colors"
+              className="w-full rounded-lg border border-white/15 bg-black/40 pl-10 pr-10 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none transition-colors"
             />
             {q && (
               <button
@@ -257,6 +283,7 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
               <th className="px-4 py-3 font-medium">Meno</th>
               <th className="px-4 py-3 font-medium">E-mail</th>
               <th className="px-4 py-3 font-medium">Rola</th>
+              <th className="px-4 py-3 font-medium">Overený</th>
               <th className="px-4 py-3 font-medium">Onboarding</th>
               <th className="px-4 py-3 font-medium">Vytvoreny</th>
               <th className="px-4 py-3 font-medium">Akcie</th>
@@ -265,13 +292,13 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
           <tbody>
             {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-white/50">
+                <td colSpan={7} className="px-4 py-6 text-center text-white/50">
                   Loading users...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-white/50">
+                <td colSpan={7} className="px-4 py-6 text-center text-white/50">
                   Zatial tu nie su ziadne profily.
                 </td>
               </tr>
@@ -293,9 +320,7 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
                       const safeRole = normalizeRole(row.role);
                       return (
                         <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${roleBadgeClass(
-                            safeRole
-                          )}`}
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${roleBadgeClass(safeRole)}`}
                         >
                           {safeRole}
                         </span>
@@ -303,44 +328,54 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
                     })()}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                        row.onboarding_completed
-                          ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-300"
-                          : "border-amber-400/40 bg-amber-500/10 text-amber-300"
-                      }`}
-                    >
-                      {row.onboarding_completed ? "Dokonceny" : "Nedokonceny"}
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${row.is_verified ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/40 bg-amber-500/10 text-amber-300'}`}>
+                      {row.is_verified ? 'Áno' : 'Nie'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${row.onboarding_completed ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/40 bg-amber-500/10 text-amber-300'}`}>
+                      {row.onboarding_completed ? 'Dokonceny' : 'Nedokonceny'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-white/60">{formatDate(row.created_at)}</td>
                   <td className="px-4 py-3">
                     {isOwner ? (
-                      <form onSubmit={handleRoleSubmit} className="flex items-center gap-2">
-                        <input type="hidden" name="userId" value={row.id} />
-                        <select
-                          name="role"
-                          defaultValue={normalizeRole(row.role)}
-                          disabled={savingUserId === row.id}
-                          className="admin-role-select rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
-                        >
-                          {ALLOWED_ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {ROLE_LABELS[r]}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="submit"
-                          disabled={savingUserId === row.id}
-                          className="relative min-w-[72px] rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
-                        >
-                          <span className="invisible">Ukladam...</span>
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            {savingUserId === row.id ? "Ukladam..." : "Ulozit"}
-                          </span>
-                        </button>
-                      </form>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <form onSubmit={handleRoleSubmit} className="flex items-center gap-2">
+                          <input type="hidden" name="userId" value={row.id} />
+                          <select
+                            name="role"
+                            defaultValue={normalizeRole(row.role)}
+                            disabled={savingUserId === row.id}
+                            className="admin-role-select rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
+                          >
+                            {ALLOWED_ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABELS[r]}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="submit"
+                            disabled={savingUserId === row.id}
+                            className="rounded-lg border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50"
+                          >
+                            {savingUserId === row.id ? 'Ukladam...' : 'Ulozit'}
+                          </button>
+                        </form>
+
+                        <form onSubmit={handleVerifySubmit}>
+                          <input type="hidden" name="userId" value={row.id} />
+                          <input type="hidden" name="isVerified" value={row.is_verified ? "false" : "true"} />
+                          <button
+                            type="submit"
+                            disabled={savingVerifiedUserId === row.id}
+                            className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/15 transition-colors disabled:opacity-50"
+                          >
+                            {savingVerifiedUserId === row.id ? 'Ukladam...' : (row.is_verified ? 'Odobrat overenie' : 'Overit')}
+                          </button>
+                        </form>
+                      </div>
                     ) : (
                       <span className="text-xs text-white/45">Len citanie</span>
                     )}

@@ -110,6 +110,9 @@ export async function completeOnboarding(_prev: AuthState, formData: FormData): 
   const bio = formData.get("bio") as string;
   const heightCm = Number(formData.get("height_cm"));
   const weightKg = Number(formData.get("weight_kg"));
+  const phone = formData.get("phone") as string;
+  const address = formData.get("address") as string;
+  const dateOfBirth = formData.get("date_of_birth") as string;
   const goal = formData.get("goal") as string;
   const level = formData.get("level") as string;
   const sessionsPerWeek = Number(formData.get("sessions_per_week"));
@@ -148,6 +151,10 @@ export async function completeOnboarding(_prev: AuthState, formData: FormData): 
       full_name: fullName,
       avatar_url: avatarUrl || null,
       bio: bio || null,
+      phone: phone || null,
+      address: address || null,
+      date_of_birth: dateOfBirth || null,
+      is_verified: false,
       height_cm: heightCm,
       weight_kg: weightKg,
       goal: goal ?? "mixed",

@@ -8,6 +8,51 @@ type Goal = "strength" | "fitness" | "fat_loss" | "mobility" | "mixed";
 type Level = "beginner" | "intermediate" | "advanced";
 type Equipment = "none" | "basic" | "full_gym";
 
+function padDatePart(value: string) {
+  return value.padStart(2, "0");
+}
+
+function splitStoredAddress(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw) {
+    return { city: "", street: "", postalCode: "" };
+  }
+
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    return {
+      city: parts[0] ?? "",
+      street: parts[1] ?? "",
+      postalCode: parts.slice(2).join(", "),
+    };
+  }
+
+  return { city: "", street: raw, postalCode: "" };
+}
+
+function composeAddress(city: string, street: string, postalCode: string) {
+  const parts = [city.trim(), street.trim(), postalCode.trim()].filter(Boolean);
+  return parts.join(", ");
+}
+
+function splitDateOfBirth(value: string | null | undefined) {
+  if (!value) {
+    return { day: "", month: "", year: "" };
+  }
+
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) {
+    return { day: "", month: "", year: "" };
+  }
+
+  return { day, month, year };
+}
+
+function composeDateOfBirth(day: string, month: string, year: string) {
+  if (!day || !month || !year) return "";
+  return `${year}-${padDatePart(month)}-${padDatePart(day)}`;
+}
+
 type ProfileEditorProps = {
   initialProfile: {
     email: string;
@@ -21,6 +66,9 @@ type ProfileEditorProps = {
     equipment_level: Equipment;
     height_cm?: number | null;
     weight_kg?: number | null;
+    phone?: string | null;
+    address?: string | null;
+    date_of_birth?: string | null;
     show_in_gym_list?: boolean;
     show_name_in_gym_list?: boolean;
     show_avatar_in_gym_list?: boolean;
@@ -73,6 +121,15 @@ export default function ProfileEditor({
   );
   const [heightCm, setHeightCm] = useState(initialProfile.height_cm ?? 0);
   const [weightKg, setWeightKg] = useState(initialProfile.weight_kg ?? 0);
+  const [phone, setPhone] = useState(initialProfile.phone ?? "");
+  const initialAddress = splitStoredAddress(initialProfile.address);
+  const initialBirthDate = splitDateOfBirth(initialProfile.date_of_birth);
+  const [addressCity, setAddressCity] = useState(initialAddress.city);
+  const [addressStreet, setAddressStreet] = useState(initialAddress.street);
+  const [addressPostalCode, setAddressPostalCode] = useState(initialAddress.postalCode);
+  const [birthDay, setBirthDay] = useState(initialBirthDate.day);
+  const [birthMonth, setBirthMonth] = useState(initialBirthDate.month);
+  const [birthYear, setBirthYear] = useState(initialBirthDate.year);
   const [showInGymList, setShowInGymList] = useState(
     initialProfile.show_in_gym_list ?? true,
   );
@@ -209,6 +266,9 @@ export default function ProfileEditor({
       equipment_level: equipmentLevel,
       height_cm: heightCm || null,
       weight_kg: weightKg || null,
+      phone: phone.trim() || null,
+      address: composeAddress(addressCity, addressStreet, addressPostalCode) || null,
+      date_of_birth: composeDateOfBirth(birthDay, birthMonth, birthYear) || null,
       show_in_gym_list: showInGymList,
       show_name_in_gym_list: showNameInGymList,
       show_avatar_in_gym_list: showAvatarInGymList,
@@ -434,6 +494,118 @@ export default function ProfileEditor({
                 placeholder="napr. 75"
                 min={30}
                 max={250}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Legal / Contact Section */}
+      <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
+        <h2 className="mb-5 text-sm uppercase tracking-wider text-white/60">
+          Kontakt a fakturácia
+        </h2>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="phone" className="block text-sm font-medium text-white/70">
+              Telefónne číslo
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+              placeholder="+421 9xx xxx xxx"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label htmlFor="birthDay" className="block text-sm font-medium text-white/70">
+                Dátum narodenia - deň
+              </label>
+              <input
+                id="birthDay"
+                type="number"
+                min={1}
+                max={31}
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="15"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="birthMonth" className="block text-sm font-medium text-white/70">
+                Dátum narodenia - mesiac
+              </label>
+              <input
+                id="birthMonth"
+                type="number"
+                min={1}
+                max={12}
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="4"
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+              <label htmlFor="birthYear" className="block text-sm font-medium text-white/70">
+                Dátum narodenia - rok
+              </label>
+              <input
+                id="birthYear"
+                type="number"
+                min={1900}
+                max={new Date().getFullYear()}
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="1995"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <label htmlFor="addressCity" className="block text-sm font-medium text-white/70">
+                Mesto
+              </label>
+              <input
+                id="addressCity"
+                type="text"
+                value={addressCity}
+                onChange={(e) => setAddressCity(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="Bratislava"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="addressStreet" className="block text-sm font-medium text-white/70">
+                Ulica a číslo
+              </label>
+              <input
+                id="addressStreet"
+                type="text"
+                value={addressStreet}
+                onChange={(e) => setAddressStreet(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="Námestie SNP 1"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="addressPostalCode" className="block text-sm font-medium text-white/70">
+                PSČ
+              </label>
+              <input
+                id="addressPostalCode"
+                type="text"
+                value={addressPostalCode}
+                onChange={(e) => setAddressPostalCode(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="811 06"
               />
             </div>
           </div>

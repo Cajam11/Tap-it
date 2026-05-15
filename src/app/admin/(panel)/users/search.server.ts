@@ -12,6 +12,7 @@ type AdminUserRow = {
   email: string | null;
   full_name: string | null;
   role: string | null;
+  is_verified: boolean;
   onboarding_completed: boolean | null;
   created_at: string;
 };
@@ -20,10 +21,12 @@ export async function searchUsers({
   q = "",
   role = "all",
   onboarding = "all",
+  verified = "all",
 }: {
   q?: string;
   role?: string;
   onboarding?: string;
+  verified?: string;
 }): Promise<{ data: AdminUserRow[]; error: string | null }> {
   const supabase = await createClient();
   const hasAccess = await hasServerAdminAccess(supabase, "recepcny");
@@ -35,7 +38,7 @@ export async function searchUsers({
   const admin = createAdminClient();
   let query = admin
     .from("profiles")
-    .select("id, email, full_name, role, onboarding_completed, created_at")
+    .select("id, email, full_name, role, is_verified, onboarding_completed, created_at")
     .order("created_at", { ascending: false });
 
   if (q && q.trim()) {
@@ -55,12 +58,22 @@ export async function searchUsers({
     query = query.or("onboarding_completed.is.null,onboarding_completed.eq.false");
   }
 
+  if (verified === "verified") {
+    query = query.eq("is_verified", true);
+  }
+
+  if (verified === "unverified") {
+    query = query.or("is_verified.is.null,is_verified.eq.false");
+  }
+
   const { data, error } = await query;
 
   if (error) {
     return { data: [], error: error.message };
   }
 
-  const rows: AdminUserRow[] = Array.isArray(data) ? (data as AdminUserRow[]) : [];
+  const rows: AdminUserRow[] = Array.isArray(data)
+    ? (data as unknown as AdminUserRow[])
+    : [];
   return { data: rows, error: null };
 }

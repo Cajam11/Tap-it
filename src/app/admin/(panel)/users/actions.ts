@@ -33,8 +33,8 @@ export async function updateUserRoleWithFeedback(
     return { error: "Nie ste prihlaseni" };
   }
 
-  const isOwner = await hasServerAdminAccess(supabase, "owner");
-  if (!isOwner) {
+  const canVerify = await hasServerAdminAccess(supabase, "recepcny");
+  if (!canVerify) {
     return { error: "Nedostatocne prava" };
   }
 
@@ -73,4 +73,53 @@ export async function updateUserRole(formData: FormData) {
   }
 
   redirect("/admin/users?status=success&message=Rola_bola_aktualizovana");
+}
+
+export async function updateUserVerifiedWithFeedback(
+  formData: FormData,
+): Promise<UpdateUserRoleResult> {
+  const userId = String(formData.get("userId") ?? "").trim();
+  const nextVerified = String(formData.get("isVerified") ?? "").trim();
+
+  if (!userId || !/^(true|false)$/.test(nextVerified)) {
+    return { error: "Neplatny vstup" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Nie ste prihlaseni" };
+  }
+
+  const isOwner = await hasServerAdminAccess(supabase, "owner");
+  if (!isOwner) {
+    return { error: "Nedostatocne prava" };
+  }
+
+  const admin = createAdminClient();
+  const updatePayload = { is_verified: nextVerified === "true" };
+  const { error } = await admin
+    .from("profiles")
+    .update(updatePayload as never)
+    .eq("id", userId);
+
+  if (error) {
+    return { error: "Zmena verifikacie zlyhala" };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true, message: "Stav overenia bol aktualizovany" };
+}
+
+export async function updateUserVerified(formData: FormData) {
+  const result = await updateUserVerifiedWithFeedback(formData);
+
+  if (result.error) {
+    redirect("/admin/users?status=error&message=Zmena_verifikacie_zlyhala");
+  }
+
+  redirect("/admin/users?status=success&message=Stav_overenia_bol_aktualizovany");
 }

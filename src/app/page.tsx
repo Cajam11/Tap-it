@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
@@ -30,11 +30,12 @@ import GymNewsSection from "@/components/GymNewsSection";
 
 import SplashWrapper from "@/components/SplashWrapper";
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* -------------------------------------------------------------------------------
    DATA
-   ═══════════════════════════════════════════════════════════════════════════ */
+   --------------------------------------------------------------------------- */
 
 const NAV_LINKS: [string, string][] = [
+  ["/bookings", "Rezervácie"],
   ["#about", "O nás"],
   ["#group", "Skupinovky"],
   ["#trainers", "Tréneri"],
@@ -72,7 +73,7 @@ const GROUP_TRAININGS = [
   },
   {
     name: "Stretch & Release",
-    desc: "Uvoľni stuhnuté svaly",
+    desc: "Uvoľní stuhnuté svaly",
     img: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80",
     span: "col-span-1 row-span-1",
   },
@@ -86,15 +87,15 @@ const TRAINERS = [
     img: "https://i.pravatar.cc/600?img=11",
   },
   {
-    name: "Tamara Iglárová",
+    name: "Tamara Iglorová",
     phone: "+421 905 824 005",
-    lang: "Slovenský, Anglický",
+    lang: "Slovenská, Anglická",
     img: "https://i.pravatar.cc/600?img=47",
   },
   {
-    name: "Laura Miškufová",
+    name: "Laura Mifkufová",
     phone: "+421 917 418 245",
-    lang: "Slovenský, Anglický",
+    lang: "Slovenská, Anglická",
     img: "https://i.pravatar.cc/600?img=9",
   },
 ];
@@ -104,7 +105,7 @@ const LOCATIONS = [
     name: "OC Tehelko",
     address: "Bajkalská 2i",
     area: "1 000 m²",
-    hours: ["Po – Pia / 5:30 – 22:00", "So – Ne / 7:00 – 22:00"],
+    hours: ["Po - Pia / 5:30 - 22:00", "So - Ne / 7:00 - 22:00"],
     badge: null,
     img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80",
   },
@@ -113,8 +114,8 @@ const LOCATIONS = [
     address: "Ivanská cesta 26",
     area: "2 000 m²",
     hours: [
-      "Po – Pia / 5:30 – 22:00",
-      "So – Ne / 7:00 – 22:00",
+      "Po - Pia / 5:30 - 22:00",
+      "So - Ne / 7:00 - 22:00",
       "24/7 (schválená žiadosť)",
     ],
     badge: "Otvorené 24/7 – NONSTOP",
@@ -184,9 +185,9 @@ const SOCIAL: Array<{ label: string; href: string; Icon: LucideIcon }> = [
   { label: "LinkedIn", href: "#", Icon: Linkedin },
 ];
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* -------------------------------------------------------------------------------
    PAGE
-   ═══════════════════════════════════════════════════════════════════════════ */
+   --------------------------------------------------------------------------- */
 export default async function LandingPage() {
   const supabase = await createClient();
   const {
@@ -277,7 +278,7 @@ export default async function LandingPage() {
     .order("created_at", { ascending: false });
 
   const activeNews = (gymNewsData || []).filter((news) => {
-    // Oznam skryjeme iba v prípade, že už expiroval (platnosť DO prebehla)
+    // Oznam skryjeme iba v prípade, že už expiroval (platnost DO prebehla)
     const isExpired = news.valid_to && new Date(news.valid_to) < new Date();
     
     if (isExpired) return false;
@@ -294,7 +295,7 @@ export default async function LandingPage() {
         Skip to main content
       </a>
 
-      {/* ── Floating pill nav ─────────────────────────────────────────── */}
+      {/* -- Floating pill nav ------------------------------------------- */}
       <NavBarAuth
         navLinks={NAV_LINKS}
         initialUser={navUser}
@@ -303,7 +304,7 @@ export default async function LandingPage() {
       />
 
       <main id="main" className="bg-[#080808] overflow-x-hidden">
-        {/* ════════════════════════ HERO ════════════════════════════════ */}
+        {/* ------------------------ HERO -------------------------------- */}
         <section
           className="relative min-h-[100vh] flex items-end pb-40 sm:items-center sm:pb-0 px-6 lg:px-12"
           style={{
@@ -343,7 +344,7 @@ export default async function LandingPage() {
                 className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
                 aria-hidden="true"
               />
-              Next Level Fitness · Powered by Tap-it
+              Next Level Fitness • Powered by Tap-it
             </div>
 
             <h1 className="text-6xl sm:text-8xl lg:text-[120px] xl:text-[140px] font-black text-white leading-[0.95] tracking-tight uppercase">
@@ -380,7 +381,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ HIGHLIGHT STATS ═════════════════════════ */}
+        {/* -------------------- HIGHLIGHT STATS ------------------------- */}
         <section
           className="relative z-10 -mt-20 px-4 lg:px-8"
           aria-label="Key statistics"
@@ -413,7 +414,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ LIVE CAPACITY ═══════════════════════════ */}
+        {/* -------------------- LIVE CAPACITY --------------------------- */}
         <section
           className="py-28 px-4 lg:px-8"
           style={{
@@ -429,10 +430,10 @@ export default async function LandingPage() {
           />
         </section>
 
-        {/* ════════════════════ GYM NEWS ════════════════════════════════ */}
+        {/* -------------------- GYM NEWS -------------------------------- */}
         <GymNewsSection news={activeNews} />
 
-        {/* ════════════════════ GROUP TRAININGS ═════════════════════════ */}
+        {/* -------------------- GROUP TRAININGS ------------------------- */}
         <section
           id="group"
           className="py-28 px-4 lg:px-8"
@@ -448,7 +449,7 @@ export default async function LandingPage() {
                 Skupinové <span className="text-red-500">tréningy</span>
               </h2>
               <p className="mt-6 text-white/50 text-lg sm:text-xl max-w-2xl leading-relaxed">
-                ZADARMO! v rámci platného jednorazového vstupu (14€) alebo
+                ZADARMO! v rámci platného jednorazového vstupu (14 €) alebo
                 platnej permanentky či MultiSport a UpBalansea.
               </p>
               <Link
@@ -459,7 +460,7 @@ export default async function LandingPage() {
               </Link>
             </FadeIn>
 
-            {/* Bento grid — 1 large left + stacked right */}
+            {/* Bento grid - 1 large left + stacked right */}
             <div className="mt-14 grid grid-cols-1 md:grid-cols-4 auto-rows-[240px] sm:auto-rows-[280px] gap-4">
               {GROUP_TRAININGS.map((t, i) => (
                 <FadeIn key={t.name} delay={i * 80} className={t.span}>
@@ -498,7 +499,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ ABOUT / REASONS ═════════════════════════ */}
+        {/* -------------------- ABOUT / REASONS ------------------------- */}
         <section
           id="about"
           className="py-32 px-4 lg:px-8 relative overflow-hidden"
@@ -526,7 +527,7 @@ export default async function LandingPage() {
               <p className="mt-8 text-white/50 text-lg leading-relaxed max-w-xl">
                 Naša posilňovňa ponúka viac ako 1&nbsp;000&nbsp;m² tréningovej
                 plochy, špičkové vybavenie a moderné LED prostredie. Po náročnom
-                tréningu si môžeš dopriať relax v saune. Plne integrované s
+                tréningu si môžeš dopriať relax v saune. Plne integrovaná s
                 technológiou Tap-it pre rýchly a bezproblémový vstup.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
@@ -570,7 +571,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ LOCATIONS ═══════════════════════════════ */}
+        {/* -------------------- LOCATIONS ------------------------------- */}
         <section
           id="locations"
           className="py-28 px-4 lg:px-8"
@@ -653,7 +654,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ TRAINERS ════════════════════════════════ */}
+        {/* -------------------- TRAINERS -------------------------------- */}
         <section
           id="trainers"
           className="py-28 px-4 lg:px-8"
@@ -730,7 +731,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ GALLERY ═════════════════════════════════ */}
+        {/* -------------------- GALLERY --------------------------------- */}
         <section
           id="gallery"
           className="py-28 px-4 lg:px-8"
@@ -778,7 +779,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ PRICING ═════════════════════════════════ */}
+        {/* -------------------- PRICING --------------------------------- */}
         <section
           id="pricing"
           className="py-28 px-4 lg:px-8 relative overflow-hidden"
@@ -803,7 +804,7 @@ export default async function LandingPage() {
                 Vyber si <span className="text-red-500">členstvo</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg max-w-lg mx-auto">
-                Ponúkame rôzne možnosti — jednorazový vstup, mesačné či ročné
+                Ponúkame rôzne možnosti – jednorazový vstup, mesačný či ročný
                 balíčky.
               </p>
             </FadeIn>
@@ -870,7 +871,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ════════════════════ TAP-IT ENTRY ════════════════════════════ */}
+        {/* -------------------- TAP-IT ENTRY ---------------------------- */}
         <section
           id="entry"
           className="py-32 px-4 lg:px-8 relative overflow-hidden"
@@ -899,7 +900,7 @@ export default async function LandingPage() {
                 <span className="text-red-500">s Tap-it</span>
               </h2>
               <p className="mt-6 text-white/45 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed">
-                Zabudni na kartičky. Tvoj telefón je tvoja permanentka — rýchlo,
+                Zabudni na kartičky. Tvoj telefón je tvoja permanentka – rýchlo,
                 bezpečne a pohodlne.
               </p>
             </FadeIn>
@@ -943,7 +944,7 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      {/* ════════════════════ FOOTER ════════════════════════════════════ */}
+      {/* -------------------- FOOTER ------------------------------------ */}
       <footer
         id="contact"
         className="px-4 lg:px-8 py-20 border-t border-white/[0.06]"

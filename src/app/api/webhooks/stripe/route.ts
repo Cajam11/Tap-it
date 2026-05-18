@@ -18,7 +18,7 @@ type TransactionRow = {
 
 type UpdatableMembershipsQuery = {
   update(values: Record<string, unknown>): UpdatableMembershipsQuery;
-  eq(column: string, value: string): UpdatableMembershipsQuery;
+  match(values: Record<string, unknown>): Promise<{ error: unknown }>;
 };
 
 type InsertableMembershipsQuery = {
@@ -27,11 +27,16 @@ type InsertableMembershipsQuery = {
 
 type UpdatableTransactionsQuery = {
   update(values: Record<string, unknown>): UpdatableTransactionsQuery;
-  eq(column: string, value: string): UpdatableTransactionsQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
 type InsertableTransactionsQuery = {
   insert(values: Record<string, unknown>): Promise<{ error: unknown }>;
+};
+
+type UpdatableBookingsQuery = {
+  update(values: Record<string, unknown>): UpdatableBookingsQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
 function addDays(date: Date, days: number) {
@@ -103,8 +108,7 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
   if (!isAlreadyActivated) {
     await (admin.from("user_memberships") as unknown as UpdatableMembershipsQuery)
       .update({ status: "cancelled", end_date: now.toISOString() })
-      .eq("user_id", userId)
-      .eq("status", "active");
+      .match({ user_id: userId, status: "active" });
 
     const { error: membershipInsertError } = await (
       admin.from("user_memberships") as unknown as InsertableMembershipsQuery
@@ -205,6 +209,100 @@ async function markPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
   });
 }
 
+async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
+  const userId = asString(paymentIntent.metadata.user_id);
+  const bookingId = asString(paymentIntent.metadata.booking_id);
+
+  if (!userId || !bookingId) return;
+
+  const admin = createAdminClient();
+
+  // Mark the transaction as completed
+  const { data: existingTx } = await admin
+    .from("transactions")
+    .select("id")
+    .contains("metadata", { stripe_payment_intent_id: paymentIntent.id })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  const paymentAmount = Number(paymentIntent.amount_received || paymentIntent.amount) / 100;
+  const metadata = {
+    stripe_payment_intent_id: paymentIntent.id,
+    service_name: paymentIntent.metadata.service_name,
+    stripe_charge_id: typeof paymentIntent.latest_charge === "string" ? paymentIntent.latest_charge : null,
+  };
+
+  if (existingTx?.id) {
+    const { error: updateTxErr } = await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+      .update({ status: "completed", amount: paymentAmount, metadata })
+      .eq("id", existingTx.id);
+    if (updateTxErr) console.error("Webhook update tx error:", updateTxErr);
+  } else {
+    const { error: insertTxErr } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+      user_id: userId,
+      booking_id: bookingId,
+      amount: paymentAmount,
+      currency: "EUR",
+      type: "purchase",
+      status: "completed",
+      metadata,
+    });
+    if (insertTxErr) console.error("Webhook insert tx error:", insertTxErr);
+  }
+
+  // Update booking status
+  const { error: updateBookingErr } = await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+    .update({ status: "paid", stripe_pi_id: paymentIntent.id })
+    .eq("id", bookingId);
+  if (updateBookingErr) console.error("Webhook update booking error:", updateBookingErr);
+}
+
+async function markBookingPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
+  const userId = asString(paymentIntent.metadata.user_id);
+  const bookingId = asString(paymentIntent.metadata.booking_id);
+
+  if (!userId || !bookingId) return;
+
+  const admin = createAdminClient();
+  const paymentAmount = Number(paymentIntent.amount || 0) / 100;
+
+  const { data: existingTx } = await admin
+    .from("transactions")
+    .select("id")
+    .contains("metadata", { stripe_payment_intent_id: paymentIntent.id })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  const metadata = {
+    stripe_payment_intent_id: paymentIntent.id,
+    service_name: paymentIntent.metadata.service_name,
+    stripe_last_payment_error: paymentIntent.last_payment_error?.message ?? null,
+  };
+
+  if (existingTx?.id) {
+    await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+      .update({ status: "failed", metadata })
+      .eq("id", existingTx.id);
+  } else {
+    await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+      user_id: userId,
+      booking_id: bookingId,
+      amount: paymentAmount,
+      currency: "EUR",
+      type: "purchase",
+      status: "failed",
+      metadata,
+    });
+  }
+
+  // Update booking status
+  await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+    .update({ status: "failed" })
+    .eq("id", bookingId);
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
 
@@ -225,11 +323,21 @@ export async function POST(request: Request) {
 
   try {
     if (event.type === "payment_intent.succeeded") {
-      await finalizeMembershipFromPaymentIntent(event.data.object as Stripe.PaymentIntent);
+      const intent = event.data.object as Stripe.PaymentIntent;
+      if (intent.metadata.booking_id) {
+        await finalizeBookingFromPaymentIntent(intent);
+      } else if (intent.metadata.membership_id) {
+        await finalizeMembershipFromPaymentIntent(intent);
+      }
     }
 
     if (event.type === "payment_intent.payment_failed") {
-      await markPaymentAsFailed(event.data.object as Stripe.PaymentIntent);
+      const intent = event.data.object as Stripe.PaymentIntent;
+      if (intent.metadata.booking_id) {
+        await markBookingPaymentAsFailed(intent);
+      } else if (intent.metadata.membership_id) {
+        await markPaymentAsFailed(intent);
+      }
     }
   } catch {
     return NextResponse.json({ error: "webhook_processing_failed" }, { status: 500 });

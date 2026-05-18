@@ -1,4 +1,4 @@
-export type UserRole = "user" | "recepcny" | "manager" | "owner";
+export type UserRole = "user" | "trainer" | "recepcny" | "manager" | "owner";
 
 export interface Profile {
   id: string;
@@ -49,6 +49,46 @@ export interface UserMembership {
   activated_by_admin: boolean;
   created_at: string;
   membership?: Membership;
+}
+
+export type BookableServiceType = "group" | "trainer" | "facility";
+export type BookingStatus = "pending" | "paid" | "cancelled" | "refunded";
+
+export interface BookableService {
+  id: string;
+  name: string;
+  type: BookableServiceType;
+  base_price: number;
+  price_unit: "hour" | "minute" | "session";
+  capacity: number | null;
+  is_active: boolean;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ServiceSchedule {
+  id: string;
+  service_id: string;
+  trainer_id: string | null;
+  start_time: string;
+  end_time: string;
+  current_capacity: number | null;
+  created_at: string;
+}
+
+export interface Booking {
+  id: string;
+  user_id: string;
+  service_id: string;
+  schedule_id: string | null;
+  start_time: string;
+  end_time: string;
+  total_price: number;
+  status: BookingStatus;
+  stripe_pi_id: string | null;
+  stripe_refund_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Entry {

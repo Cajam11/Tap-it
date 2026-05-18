@@ -11,10 +11,12 @@ import {
   User as UserIcon,
   Settings,
   CreditCard,
+  Dumbbell,
   Receipt,
   HelpCircle,
   BarChart3,
   TrendingUp,
+  CalendarCheck2,
 } from "lucide-react";
 
 type NavUser = {
@@ -48,6 +50,7 @@ export default function NavBarAuth({
   const [user, setUser] = useState<NavUser | null>(initialUser);
   const [profile, setProfile] = useState<NavProfile>(initialProfile);
   const [adminAccess, setAdminAccess] = useState<boolean>(isAdmin);
+  const [trainerAccess, setTrainerAccess] = useState<boolean>(false);
   const [avatarRevision, setAvatarRevision] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,7 @@ export default function NavBarAuth({
     async function resolveAdminAccess() {
       if (!user) {
         setAdminAccess(false);
+        setTrainerAccess(false);
         return;
       }
 
@@ -75,6 +79,7 @@ export default function NavBarAuth({
 
       if (!isCancelled) {
         setAdminAccess(isAdminRole(roleRow?.role));
+        setTrainerAccess(roleRow?.role === "trainer");
       }
     }
 
@@ -252,6 +257,24 @@ export default function NavBarAuth({
                     <Settings className="w-4 h-4" />
                     Nastavenia
                   </Link>
+                  <Link
+                    href="/bookings"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  >
+                    <CalendarCheck2 className="w-4 h-4" />
+                    Rezervácie
+                  </Link>
+                  {trainerAccess && (
+                    <Link
+                      href="/trainer"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                    >
+                      <Dumbbell className="w-4 h-4" />
+                      Tréner panel
+                    </Link>
+                  )}
                   <Link
                     href="/membership"
                     onClick={() => setMenuOpen(false)}

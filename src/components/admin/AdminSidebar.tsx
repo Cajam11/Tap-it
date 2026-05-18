@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck, CalendarHeart } from "lucide-react";
 import { hasMinAdminRole } from "@/lib/admin-authz";
 import type { UserRole } from "@/lib/types";
 
@@ -44,6 +44,11 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       label: "Scan Logs",
       href: "/admin/logs",
       icon: Clock,
+    },
+    {
+      label: "Bookings",
+      href: "/admin/bookings",
+      icon: CalendarHeart,
     },
   ];
 

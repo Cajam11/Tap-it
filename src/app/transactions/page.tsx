@@ -37,22 +37,28 @@ export default async function TransactionsPage() {
       .maybeSingle(),
     supabase
       .from("transactions")
-    .select(
+      .select(
+        `
+        id,
+        amount,
+        currency,
+        type,
+        status,
+        created_at,
+        metadata,
+        memberships (
+          name
+        ),
+        bookings (
+          id,
+          bookable_services (
+            name
+          )
+        )
       `
-      id,
-      amount,
-      currency,
-      type,
-      status,
-      created_at,
-      metadata,
-      memberships (
-        name
       )
-    `
-    )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false }),
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (error) {
@@ -148,7 +154,13 @@ export default async function TransactionsPage() {
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
                             <span className="font-medium text-white/90">
-                              {(Array.isArray(tx.memberships) ? tx.memberships[0]?.name : (tx.memberships as { name: string })?.name) || "—"}
+                              {(Array.isArray(tx.memberships)
+                                ? tx.memberships[0]?.name
+                                : (tx.memberships as { name: string })?.name) ||
+                                (Array.isArray(tx.bookings)
+                                  ? tx.bookings[0]?.bookable_services?.[0]?.name
+                                  : (tx.bookings as { bookable_services?: { name?: string } })?.bookable_services?.name) ||
+                                "—"}
                             </span>
                             {reason && (
                               <span className="text-xs text-white/50 italic">

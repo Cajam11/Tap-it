@@ -1,12 +1,17 @@
 import { redirect } from "next/navigation";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import BookingTimeline from "./BookingTimeline";
+
+type BookingStatus = "pending" | "paid" | "cancelled" | "refunded";
 
 type BookingRow = {
   id: string;
+  service_id: string;
+  schedule_id: string | null;
   start_time: string;
   end_time: string;
-  status: "pending" | "paid" | "cancelled" | "refunded";
+  status: BookingStatus;
   total_price: number;
   bookable_services: {
     name: string;
@@ -14,20 +19,70 @@ type BookingRow = {
   } | null;
 };
 
-function formatDate(value: string) {
+type ScheduleRow = {
+  id: string;
+  trainer_id: string | null;
+};
+
+type TrainerRow = {
+  id: string;
+  full_name: string | null;
+};
+
+const NAV_LINKS: [string, string][] = [];
+const ACTIVITY_COLORS = [
+  "border-orange-400 bg-orange-500/18 text-orange-100",
+  "border-fuchsia-400 bg-fuchsia-500/18 text-fuchsia-100",
+  "border-sky-400 bg-sky-500/18 text-sky-100",
+  "border-emerald-400 bg-emerald-500/18 text-emerald-100",
+  "border-amber-300 bg-amber-400/18 text-amber-100",
+];
+
+function normalizeService(rawService: BookingRow["bookable_services"] | BookingRow["bookable_services"][]) {
+  return Array.isArray(rawService) ? rawService[0] ?? null : rawService ?? null;
+}
+
+function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
+
   return new Intl.DateTimeFormat("sk-SK", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(date);
 }
 
-const NAV_LINKS: [string, string][] = [];
+function formatTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("sk-SK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getStatusLabel(status: BookingStatus) {
+  if (status === "paid") return "Zaplatene";
+  if (status === "pending") return "Caka na platbu";
+  if (status === "cancelled") return "Zrusene";
+  return "Refundovane";
+}
+
+function getStatusClass(status: BookingStatus) {
+  if (status === "paid") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
+  if (status === "pending") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
+  if (status === "cancelled") return "border-white/10 bg-white/[0.03] text-white/45";
+  return "border-sky-300/30 bg-sky-400/10 text-sky-100";
+}
 
 export default async function MyBookingsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -55,22 +110,62 @@ export default async function MyBookingsPage() {
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, start_time, end_time, status, total_price, bookable_services(name, type)")
+    .select("id, service_id, schedule_id, start_time, end_time, status, total_price, bookable_services(name, type)")
     .eq("user_id", user.id)
-    .eq("status", "paid")
-    .order("start_time", { ascending: true });
+    .order("start_time", { ascending: false });
 
-  const items = (bookings ?? []).map((booking) => {
-    const rawService = booking.bookable_services;
-    const normalizedService = Array.isArray(rawService)
-      ? rawService[0] ?? null
-      : rawService ?? null;
+  const items = (bookings ?? []).map((booking) => ({
+    ...booking,
+    bookable_services: normalizeService(booking.bookable_services),
+  })) as BookingRow[];
 
-    return {
-      ...booking,
-      bookable_services: normalizedService,
-    };
-  }) as BookingRow[];
+  const scheduleIds = Array.from(
+    new Set(items.map((booking) => booking.schedule_id).filter((id): id is string => Boolean(id)))
+  );
+
+  const { data: scheduleRows } = scheduleIds.length
+    ? await supabase.from("service_schedules").select("id, trainer_id").in("id", scheduleIds)
+    : { data: [] as ScheduleRow[] };
+
+  const schedulesById = new Map(
+    ((scheduleRows ?? []) as ScheduleRow[]).map((schedule) => [schedule.id, schedule])
+  );
+  const trainerIds = Array.from(
+    new Set(
+      Array.from(schedulesById.values())
+        .map((schedule) => schedule.trainer_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  const { data: trainerRows } = trainerIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", trainerIds)
+    : { data: [] as TrainerRow[] };
+
+  const trainersById = new Map(((trainerRows ?? []) as TrainerRow[]).map((trainer) => [trainer.id, trainer]));
+  const now = new Date();
+  const activeBookings = items
+    .filter((booking) => booking.status !== "cancelled" && booking.status !== "refunded")
+    .filter((booking) => new Date(booking.end_time) >= now)
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+  const timelineActivities = activeBookings
+    .map((booking, index) => {
+      const schedule = booking.schedule_id ? schedulesById.get(booking.schedule_id) : null;
+      const trainerName = schedule?.trainer_id ? trainersById.get(schedule.trainer_id)?.full_name ?? null : null;
+      const serviceName = booking.bookable_services?.name ?? "Rezervacia";
+      const label = trainerName ? `${serviceName} s ${trainerName}` : serviceName;
+
+      return {
+        ...booking,
+        trainerName,
+        label,
+        color: ACTIVITY_COLORS[index % ACTIVITY_COLORS.length],
+      };
+    });
+
+  const upcomingPreview = activeBookings.slice(0, 4);
+  const historyItems = items.slice(0, 12);
 
   return (
     <>
@@ -80,45 +175,66 @@ export default async function MyBookingsPage() {
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-4xl space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Moje rezervácie</h1>
-            <p className="text-white/60">Prehľad vašich rezervovaných tréningov a služieb.</p>
-          </div>
+        <div className="relative z-10 mx-auto w-full max-w-7xl space-y-8">
+          <header className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
+              Bookings
+            </p>
+            <h1 className="text-4xl font-black tracking-tight text-white">
+              Moje rezervacie
+            </h1>
+            <p className="max-w-2xl text-white/60">
+              Historia rezervacii nalavo, najblizsie aktivity a denny rozvrh napravo.
+            </p>
+          </header>
 
-          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
-            {items.length === 0 ? (
-              <p className="text-white/50">Zatiaľ nemáte žiadne rezervácie.</p>
-            ) : (
-              <div className="space-y-4">
-                {items.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 sm:px-6"
-                  >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-base font-semibold text-white">
-                          {booking.bookable_services?.name ?? "Rezervácia"}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)]">
+            <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
+              <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Historia bookingov</h2>
+                  <p className="text-sm text-white/45">Poslednych {historyItems.length} rezervacii</p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
+                  {items.length} spolu
+                </span>
+              </div>
+
+              {historyItems.length === 0 ? (
+                <p className="mt-6 text-white/50">Zatial nemate ziadne rezervacie.</p>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {historyItems.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="rounded-lg border border-white/10 bg-black/20 px-4 py-4 transition hover:border-white/18 hover:bg-white/[0.04]"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="truncate text-base font-semibold text-white">
+                            {booking.bookable_services?.name ?? "Rezervacia"}
+                          </div>
+                          <div className="mt-1 text-sm text-white/55">
+                            {formatDateTime(booking.start_time)} - {formatTime(booking.end_time)}
+                          </div>
                         </div>
-                        <div className="text-sm text-white/60">
-                          {formatDate(booking.start_time)} – {formatDate(booking.end_time)}
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className={`rounded-full border px-3 py-1 text-xs ${getStatusClass(booking.status)}`}>
+                            {getStatusLabel(booking.status)}
+                          </span>
+                          <span className="min-w-16 text-right text-sm font-semibold text-white">
+                            {booking.total_price.toFixed(2)} EUR
+                          </span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-white/70">
-                          {booking.status === "paid" ? "Zaplatené" : booking.status === "pending" ? "Čaká na platbu" : booking.status === "cancelled" ? "Zrušené" : "Refundované"}
-                        </span>
-                        <span className="text-sm font-semibold text-white">
-                          {booking.total_price.toFixed(2)}€
-                        </span>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <BookingTimeline activities={timelineActivities} upcomingPreview={upcomingPreview} />
+          </div>
         </div>
       </main>
     </>

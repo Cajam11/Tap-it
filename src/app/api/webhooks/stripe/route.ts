@@ -39,6 +39,11 @@ type UpdatableBookingsQuery = {
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
+type UpdatableSchedulesQuery = {
+  update(values: Record<string, unknown>): UpdatableSchedulesQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
+};
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -251,11 +256,35 @@ async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentInt
     if (insertTxErr) console.error("Webhook insert tx error:", insertTxErr);
   }
 
-  // Update booking status
-  const { error: updateBookingErr } = await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-    .update({ status: "paid", stripe_pi_id: paymentIntent.id })
-    .eq("id", bookingId);
-  if (updateBookingErr) console.error("Webhook update booking error:", updateBookingErr);
+  const { data: bookingRow } = await admin
+    .from("bookings")
+    .select("schedule_id, status")
+    .eq("id", bookingId)
+    .maybeSingle<{ schedule_id: string | null; status: string }>();
+
+  if (!bookingRow) return;
+
+  if (bookingRow.status !== "paid") {
+    const { error: updateBookingErr } = await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+      .update({ status: "paid", stripe_pi_id: paymentIntent.id })
+      .eq("id", bookingId);
+    if (updateBookingErr) console.error("Webhook update booking error:", updateBookingErr);
+  }
+
+  if (bookingRow.schedule_id && bookingRow.status !== "paid") {
+    const { data: scheduleRow } = await admin
+      .from("service_schedules")
+      .select("id, current_capacity")
+      .eq("id", bookingRow.schedule_id)
+      .maybeSingle<{ id: string; current_capacity: number | null }>();
+
+    if (scheduleRow && scheduleRow.current_capacity !== null && scheduleRow.current_capacity > 0) {
+      const { error: updateScheduleErr } = await (admin.from("service_schedules") as unknown as UpdatableSchedulesQuery)
+        .update({ current_capacity: scheduleRow.current_capacity - 1 })
+        .eq("id", scheduleRow.id);
+      if (updateScheduleErr) console.error("Webhook update schedule error:", updateScheduleErr);
+    }
+  }
 }
 
 async function markBookingPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {

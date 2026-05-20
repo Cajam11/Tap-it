@@ -70,6 +70,7 @@ export interface ServiceSchedule {
   id: string;
   service_id: string;
   trainer_id: string | null;
+  recurring_rule_id?: string | null;
   start_time: string;
   end_time: string;
   current_capacity: number | null;

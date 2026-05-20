@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
-import BookingSelector from "../../[serviceId]/BookingSelector";
+import TrainerBookingClient from "./TrainerBookingClient";
 import type { BookableService, ServiceSchedule } from "@/lib/types";
 
 export default async function TrainerBookingPage({
@@ -66,15 +66,19 @@ export default async function TrainerBookingPage({
   const typedService = trainerService as BookableService;
 
   const resolvedServiceId = serviceId || typedService.id;
+  const scheduleStart = new Date();
+  const scheduleEnd = new Date(scheduleStart);
+  scheduleEnd.setMonth(scheduleEnd.getMonth() + 1);
+  scheduleEnd.setHours(23, 59, 59, 999);
 
   const { data: scheduleData } = await supabase
     .from("service_schedules")
     .select("*")
     .eq("service_id", resolvedServiceId)
     .eq("trainer_id", trainerId)
-    .gte("start_time", new Date().toISOString())
-    .order("start_time", { ascending: true })
-    .limit(30);
+    .gte("start_time", scheduleStart.toISOString())
+    .lte("start_time", scheduleEnd.toISOString())
+    .order("start_time", { ascending: true });
 
   const schedules = (scheduleData ?? []) as ServiceSchedule[];
 
@@ -86,37 +90,12 @@ export default async function TrainerBookingPage({
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-4xl space-y-10">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/10">
-                {trainerProfile.avatar_url ? (
-                  <img
-                    src={trainerProfile.avatar_url}
-                    alt={trainerProfile.full_name ?? "Tréner"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-semibold text-white">
-                    {(trainerProfile.full_name ?? "T").trim().charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">
-                  {trainerProfile.full_name ?? "Tréner"}
-                </h1>
-                <p className="text-white/60">
-                  Cena: {typedService.base_price}€ / {typedService.price_unit === "session" ? "trén.": typedService.price_unit}
-                </p>
-                {trainerProfile.bio ? (
-                  <p className="mt-2 text-white/60">{trainerProfile.bio}</p>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <BookingSelector service={typedService} schedules={schedules} />
+        <div className="relative z-10 mx-auto w-full max-w-7xl pt-6">
+          <TrainerBookingClient
+            trainerProfile={trainerProfile}
+            service={typedService}
+            schedules={schedules}
+          />
         </div>
       </main>
     </>

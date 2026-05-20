@@ -57,6 +57,7 @@ export default async function MyBookingsPage() {
     .from("bookings")
     .select("id, start_time, end_time, status, total_price, bookable_services(name, type)")
     .eq("user_id", user.id)
+    .eq("status", "paid")
     .order("start_time", { ascending: true });
 
   const items = (bookings ?? []).map((booking) => {

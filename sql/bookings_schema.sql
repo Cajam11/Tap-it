@@ -43,6 +43,9 @@ create table if not exists public.recurring_rules (
   start_time time not null,
   end_time time not null,
   weeks_ahead int not null default 4, -- Na koľko týždňov dopredu sa to má generovať
+  active_from date not null default current_date,
+  active_until date not null default (current_date + interval '1 month')::date,
+  constraint recurring_rules_active_window_check check (active_until >= active_from),
   created_at timestamptz not null default now()
 );
 
@@ -51,6 +54,7 @@ create table if not exists public.service_schedules (
   id uuid primary key default gen_random_uuid(),
   service_id uuid not null references public.bookable_services(id) on delete cascade,
   trainer_id uuid null references public.profiles(id) on delete set null, -- Null pre haly/wellness
+  recurring_rule_id uuid null references public.recurring_rules(id) on delete cascade,
   start_time timestamptz not null,
   end_time timestamptz not null,
   current_capacity int null, -- Pri generovaní sa prekopíruje z bookable_services.capacity
@@ -62,7 +66,7 @@ create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete restrict,
   service_id uuid not null references public.bookable_services(id) on delete restrict,
-  schedule_id uuid null references public.service_schedules(id) on delete restrict,
+  schedule_id uuid null references public.service_schedules(id) on delete set null,
   start_time timestamptz not null,
   end_time timestamptz not null,
   total_price numeric(10,2) not null,

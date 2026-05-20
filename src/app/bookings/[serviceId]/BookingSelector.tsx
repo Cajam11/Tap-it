@@ -43,15 +43,19 @@ export default function BookingSelector({
               const start = new Date(schedule.start_time);
               const end = new Date(schedule.end_time);
               const isSelected = selectedScheduleId === schedule.id;
+              const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
 
               return (
                 <button
                   key={schedule.id}
                   onClick={() => setSelectedScheduleId(schedule.id)}
+                  disabled={isFull}
                   className={`w-full text-left p-4 rounded-xl border transition-all ${
                     isSelected
                       ? "border-red-500/50 bg-red-500/10 text-white"
-                      : "border-white/10 bg-white/5 hover:border-white/20 text-white/80 hover:text-white"
+                      : isFull
+                        ? "border-white/10 bg-white/5 text-white/30 line-through cursor-not-allowed"
+                        : "border-white/10 bg-white/5 hover:border-white/20 text-white/80 hover:text-white"
                   }`}
                 >
                   <div className="flex justify-between items-center text-[15px]">
@@ -65,7 +69,7 @@ export default function BookingSelector({
                   </div>
                   {schedule.current_capacity !== null && (
                     <div className="mt-2 text-sm text-white/50">
-                      Voľné miesta: {schedule.current_capacity}
+                      {isFull ? "Obsadené" : `Voľné miesta: ${schedule.current_capacity}`}
                     </div>
                   )}
                 </button>

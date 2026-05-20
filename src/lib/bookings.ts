@@ -18,6 +18,11 @@ type UpdatableBookingsQuery = {
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
+type UpdatableSchedulesQuery = {
+  update(values: Record<string, unknown>): UpdatableSchedulesQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
+};
+
 export async function createBookingIntent(
   userId: string,
   serviceId: string,
@@ -40,6 +45,31 @@ export async function createBookingIntent(
   }
 
   if (scheduleId) {
+    const { data: scheduleRow } = await admin
+      .from("service_schedules")
+      .select("id, current_capacity")
+      .eq("id", scheduleId)
+      .maybeSingle<{ id: string; current_capacity: number | null }>();
+
+    if (!scheduleRow) {
+      throw new Error("Termín nebol nájdený.");
+    }
+
+    if (scheduleRow.current_capacity !== null && scheduleRow.current_capacity <= 0) {
+      throw new Error("Tento termín je už obsadený.");
+    }
+
+    const { data: existingPaidBooking } = await admin
+      .from("bookings")
+      .select("id")
+      .eq("schedule_id", scheduleId)
+      .eq("status", "paid")
+      .maybeSingle<{ id: string }>();
+
+    if (existingPaidBooking?.id) {
+      throw new Error("Tento termín je už obsadený.");
+    }
+
     const { data: existingScheduleBooking } = await admin
       .from("bookings")
       .select("id")
@@ -50,6 +80,64 @@ export async function createBookingIntent(
 
     if (existingScheduleBooking?.id) {
       throw new Error("Tento termín už máte rezervovaný.");
+    }
+
+    const { data: existingPendingBooking } = await admin
+      .from("bookings")
+      .select("id, stripe_pi_id")
+      .eq("user_id", userId)
+      .eq("schedule_id", scheduleId)
+      .eq("status", "pending")
+      .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
+
+    if (existingPendingBooking?.id) {
+      const stripe = getStripeServerClient();
+
+      if (existingPendingBooking.stripe_pi_id) {
+        const existingIntent = await stripe.paymentIntents.retrieve(existingPendingBooking.stripe_pi_id);
+        if (existingIntent.client_secret) {
+          return {
+            clientSecret: existingIntent.client_secret,
+            bookingId: existingPendingBooking.id,
+          };
+        }
+      }
+
+      const newIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalPrice * 100),
+        currency: "eur",
+        metadata: {
+          user_id: userId,
+          booking_id: existingPendingBooking.id,
+          service_name: serviceName,
+        },
+      });
+
+      if (!newIntent.client_secret) {
+        throw new Error("Could not create Stripe payment intent.");
+      }
+
+      await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+        .update({ stripe_pi_id: newIntent.id })
+        .eq("id", existingPendingBooking.id);
+
+      return {
+        clientSecret: newIntent.client_secret,
+        bookingId: existingPendingBooking.id,
+      };
+    }
+
+    const { data: existingTimeBooking } = await admin
+      .from("bookings")
+      .select("id")
+      .eq("service_id", serviceId)
+      .eq("start_time", startTime.toISOString())
+      .eq("end_time", endTime.toISOString())
+      .in("status", ["pending", "paid"])
+      .maybeSingle<{ id: string }>();
+
+    if (existingTimeBooking?.id) {
+      throw new Error("Tento termín je už obsadený.");
     }
   }
 
@@ -83,6 +171,53 @@ export async function createBookingIntent(
     .single<{ id: string }>();
 
   if (bookingError || !booking) {
+    if (scheduleId) {
+      const { data: pendingFallback } = await admin
+        .from("bookings")
+        .select("id, stripe_pi_id")
+        .eq("user_id", userId)
+        .eq("schedule_id", scheduleId)
+        .eq("status", "pending")
+        .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
+
+      if (pendingFallback?.id) {
+        const stripe = getStripeServerClient();
+
+        if (pendingFallback.stripe_pi_id) {
+          const existingIntent = await stripe.paymentIntents.retrieve(pendingFallback.stripe_pi_id);
+          if (existingIntent.client_secret) {
+            return {
+              clientSecret: existingIntent.client_secret,
+              bookingId: pendingFallback.id,
+            };
+          }
+        }
+
+        const newIntent = await stripe.paymentIntents.create({
+          amount: Math.round(totalPrice * 100),
+          currency: "eur",
+          metadata: {
+            user_id: userId,
+            booking_id: pendingFallback.id,
+            service_name: serviceName,
+          },
+        });
+
+        if (!newIntent.client_secret) {
+          throw new Error("Could not create Stripe payment intent.");
+        }
+
+        await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+          .update({ stripe_pi_id: newIntent.id })
+          .eq("id", pendingFallback.id);
+
+        return {
+          clientSecret: newIntent.client_secret,
+          bookingId: pendingFallback.id,
+        };
+      }
+    }
+
     throw new Error("Could not create local booking record.");
   }
 
@@ -102,6 +237,10 @@ export async function createBookingIntent(
     throw new Error("Could not create Stripe payment intent.");
   }
 
+  await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+    .update({ stripe_pi_id: paymentIntent.id })
+    .eq("id", booking.id);
+
   return {
     clientSecret: paymentIntent.client_secret,
     bookingId: booking.id,
@@ -117,6 +256,7 @@ export async function cancelBookingAndRefund(bookingId: string, userId: string) 
     .eq("id", bookingId)
     .single<{
       user_id: string;
+      schedule_id: string | null;
       status: string;
       stripe_pi_id: string | null;
       start_time: string;
@@ -167,6 +307,20 @@ export async function cancelBookingAndRefund(bookingId: string, userId: string) 
       stripe_refund_id: stripeRefundId,
     })
     .eq("id", bookingId);
+
+  if (booking.schedule_id) {
+    const { data: scheduleRow } = await admin
+      .from("service_schedules")
+      .select("id, current_capacity")
+      .eq("id", booking.schedule_id)
+      .maybeSingle<{ id: string; current_capacity: number | null }>();
+
+    if (scheduleRow && scheduleRow.current_capacity !== null) {
+      await (admin.from("service_schedules") as unknown as UpdatableSchedulesQuery)
+        .update({ current_capacity: scheduleRow.current_capacity + 1 })
+        .eq("id", scheduleRow.id);
+    }
+  }
 
   // If it was refunded, record the transaction type
   if (stripeRefundId) {

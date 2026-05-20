@@ -189,8 +189,10 @@ export async function createBookingIntent(
       .lt("start_time", endTime.toISOString())
       .gt("end_time", startTime.toISOString());
 
+    const activeBookingsArr = (activeBookings ?? []) as Array<{ service_id?: string | null }>;
+
     const activeServiceIds = Array.from(
-      new Set((activeBookings ?? []).map((booking) => booking.service_id).filter(Boolean))
+      new Set(activeBookingsArr.map((booking) => booking.service_id).filter(Boolean))
     );
 
     const { data: activeTrainerServices } = activeServiceIds.length

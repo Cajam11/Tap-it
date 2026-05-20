@@ -85,8 +85,10 @@ export default async function ServiceDetailPage({
         .in("status", ["pending", "paid"])
         .in("schedule_id", scheduleIds);
 
+      const bookedSchedulesArr = (bookedSchedules ?? []) as Array<{ schedule_id?: string | null }>;
+
       const lockedScheduleIds = new Set(
-        (bookedSchedules ?? []).map((booking) => booking.schedule_id).filter((id): id is string => Boolean(id))
+        bookedSchedulesArr.map((booking) => booking.schedule_id).filter((id): id is string => Boolean(id))
       );
 
       schedules = schedules.map((schedule) =>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,26 +19,40 @@ type TrainerService = {
 
 export default async function TrainersPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url")
+    .eq("id", user.id)
+    .single();
 
   const navUser = {
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
-    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+    full_name:
+      typeof profile?.full_name === "string" ? profile.full_name : null,
+    avatar_url:
+      typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
   };
 
   const { data: trainerService } = await supabase
@@ -58,7 +73,11 @@ export default async function TrainersPage() {
 
   return (
     <>
-      <NavBarAuth navLinks={[]} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={[]}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="relative min-h-screen overflow-hidden bg-[#080808] px-4 pb-16 pt-24 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-[-12%] top-[-14%] h-[32rem] w-[32rem] rounded-full bg-red-600/18 blur-[140px]" />
@@ -69,7 +88,10 @@ export default async function TrainersPage() {
           <div className="flex flex-col gap-6 pt-2 lg:pt-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
-                <Link href="/bookings" className="transition hover:text-white/65">
+                <Link
+                  href="/bookings"
+                  className="transition hover:text-white/65"
+                >
                   Bookings
                 </Link>
                 <span className="h-px w-10 bg-white/15" />
@@ -85,9 +107,12 @@ export default async function TrainersPage() {
             </div>
 
             <div className="max-w-3xl space-y-5">
-              <h1 className="text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">Tréneri</h1>
+              <h1 className="text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Tréneri
+              </h1>
               <p className="max-w-2xl text-base leading-7 text-white/60 sm:text-lg lg:max-w-xl">
-                Zoznam trénerov, ktorí sú pripravení na rezerváciu. Klikni na trénera a otvorí sa jeho dostupnosť.
+                Zoznam trénerov, ktorí sú pripravení na rezerváciu. Klikni na
+                trénera a otvorí sa jeho dostupnosť.
               </p>
             </div>
 
@@ -136,10 +161,19 @@ function TrainerCard({
     >
       <div className="absolute inset-0">
         {trainer.avatar_url ? (
-          <img src={trainer.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+          <Image
+            src={trainer.avatar_url}
+            alt={displayName}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
-            <span className="text-6xl font-semibold text-white/70">{avatarFallback || "T"}</span>
+            <span className="text-6xl font-semibold text-white/70">
+              {avatarFallback || "T"}
+            </span>
           </div>
         )}
       </div>

@@ -1,10 +1,16 @@
-'use server';
+"use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { hasServerAdminAccess } from "@/lib/admin-access";
 
-const ALLOWED_ROLES = ["user", "recepcny", "manager", "owner"] as const;
+const ALLOWED_ROLES = [
+  "user",
+  "recepcny",
+  "manager",
+  "owner",
+  "trainer",
+] as const;
 type AllowedRole = (typeof ALLOWED_ROLES)[number];
 
 type AdminUserRow = {
@@ -38,7 +44,9 @@ export async function searchUsers({
   const admin = createAdminClient();
   let query = admin
     .from("profiles")
-    .select("id, email, full_name, role, is_verified, onboarding_completed, created_at")
+    .select(
+      "id, email, full_name, role, is_verified, onboarding_completed, created_at",
+    )
     .order("created_at", { ascending: false });
 
   if (q && q.trim()) {
@@ -55,7 +63,9 @@ export async function searchUsers({
   }
 
   if (onboarding === "pending") {
-    query = query.or("onboarding_completed.is.null,onboarding_completed.eq.false");
+    query = query.or(
+      "onboarding_completed.is.null,onboarding_completed.eq.false",
+    );
   }
 
   if (verified === "verified") {

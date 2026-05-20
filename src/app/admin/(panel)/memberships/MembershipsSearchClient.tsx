@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import Link from 'next/link';
-import { searchMemberships } from './search.server';
+import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
+import { searchMemberships } from "./search.server";
 import { AdminMembershipChangeModal } from "@/components/admin/AdminMembershipChangeModal";
-import { Search, X } from 'lucide-react';
+import { Search, X } from "lucide-react";
 
 type AdminProfileRow = {
   id: string;
@@ -76,8 +76,8 @@ export function MembershipsSearchClient() {
   const [memberships, setMemberships] = useState<AdminMembershipRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [q, setQ] = useState('');
-  const [plan, setPlan] = useState('all');
+  const [q, setQ] = useState("");
+  const [plan, setPlan] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string>("");
@@ -101,7 +101,7 @@ export function MembershipsSearchClient() {
         setMemberships(result.memberships);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
       setProfiles([]);
       setMemberships([]);
     } finally {
@@ -130,7 +130,7 @@ export function MembershipsSearchClient() {
   const handleOpenModal = (
     userId: string,
     userName: string,
-    membershipPlan: string
+    membershipPlan: string,
   ) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName || "Neznámy užívateľ");
@@ -161,12 +161,12 @@ export function MembershipsSearchClient() {
   };
 
   const handleReset = () => {
-    setQ('');
-    setPlan('all');
+    setQ("");
+    setPlan("all");
   };
 
   return (
-    <section className="space-y-5">
+    <section className="flex h-full min-h-0 flex-col gap-5">
       <div>
         <h2 className="text-2xl font-bold">Memberships</h2>
         <p className="mt-1 text-white/70">
@@ -196,7 +196,7 @@ export function MembershipsSearchClient() {
             {q && (
               <button
                 type="button"
-                onClick={() => setQ('')}
+                onClick={() => setQ("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
               >
                 <X className="h-4 w-4" />
@@ -232,7 +232,7 @@ export function MembershipsSearchClient() {
             disabled={loading}
             className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Loading...' : 'Refresh'}
+            {loading ? "Loading..." : "Refresh"}
           </button>
           <button
             type="button"
@@ -272,7 +272,7 @@ export function MembershipsSearchClient() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
             <tr>
@@ -314,12 +314,18 @@ export function MembershipsSearchClient() {
                     className="border-b border-white/10 last:border-b-0"
                   >
                     <td className="px-4 py-3 text-white">
-                      <Link href={`/admin/users/${profile.id}`} className="hover:underline hover:text-white/80 transition-colors">
+                      <Link
+                        href={`/admin/users/${profile.id}`}
+                        className="hover:underline hover:text-white/80 transition-colors"
+                      >
                         {profile.full_name ?? "-"}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-white/80">
-                      <Link href={`/admin/users/${profile.id}`} className="hover:underline hover:text-white/60 transition-colors">
+                      <Link
+                        href={`/admin/users/${profile.id}`}
+                        className="hover:underline hover:text-white/60 transition-colors"
+                      >
                         {profile.email ?? "-"}
                       </Link>
                     </td>
@@ -342,7 +348,7 @@ export function MembershipsSearchClient() {
                           handleOpenModal(
                             profile.id,
                             profile.full_name || "",
-                            currentMembershipPlan
+                            currentMembershipPlan,
                           )
                         }
                         className="rounded-lg border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"

@@ -6,7 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasServerAdminAccess } from "@/lib/admin-access";
 
-const ALLOWED_ROLES = new Set(["user", "recepcny", "manager", "owner"]);
+const ALLOWED_ROLES = new Set([
+  "user",
+  "recepcny",
+  "manager",
+  "owner",
+  "trainer",
+]);
 
 type UpdateUserRoleResult = {
   success?: true;
@@ -67,7 +73,9 @@ export async function updateUserRole(formData: FormData) {
       redirect("/admin/users?status=error&message=Nedostatocne_prava");
     }
     if (result.error === "Owner si nemoze odobrat owner rolu") {
-      redirect("/admin/users?status=error&message=Owner_si_nemoze_odobrat_owner_rolu");
+      redirect(
+        "/admin/users?status=error&message=Owner_si_nemoze_odobrat_owner_rolu",
+      );
     }
     redirect("/admin/users?status=error&message=Zmena_roly_zlyhala");
   }
@@ -121,5 +129,7 @@ export async function updateUserVerified(formData: FormData) {
     redirect("/admin/users?status=error&message=Zmena_verifikacie_zlyhala");
   }
 
-  redirect("/admin/users?status=success&message=Stav_overenia_bol_aktualizovany");
+  redirect(
+    "/admin/users?status=success&message=Stav_overenia_bol_aktualizovany",
+  );
 }

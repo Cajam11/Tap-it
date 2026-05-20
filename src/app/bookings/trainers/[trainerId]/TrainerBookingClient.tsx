@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { BookableService, ServiceSchedule } from "@/lib/types";
 
 // Pomocne datumove funkcie
@@ -20,16 +21,23 @@ export default function TrainerBookingClient({
   service,
   schedules,
 }: {
-  trainerProfile: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null };
+  trainerProfile: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    bio: string | null;
+  };
   service: BookableService;
   schedules: ServiceSchedule[];
 }) {
   const router = useRouter();
-  
+
   // Stavy
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   const currentYear = currentDate.getFullYear();
@@ -45,7 +53,10 @@ export default function TrainerBookingClient({
       const end = new Date(schedule.end_time);
       const durationMinutes = (end.getTime() - start.getTime()) / 60000;
 
-      if (schedule.current_capacity !== null && schedule.current_capacity <= 0) {
+      if (
+        schedule.current_capacity !== null &&
+        schedule.current_capacity <= 0
+      ) {
         return;
       }
 
@@ -63,7 +74,10 @@ export default function TrainerBookingClient({
 
     // Zoradíme sloty podľa času
     for (const list of map.values()) {
-      list.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      list.sort(
+        (a, b) =>
+          new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
+      );
     }
 
     return map;
@@ -72,20 +86,26 @@ export default function TrainerBookingClient({
   // Vygenerovanie buniek kalendára
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-  const blanks = Array.from({ length: firstDay }).map((_, i) => null);
-  const days = Array.from({ length: daysInMonth }).map((_, i) => i + 1);
+  const blanks = Array.from({ length: firstDay }, () => null);
+  const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
 
-  const nextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
-  const prevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+  const nextMonth = () =>
+    setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+  const prevMonth = () =>
+    setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
 
   // Funkcie zobrazenia
-  const availableSlots = selectedDateStr ? (schedulesByDate.get(selectedDateStr) || []) : [];
-  const selectedSchedule = schedules.find(s => s.id === selectedScheduleId);
+  const availableSlots = selectedDateStr
+    ? schedulesByDate.get(selectedDateStr) || []
+    : [];
+  const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
 
   const handleContinue = () => {
     if (!selectedScheduleId) return;
     setLoading(true);
-    router.push(`/bookings/${service.id}/checkout?scheduleId=${selectedScheduleId}`);
+    router.push(
+      `/bookings/${service.id}/checkout?scheduleId=${selectedScheduleId}`,
+    );
   };
 
   const displayName = trainerProfile.full_name ?? "Tréner";
@@ -93,22 +113,30 @@ export default function TrainerBookingClient({
 
   return (
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
-      
       {/* ĽAVÝ STĹPEC - Informácie o trénerovi a resumé */}
       <div className="flex flex-col gap-6">
         <div className="group relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
           <div className="absolute inset-0">
             {trainerProfile.avatar_url ? (
-              <img src={trainerProfile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+              <Image
+                src={trainerProfile.avatar_url}
+                alt={displayName}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
-                <span className="text-6xl font-semibold text-white/70">{avatarFallback}</span>
+                <span className="text-6xl font-semibold text-white/70">
+                  {avatarFallback}
+                </span>
               </div>
             )}
           </div>
-          
+
           <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black via-black/80 to-transparent" />
-          
+
           <div className="relative mt-auto p-6">
             <h2 className="text-3xl font-bold text-white">{displayName}</h2>
             {trainerProfile.bio && (
@@ -121,20 +149,29 @@ export default function TrainerBookingClient({
 
         {/* Vybraný termín - Zhrnutie */}
         <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md">
-          <h3 className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-4">Tvoja rezervácia</h3>
-          
+          <h3 className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-4">
+            Tvoja rezervácia
+          </h3>
+
           <div className="space-y-4">
             <div className="flex justify-between items-center text-sm">
               <span className="text-white/60">Služba</span>
               <span className="text-white font-medium">Osobný tréning</span>
             </div>
-            
+
             <div className="flex justify-between items-center text-sm">
               <span className="text-white/60">Termín</span>
               <span className="text-white font-medium">
                 {selectedSchedule ? (
                   <>
-                    {new Date(selectedSchedule.start_time).toLocaleDateString("sk-SK")} o {new Date(selectedSchedule.start_time).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(selectedSchedule.start_time).toLocaleDateString(
+                      "sk-SK",
+                    )}{" "}
+                    o{" "}
+                    {new Date(selectedSchedule.start_time).toLocaleTimeString(
+                      "sk-SK",
+                      { hour: "2-digit", minute: "2-digit" },
+                    )}
                   </>
                 ) : (
                   <span className="text-white/30 italic">Zatiaľ nevybraný</span>
@@ -146,7 +183,9 @@ export default function TrainerBookingClient({
 
             <div className="flex justify-between items-center text-base">
               <span className="text-white/80">Cena</span>
-              <span className="text-white font-bold">{service.base_price}€</span>
+              <span className="text-white font-bold">
+                {service.base_price}€
+              </span>
             </div>
           </div>
         </div>
@@ -154,41 +193,64 @@ export default function TrainerBookingClient({
 
       {/* PRAVÝ STĹPEC - Kalendár a časy */}
       <div className="flex flex-col gap-6">
-        
         {!selectedDateStr ? (
           <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-md">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-white">Vyberte si dátum</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Vyberte si dátum
+              </h2>
               <div className="flex items-center gap-4">
-                <button onClick={prevMonth} className="p-2 text-white/50 hover:text-white transition">←</button>
+                <button
+                  onClick={prevMonth}
+                  className="p-2 text-white/50 hover:text-white transition"
+                >
+                  ←
+                </button>
                 <span className="text-lg font-medium text-white min-w-[120px] text-center">
-                  {currentDate.toLocaleString("sk-SK", { month: "long" })} {currentYear}
+                  {currentDate.toLocaleString("sk-SK", { month: "long" })}{" "}
+                  {currentYear}
                 </span>
-                <button onClick={nextMonth} className="p-2 text-white/50 hover:text-white transition">→</button>
+                <button
+                  onClick={nextMonth}
+                  className="p-2 text-white/50 hover:text-white transition"
+                >
+                  →
+                </button>
               </div>
             </div>
 
             <div className="grid grid-cols-7 gap-2 mb-4 text-center">
-              {['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'].map(d => (
-                <div key={d} className="text-xs font-semibold text-white/40 uppercase py-2">{d}</div>
+              {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((d) => (
+                <div
+                  key={d}
+                  className="text-xs font-semibold text-white/40 uppercase py-2"
+                >
+                  {d}
+                </div>
               ))}
             </div>
 
             <div className="grid grid-cols-7 gap-2">
-              {blanks.map((_, i) => <div key={`blank-${i}`} className="p-4" />)}
-              
-              {days.map(day => {
+              {blanks.map((_, i) => (
+                <div key={`blank-${i}`} className="p-4" />
+              ))}
+
+              {days.map((day) => {
                 const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const hasSlots = (schedulesByDate.get(dateKey)?.length ?? 0) > 0;
-                
+                const hasSlots =
+                  (schedulesByDate.get(dateKey)?.length ?? 0) > 0;
+
                 return (
                   <button
                     key={day}
                     disabled={!hasSlots}
-                    onClick={() => { setSelectedDateStr(dateKey); setSelectedScheduleId(null); }}
+                    onClick={() => {
+                      setSelectedDateStr(dateKey);
+                      setSelectedScheduleId(null);
+                    }}
                     className={`relative p-3 rounded-2xl text-center transition-all ${
-                      hasSlots 
-                        ? "bg-white/5 text-white hover:bg-red-500/20 hover:text-red-300 border border-transparent hover:border-red-500/30 font-medium cursor-pointer" 
+                      hasSlots
+                        ? "bg-white/5 text-white hover:bg-red-500/20 hover:text-red-300 border border-transparent hover:border-red-500/30 font-medium cursor-pointer"
                         : "text-white/20 cursor-not-allowed"
                     }`}
                   >
@@ -204,42 +266,62 @@ export default function TrainerBookingClient({
         ) : (
           <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-md">
             <div className="flex items-center gap-4 mb-8">
-              <button 
-                onClick={() => { setSelectedDateStr(null); setSelectedScheduleId(null); }}
+              <button
+                onClick={() => {
+                  setSelectedDateStr(null);
+                  setSelectedScheduleId(null);
+                }}
                 className="p-2 rounded-full bg-white/5 text-white/60 hover:text-white transition"
               >
                 ←
               </button>
               <div>
-                <h2 className="text-2xl font-bold text-white">Vyberte si čas</h2>
-                <p className="text-white/50">{new Date(selectedDateStr).toLocaleDateString('sk-SK', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                <h2 className="text-2xl font-bold text-white">
+                  Vyberte si čas
+                </h2>
+                <p className="text-white/50">
+                  {new Date(selectedDateStr).toLocaleDateString("sk-SK", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-8 text-[15px]">
-              {availableSlots.length > 0 ? availableSlots.map(slot => {
-                const isSelected = slot.id === selectedScheduleId;
-                const isFull = slot.current_capacity !== null && slot.current_capacity <= 0;
-                const timeStr = new Date(slot.start_time).toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
-                
-                return (
-                  <button
-                    key={slot.id}
-                    onClick={() => setSelectedScheduleId(slot.id)}
-                    disabled={isFull}
-                    className={`p-4 rounded-xl text-center transition-all ${
-                      isSelected 
-                        ? "bg-red-500/20 border border-red-500/50 text-white font-bold" 
-                        : isFull
-                          ? "bg-white/5 border border-white/10 text-white/30 line-through cursor-not-allowed"
-                          : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    {timeStr}
-                  </button>
-                )
-              }) : (
-                <div className="col-span-full py-8 text-center text-white/40">V tento deň nie sú voľné časy.</div>
+              {availableSlots.length > 0 ? (
+                availableSlots.map((slot) => {
+                  const isSelected = slot.id === selectedScheduleId;
+                  const isFull =
+                    slot.current_capacity !== null &&
+                    slot.current_capacity <= 0;
+                  const timeStr = new Date(slot.start_time).toLocaleTimeString(
+                    "sk-SK",
+                    { hour: "2-digit", minute: "2-digit" },
+                  );
+
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => setSelectedScheduleId(slot.id)}
+                      disabled={isFull}
+                      className={`p-4 rounded-xl text-center transition-all ${
+                        isSelected
+                          ? "bg-red-500/20 border border-red-500/50 text-white font-bold"
+                          : isFull
+                            ? "bg-white/5 border border-white/10 text-white/30 line-through cursor-not-allowed"
+                            : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {timeStr}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="col-span-full py-8 text-center text-white/40">
+                  V tento deň nie sú voľné časy.
+                </div>
               )}
             </div>
 

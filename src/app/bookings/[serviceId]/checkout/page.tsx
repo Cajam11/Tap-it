@@ -5,18 +5,33 @@ import StripePaymentForm from "@/components/bookings/StripePaymentForm";
 import { createBookingIntent } from "@/lib/bookings";
 import { BookableService, ServiceSchedule } from "@/lib/types";
 
+const FACILITY_OPEN_HOUR = 6;
+const FACILITY_CLOSE_HOUR = 22;
+
+function isValidFacilityStart(date: Date) {
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getHours() >= FACILITY_OPEN_HOUR &&
+    date.getHours() < FACILITY_CLOSE_HOUR
+  );
+}
+
 export default async function CheckoutPage({
   params,
   searchParams,
 }: {
   params: Promise<{ serviceId: string }>;
-  searchParams: Promise<{ scheduleId?: string; duration?: string }>;
+  searchParams: Promise<{ scheduleId?: string; duration?: string; start?: string }>;
 }) {
   const { serviceId } = await params;
-  const { scheduleId, duration: durationParam } = await searchParams;
-  
+  const { scheduleId, duration: durationParam, start: startParam } = await searchParams;
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -38,7 +53,6 @@ export default async function CheckoutPage({
     avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
   };
 
-  // 1. Fetch Service
   const { data: service, error } = await supabase
     .from("bookable_services")
     .select("*")
@@ -47,50 +61,54 @@ export default async function CheckoutPage({
 
   if (error || !service) redirect("/bookings");
   const typedService = service as BookableService;
-  
+
   let schedule: ServiceSchedule | null = null;
   let totalPrice = typedService.base_price;
   let startTime = new Date();
   let endTime = new Date();
-  
-  // 2. Compute pricing & times
+
   if (typedService.type === "group" || typedService.type === "trainer") {
     if (!scheduleId) redirect(`/bookings/${serviceId}`);
-    
+
     const { data: sched } = await supabase
       .from("service_schedules")
       .select("*")
       .eq("id", scheduleId)
       .single();
-      
+
     if (!sched) redirect(`/bookings/${serviceId}`);
     schedule = sched as ServiceSchedule;
-    
+
     startTime = new Date(schedule.start_time);
     endTime = new Date(schedule.end_time);
-    totalPrice = typedService.base_price; // Groups/Trainers usually have a flat session rate mapping from base_price
-
+    totalPrice = typedService.base_price;
   } else {
-    // Facility dynamically priced by duration
-    const duration = parseInt(durationParam || "1", 10);
-    // Rough calc: if hourly, multiply by hours. If minutes, multiply by minutes. 
-    // Metadata can hold specific overrides (like Jacuzzi: 20 per 1st hr, 10 next)
-    if (typedService.metadata && typeof typedService.metadata === 'object' && typedService.metadata.first_hour_price) {
-        const firstHour = Number(typedService.metadata.first_hour_price);
-        const nextHour = Number(typedService.metadata.next_hour_price);
-        totalPrice = firstHour + (Math.max(0, duration - 1) * nextHour);
-    } else {
-        totalPrice = typedService.base_price * duration;
+    if (!startParam) redirect(`/bookings/${serviceId}`);
+
+    const duration = Math.max(1, Math.min(16, parseInt(durationParam || "1", 10)));
+    startTime = new Date(startParam);
+    endTime = new Date(startTime);
+    endTime.setHours(endTime.getHours() + duration);
+
+    if (
+      !isValidFacilityStart(startTime) ||
+      endTime <= startTime ||
+      endTime.getHours() > FACILITY_CLOSE_HOUR ||
+      startTime <= new Date()
+    ) {
+      redirect(`/bookings/${serviceId}`);
     }
-    
-    if (typedService.price_unit === 'minute') {
-       endTime.setMinutes(endTime.getMinutes() + duration);
+
+    const firstHour = Number(typedService.metadata?.first_hour_price);
+    const nextHour = Number(typedService.metadata?.next_hour_price);
+
+    if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
+      totalPrice = firstHour + Math.max(0, duration - 1) * nextHour;
     } else {
-       endTime.setHours(endTime.getHours() + duration);
+      totalPrice = typedService.base_price * duration;
     }
   }
 
-  // 3. Initiate Payment Intent via server action
   let clientSecret: string | null = null;
   let errorMsg: string | null = null;
 
@@ -109,7 +127,6 @@ export default async function CheckoutPage({
     errorMsg = err instanceof Error ? err.message : "Failed to create payment.";
   }
 
-  // Find Stripe publishable key securely
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
   return (
@@ -121,17 +138,21 @@ export default async function CheckoutPage({
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-xl space-y-8">
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-8">Dokončenie rezervácie</h1>
+          <h1 className="mb-8 text-3xl font-bold tracking-tight text-white">Dokoncenie rezervacie</h1>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl mb-8 space-y-2 text-white">
-            <p className="text-white/60">Služba:</p>
+          <div className="mb-8 space-y-2 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-white backdrop-blur-xl sm:p-8">
+            <p className="text-white/60">Sluzba:</p>
             <p className="text-xl font-semibold">{typedService.name}</p>
-            
-            <div className="pt-6 mt-6 border-t border-white/10">
-               <div className="flex justify-between font-bold text-xl items-center">
-                 <span>K úhrade:</span>
-                 <span className="text-red-500">{totalPrice.toFixed(2)}€</span>
-               </div>
+            <p className="text-sm text-white/55">
+              {startTime.toLocaleDateString("sk-SK")} {startTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })} -{" "}
+              {endTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+
+            <div className="mt-6 border-t border-white/10 pt-6">
+              <div className="flex items-center justify-between text-xl font-bold">
+                <span>K uhrade:</span>
+                <span className="text-red-500">{totalPrice.toFixed(2)} EUR</span>
+              </div>
             </div>
           </div>
 
@@ -142,11 +163,8 @@ export default async function CheckoutPage({
           )}
 
           {clientSecret && stripeKey && (
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
-              <StripePaymentForm 
-                 clientSecret={clientSecret} 
-                 publishableKey={stripeKey} 
-              />
+            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl sm:p-8">
+              <StripePaymentForm clientSecret={clientSecret} publishableKey={stripeKey} />
             </div>
           )}
         </div>

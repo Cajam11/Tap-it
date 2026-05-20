@@ -156,6 +156,21 @@ export async function createBookingIntent(
     }
   }
 
+  if (serviceRow.type === "facility") {
+    const { data: overlappingBooking } = await admin
+      .from("bookings")
+      .select("id")
+      .eq("service_id", serviceId)
+      .in("status", ["pending", "paid"])
+      .lt("start_time", endTime.toISOString())
+      .gt("end_time", startTime.toISOString())
+      .maybeSingle<{ id: string }>();
+
+    if (overlappingBooking?.id) {
+      throw new Error("Tento cas je uz obsadeny.");
+    }
+  }
+
   // Create booking record as "pending"
   const { data: booking, error: bookingError } = await (admin.from("bookings") as unknown as InsertableBookingsQuery)
     .insert({

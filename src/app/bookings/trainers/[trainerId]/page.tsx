@@ -1,8 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import NavBarAuth from "@/components/NavBarAuth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { expireStalePendingBookings } from "@/lib/bookings";
 import { createClient } from "@/lib/supabase/server";
 import TrainerBookingClient from "./TrainerBookingClient";
 import type { BookableService, ServiceSchedule } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 export default async function TrainerBookingPage({
   params,
@@ -66,6 +70,7 @@ export default async function TrainerBookingPage({
   const typedService = trainerService as BookableService;
 
   const resolvedServiceId = serviceId || typedService.id;
+  await expireStalePendingBookings(resolvedServiceId);
   const scheduleStart = new Date();
   const scheduleEnd = new Date(scheduleStart);
   scheduleEnd.setMonth(scheduleEnd.getMonth() + 1);
@@ -81,6 +86,33 @@ export default async function TrainerBookingPage({
     .order("start_time", { ascending: true });
 
   const schedules = (scheduleData ?? []) as ServiceSchedule[];
+  const scheduleIds = schedules.map((schedule) => schedule.id);
+
+  const admin = createAdminClient();
+  const { data: bookedSchedules } = scheduleIds.length
+    ? await admin
+        .from("bookings")
+        .select("schedule_id, status")
+        .eq("service_id", resolvedServiceId)
+        .in("status", ["pending", "paid"])
+        .in("schedule_id", scheduleIds)
+    : { data: [] as { schedule_id: string | null; status: string }[] };
+
+  const scheduleBookingStatus = new Map(
+    (bookedSchedules ?? [])
+      .filter((booking): booking is { schedule_id: string; status: string } => Boolean(booking.schedule_id))
+      .map((booking) => [booking.schedule_id, booking.status])
+  );
+
+  const visibleSchedules = schedules.map((schedule) =>
+    scheduleBookingStatus.has(schedule.id)
+      ? {
+          ...schedule,
+          current_capacity: 0,
+          booking_status: scheduleBookingStatus.get(schedule.id) as "pending" | "paid" | null,
+        }
+      : schedule
+  );
 
   return (
     <>
@@ -94,7 +126,7 @@ export default async function TrainerBookingPage({
           <TrainerBookingClient
             trainerProfile={trainerProfile}
             service={typedService}
-            schedules={schedules}
+            schedules={visibleSchedules}
           />
         </div>
       </main>

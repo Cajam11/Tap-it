@@ -1,9 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { expireStalePendingBookings } from "@/lib/bookings";
 import NavBarAuth from "@/components/NavBarAuth";
 import BookingSelector from "./BookingSelector";
 import FacilityBookingClient from "./FacilityBookingClient";
 import { BookableService, ServiceSchedule } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 type FacilityBooking = {
   id: string;
@@ -68,15 +72,41 @@ export default async function ServiceDetailPage({
       .limit(20);
 
     schedules = (scheduleData ?? []) as ServiceSchedule[];
+
+    if (typedService.type === "trainer" && schedules.length > 0) {
+      const admin = createAdminClient();
+      await expireStalePendingBookings(serviceId);
+
+      const scheduleIds = schedules.map((schedule) => schedule.id);
+      const { data: bookedSchedules } = await admin
+        .from("bookings")
+        .select("schedule_id")
+        .eq("service_id", serviceId)
+        .in("status", ["pending", "paid"])
+        .in("schedule_id", scheduleIds);
+
+      const lockedScheduleIds = new Set(
+        (bookedSchedules ?? []).map((booking) => booking.schedule_id).filter((id): id is string => Boolean(id))
+      );
+
+      schedules = schedules.map((schedule) =>
+        lockedScheduleIds.has(schedule.id)
+          ? { ...schedule, current_capacity: 0 }
+          : schedule
+      );
+    }
   }
 
   if (typedService.type === "facility") {
+    await expireStalePendingBookings(serviceId);
+
     const start = new Date();
     const end = new Date(start);
     end.setMonth(end.getMonth() + 1);
     end.setHours(23, 59, 59, 999);
+    const admin = createAdminClient();
 
-    const { data: bookingData } = await supabase
+    const { data: bookingData } = await admin
       .from("bookings")
       .select("id, start_time, end_time, status")
       .eq("service_id", serviceId)

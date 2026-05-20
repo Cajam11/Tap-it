@@ -258,11 +258,49 @@ async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentInt
 
   const { data: bookingRow } = await admin
     .from("bookings")
-    .select("schedule_id, status")
+    .select("schedule_id, status, stripe_refund_id")
     .eq("id", bookingId)
-    .maybeSingle<{ schedule_id: string | null; status: string }>();
+    .maybeSingle<{ schedule_id: string | null; status: string; stripe_refund_id: string | null }>();
 
   if (!bookingRow) return;
+
+  if (bookingRow.status === "cancelled" || bookingRow.status === "refunded") {
+    if (!bookingRow.stripe_refund_id) {
+      const stripe = getStripeServerClient();
+      try {
+        const refund = await stripe.refunds.create({
+          payment_intent: paymentIntent.id,
+          reason: "requested_by_customer",
+        });
+
+        await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+          .update({
+            status: "refunded",
+            stripe_pi_id: paymentIntent.id,
+            stripe_refund_id: refund.id,
+          })
+          .eq("id", bookingId);
+
+        await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+          user_id: userId,
+          booking_id: bookingId,
+          amount: paymentAmount,
+          currency: "EUR",
+          type: "refund",
+          status: "completed",
+          metadata: {
+            stripe_payment_intent_id: paymentIntent.id,
+            stripe_refund_id: refund.id,
+            reason: "expired_booking_hold",
+          },
+        });
+      } catch (error) {
+        console.error("Webhook refund expired booking error:", error);
+      }
+    }
+
+    return;
+  }
 
   if (bookingRow.status !== "paid") {
     const { error: updateBookingErr } = await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
@@ -326,9 +364,9 @@ async function markBookingPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
     });
   }
 
-  // Update booking status
+  // Release the held slot after a failed booking payment.
   await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-    .update({ status: "failed" })
+    .update({ status: "cancelled" })
     .eq("id", bookingId);
 }
 

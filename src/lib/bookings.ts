@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient } from "@/lib/stripe/server";
 
+export const PENDING_BOOKING_HOLD_MINUTES = 15;
+
 type InsertableBookingsQuery = {
   insert(values: Record<string, unknown>): InsertableBookingsQuery;
   select(columns?: string): InsertableBookingsQuery;
@@ -18,10 +20,46 @@ type UpdatableBookingsQuery = {
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
+type ExpirableBookingsQuery = {
+  update(values: Record<string, unknown>): ExpirableBookingsQuery;
+  eq(column: string, value: string): ExpirableBookingsQuery;
+  lt(column: string, value: string): Promise<{ error: unknown }>;
+};
+
 type UpdatableSchedulesQuery = {
   update(values: Record<string, unknown>): UpdatableSchedulesQuery;
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
+
+function isBookingConflictError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+
+  const details = error as { code?: string; message?: string; details?: string };
+  return (
+    details.code === "23P01" ||
+    details.code === "23505" ||
+    details.message?.includes("bookings_facility_no_overlap") ||
+    details.details?.includes("bookings_facility_no_overlap")
+  );
+}
+
+export async function expireStalePendingBookings(serviceId?: string) {
+  const admin = createAdminClient();
+  const cutoff = new Date(Date.now() - PENDING_BOOKING_HOLD_MINUTES * 60 * 1000).toISOString();
+
+  let query = (admin.from("bookings") as unknown as ExpirableBookingsQuery)
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("status", "pending");
+
+  if (serviceId) {
+    query = query.eq("service_id", serviceId);
+  }
+
+  const { error } = await query.lt("created_at", cutoff);
+  if (error) {
+    console.error("Failed to expire stale pending bookings:", error);
+  }
+}
 
 export async function createBookingIntent(
   userId: string,
@@ -33,6 +71,7 @@ export async function createBookingIntent(
   serviceName: string
 ) {
   const admin = createAdminClient();
+  await expireStalePendingBookings(serviceId);
 
   const { data: serviceRow } = await admin
     .from("bookable_services")
@@ -142,17 +181,28 @@ export async function createBookingIntent(
   }
 
   if (serviceRow.type === "trainer") {
-    const { data: existingTrainerBooking } = await admin
+    const { data: activeBookings } = await admin
       .from("bookings")
-      .select("id, end_time, bookable_services(type)")
+      .select("id, service_id, start_time, end_time")
       .eq("user_id", userId)
       .in("status", ["pending", "paid"])
-      .gt("end_time", new Date().toISOString())
-      .eq("bookable_services.type", "trainer")
-      .maybeSingle<{ id: string }>();
+      .lt("start_time", endTime.toISOString())
+      .gt("end_time", startTime.toISOString());
 
-    if (existingTrainerBooking?.id) {
-      throw new Error("Už máte aktívnu rezerváciu trénera.");
+    const activeServiceIds = Array.from(
+      new Set((activeBookings ?? []).map((booking) => booking.service_id).filter(Boolean))
+    );
+
+    const { data: activeTrainerServices } = activeServiceIds.length
+      ? await admin
+          .from("bookable_services")
+          .select("id")
+          .in("id", activeServiceIds)
+          .eq("type", "trainer")
+      : { data: [] as { id: string }[] };
+
+    if ((activeTrainerServices ?? []).length > 0) {
+      throw new Error("Tento termín sa prekrýva s inou rezerváciou trénera.");
     }
   }
 
@@ -186,6 +236,10 @@ export async function createBookingIntent(
     .single<{ id: string }>();
 
   if (bookingError || !booking) {
+    if (serviceRow.type === "facility" && isBookingConflictError(bookingError)) {
+      throw new Error("Tento cas je uz obsadeny.");
+    }
+
     if (scheduleId) {
       const { data: pendingFallback } = await admin
         .from("bookings")

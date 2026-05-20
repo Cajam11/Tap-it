@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BookableService } from "@/lib/types";
 
@@ -86,8 +86,16 @@ export default function FacilityBookingClient({
   const currentMonth = currentDate.getMonth();
   const content = getFacilityCopy(service.name);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+
+    return () => window.clearInterval(interval);
+  }, [router]);
+
   const bookedHoursByDate = useMemo(() => {
-    const map = new Map<string, Set<number>>();
+    const map = new Map<string, Map<number, string>>();
 
     bookings.forEach((booking) => {
       const start = new Date(booking.start_time);
@@ -100,8 +108,8 @@ export default function FacilityBookingClient({
 
         if (hour >= OPEN_HOUR && hour < CLOSE_HOUR) {
           const key = toDateKey(cursor);
-          if (!map.has(key)) map.set(key, new Set());
-          map.get(key)!.add(hour);
+          if (!map.has(key)) map.set(key, new Map());
+          map.get(key)!.set(hour, booking.status);
         }
 
         cursor.setHours(cursor.getHours() + 1);
@@ -123,7 +131,7 @@ export default function FacilityBookingClient({
 
     while (cursor <= end) {
       const key = toDateKey(cursor);
-      const booked = bookedHoursByDate.get(key) ?? new Set<number>();
+      const booked = bookedHoursByDate.get(key) ?? new Map<number, string>();
       const hasAvailableHour = HOURS.some((hour) => {
         const slot = getSlotDate(key, hour);
         return slot > now && !booked.has(hour);
@@ -140,7 +148,7 @@ export default function FacilityBookingClient({
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const blanks = Array.from({ length: firstDay });
   const days = Array.from({ length: daysInMonth }).map((_, index) => index + 1);
-  const bookedHours = selectedDateStr ? bookedHoursByDate.get(selectedDateStr) ?? new Set<number>() : new Set<number>();
+  const bookedHours = selectedDateStr ? bookedHoursByDate.get(selectedDateStr) ?? new Map<number, string>() : new Map<number, string>();
   const now = new Date();
   const sortedSelectedHours = [...selectedHours].sort((a, b) => a - b);
   const duration = sortedSelectedHours.length;
@@ -333,7 +341,9 @@ export default function FacilityBookingClient({
             <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
               {HOURS.map((hour) => {
                 const slotStart = getSlotDate(selectedDateStr, hour);
-                const isBooked = bookedHours.has(hour);
+                const bookingStatus = bookedHours.get(hour);
+                const isBooked = Boolean(bookingStatus);
+                const isPending = bookingStatus === "pending";
                 const isPast = isSameDate(now, selectedDateStr) && slotStart <= now;
                 const isSelected = selectedHours.includes(hour);
                 const disabled = isBooked || isPast;
@@ -347,11 +357,15 @@ export default function FacilityBookingClient({
                       isSelected
                         ? "border-red-500/50 bg-red-500/20 font-bold text-white"
                         : disabled
-                          ? "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
+                          ? isPending
+                            ? "cursor-not-allowed border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through"
+                            : "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
                           : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
                   >
-                    {hour}:00
+                    <span>{hour}:00</span>
+                    {isPending && <span className="mt-1 block text-[11px] no-underline">drzane</span>}
+                    {bookingStatus === "paid" && <span className="mt-1 block text-[11px] no-underline">obsadene</span>}
                   </button>
                 );
               })}

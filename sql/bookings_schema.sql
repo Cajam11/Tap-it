@@ -77,6 +77,20 @@ create table if not exists public.bookings (
   updated_at timestamptz not null default now()
 );
 
+create extension if not exists btree_gist;
+
+alter table public.bookings
+  add constraint bookings_valid_time_range_check
+  check (end_time > start_time);
+
+alter table public.bookings
+  add constraint bookings_facility_no_overlap
+  exclude using gist (
+    service_id with =,
+    tstzrange(start_time, end_time, '[)') with &&
+  )
+  where (schedule_id is null and status in ('pending', 'paid'));
+
 -- 6. Prepojenie transakcií (existing table) na novú tabuľku bookings
 alter table public.transactions
   add column if not exists booking_id uuid null references public.bookings(id) on delete set null;

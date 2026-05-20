@@ -53,13 +53,6 @@ export default function TrainerBookingClient({
       const end = new Date(schedule.end_time);
       const durationMinutes = (end.getTime() - start.getTime()) / 60000;
 
-      if (
-        schedule.current_capacity !== null &&
-        schedule.current_capacity <= 0
-      ) {
-        return;
-      }
-
       // Zobrazujeme len hodinové sloty (legacy dlhé bloky ignorujeme)
       if (durationMinutes !== 60) return;
 
@@ -293,6 +286,8 @@ export default function TrainerBookingClient({
               {availableSlots.length > 0 ? (
                 availableSlots.map((slot) => {
                   const isSelected = slot.id === selectedScheduleId;
+                  const isPending = slot.booking_status === "pending";
+                  const isPaid = slot.booking_status === "paid";
                   const isFull =
                     slot.current_capacity !== null &&
                     slot.current_capacity <= 0;
@@ -300,21 +295,34 @@ export default function TrainerBookingClient({
                     "sk-SK",
                     { hour: "2-digit", minute: "2-digit" },
                   );
+                  const isLocked = isPending || isPaid || isFull;
 
                   return (
                     <button
                       key={slot.id}
                       onClick={() => setSelectedScheduleId(slot.id)}
-                      disabled={isFull}
+                      disabled={isLocked}
                       className={`p-4 rounded-xl text-center transition-all ${
                         isSelected
                           ? "bg-red-500/20 border border-red-500/50 text-white font-bold"
-                          : isFull
-                            ? "bg-white/5 border border-white/10 text-white/30 line-through cursor-not-allowed"
+                          : isLocked
+                            ? isPending
+                              ? "border border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through cursor-not-allowed"
+                              : "border border-white/10 bg-white/5 text-white/25 line-through cursor-not-allowed"
                             : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       {timeStr}
+                      {isPending && (
+                        <span className="mt-1 block text-[11px] no-underline text-amber-100">
+                          drzane
+                        </span>
+                      )}
+                      {isPaid && (
+                        <span className="mt-1 block text-[11px] no-underline text-white/45">
+                          obsadene
+                        </span>
+                      )}
                     </button>
                   );
                 })

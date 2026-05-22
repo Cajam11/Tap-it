@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import { ArrowLeft } from "lucide-react";
 
 type TrainerProfile = {
   id: string;
@@ -85,25 +86,17 @@ export default async function TrainersPage() {
         <div className="pointer-events-none absolute bottom-[-18%] right-[-14%] h-[34rem] w-[34rem] rounded-full bg-red-900/15 blur-[180px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-6xl space-y-12 lg:space-y-14">
-          <div className="flex flex-col gap-6 pt-2 lg:pt-6">
+          <div className="flex flex-col gap-6 pt-4 lg:pt-8">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
                 <Link
                   href="/bookings"
-                  className="transition hover:text-white/65"
+                  className="inline-flex items-center gap-2 transition hover:text-white/65"
                 >
+                  <ArrowLeft className="h-3.5 w-3.5" />
                   Bookings
                 </Link>
-                <span className="h-px w-10 bg-white/15" />
-                <span>Tréneri</span>
               </div>
-
-              <Link
-                href="/bookings"
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/78 transition hover:border-white/28 hover:text-white"
-              >
-                Späť
-              </Link>
             </div>
 
             <div className="max-w-3xl space-y-5">

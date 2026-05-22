@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { BookableService } from "@/lib/types";
 
@@ -13,7 +14,10 @@ type FacilityBooking = {
 
 const OPEN_HOUR = 6;
 const CLOSE_HOUR = 22;
-const HOURS = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, index) => OPEN_HOUR + index);
+const HOURS = Array.from(
+  { length: CLOSE_HOUR - OPEN_HOUR },
+  (_, index) => OPEN_HOUR + index,
+);
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -55,7 +59,8 @@ function getFacilityCopy(serviceName: string) {
   if (normalized.includes("v") || normalized.includes("jacuzzi")) {
     return {
       title: serviceName,
-      description: "Tepla voda, tichy rezim a priestor na vypnutie po treningu. Idealne na regeneraciu po narocnom dni.",
+      description:
+        "Tepla voda, tichy rezim a priestor na vypnutie po treningu. Idealne na regeneraciu po narocnom dni.",
       image:
         "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=80",
     };
@@ -63,7 +68,8 @@ function getFacilityCopy(serviceName: string) {
 
   return {
     title: serviceName,
-    description: "Rezervuj si priestor presne na cas, ktory ti sedi. Kazdy den je dostupny v hodinovych blokoch od rana do vecera.",
+    description:
+      "Rezervuj si priestor presne na cas, ktory ti sedi. Kazdy den je dostupny v hodinovych blokoch od rana do vecera.",
     image:
       "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?auto=format&fit=crop&w=1200&q=80",
   };
@@ -148,7 +154,9 @@ export default function FacilityBookingClient({
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const blanks = Array.from({ length: firstDay });
   const days = Array.from({ length: daysInMonth }).map((_, index) => index + 1);
-  const bookedHours = selectedDateStr ? bookedHoursByDate.get(selectedDateStr) ?? new Map<number, string>() : new Map<number, string>();
+  const bookedHours = selectedDateStr
+    ? (bookedHoursByDate.get(selectedDateStr) ?? new Map<number, string>())
+    : new Map<number, string>();
   const now = new Date();
   const sortedSelectedHours = [...selectedHours].sort((a, b) => a - b);
   const duration = sortedSelectedHours.length;
@@ -203,7 +211,9 @@ export default function FacilityBookingClient({
     }
 
     const next = [...current, hour].sort((a, b) => a - b);
-    const isContiguous = next.every((value, index) => index === 0 || value === next[index - 1] + 1);
+    const isContiguous = next.every(
+      (value, index) => index === 0 || value === next[index - 1] + 1,
+    );
 
     setSelectedHours(isContiguous ? next : [hour]);
   };
@@ -227,17 +237,27 @@ export default function FacilityBookingClient({
       <div className="flex flex-col gap-6">
         <div className="group relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
           <div className="absolute inset-0">
-            <img src={content.image} alt={content.title} className="h-full w-full object-cover" />
+            <Image
+              src={content.image}
+              alt={content.title}
+              fill
+              sizes="(min-width: 1024px) 40vw, 100vw"
+              className="object-cover"
+            />
           </div>
           <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black via-black/80 to-transparent" />
           <div className="relative mt-auto p-6">
             <h2 className="text-3xl font-bold text-white">{content.title}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-white/65">{content.description}</p>
+            <p className="mt-3 text-sm leading-relaxed text-white/65">
+              {content.description}
+            </p>
           </div>
         </div>
 
         <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">Tvoja rezervacia</h3>
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
+            Tvoja rezervacia
+          </h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-white/60">Priestor</span>
@@ -254,7 +274,9 @@ export default function FacilityBookingClient({
             <div className="h-px w-full bg-white/10" />
             <div className="flex items-center justify-between text-base">
               <span className="text-white/80">Cena</span>
-              <span className="font-bold text-white">{totalPrice.toFixed(2)} EUR</span>
+              <span className="font-bold text-white">
+                {totalPrice.toFixed(2)} EUR
+              </span>
             </div>
           </div>
         </div>
@@ -264,15 +286,24 @@ export default function FacilityBookingClient({
         {!selectedDateStr ? (
           <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
             <div className="mb-8 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Vyberte si datum</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Vyberte si datum
+              </h2>
               <div className="flex items-center gap-4">
-                <button onClick={prevMonth} className="p-2 text-white/50 transition hover:text-white">
+                <button
+                  onClick={prevMonth}
+                  className="p-2 text-white/50 transition hover:text-white"
+                >
                   &larr;
                 </button>
                 <span className="min-w-[120px] text-center text-lg font-medium text-white">
-                  {currentDate.toLocaleString("sk-SK", { month: "long" })} {currentYear}
+                  {currentDate.toLocaleString("sk-SK", { month: "long" })}{" "}
+                  {currentYear}
                 </span>
-                <button onClick={nextMonth} className="p-2 text-white/50 transition hover:text-white">
+                <button
+                  onClick={nextMonth}
+                  className="p-2 text-white/50 transition hover:text-white"
+                >
                   &rarr;
                 </button>
               </div>
@@ -280,7 +311,10 @@ export default function FacilityBookingClient({
 
             <div className="mb-4 grid grid-cols-7 gap-2 text-center">
               {["Po", "Ut", "St", "St", "Pi", "So", "Ne"].map((day, index) => (
-                <div key={`${day}-${index}`} className="py-2 text-xs font-semibold uppercase text-white/40">
+                <div
+                  key={`${day}-${index}`}
+                  className="py-2 text-xs font-semibold uppercase text-white/40"
+                >
                   {day}
                 </div>
               ))}
@@ -327,7 +361,9 @@ export default function FacilityBookingClient({
                 &larr;
               </button>
               <div>
-                <h2 className="text-2xl font-bold text-white">Vyberte si casy</h2>
+                <h2 className="text-2xl font-bold text-white">
+                  Vyberte si casy
+                </h2>
                 <p className="text-white/50">
                   {new Date(selectedDateStr).toLocaleDateString("sk-SK", {
                     weekday: "long",
@@ -344,7 +380,8 @@ export default function FacilityBookingClient({
                 const bookingStatus = bookedHours.get(hour);
                 const isBooked = Boolean(bookingStatus);
                 const isPending = bookingStatus === "pending";
-                const isPast = isSameDate(now, selectedDateStr) && slotStart <= now;
+                const isPast =
+                  isSameDate(now, selectedDateStr) && slotStart <= now;
                 const isSelected = selectedHours.includes(hour);
                 const disabled = isBooked || isPast;
 
@@ -364,8 +401,16 @@ export default function FacilityBookingClient({
                     }`}
                   >
                     <span>{hour}:00</span>
-                    {isPending && <span className="mt-1 block text-[11px] no-underline">drzane</span>}
-                    {bookingStatus === "paid" && <span className="mt-1 block text-[11px] no-underline">obsadene</span>}
+                    {isPending && (
+                      <span className="mt-1 block text-[11px] no-underline">
+                        drzane
+                      </span>
+                    )}
+                    {bookingStatus === "paid" && (
+                      <span className="mt-1 block text-[11px] no-underline">
+                        obsadene
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -373,7 +418,9 @@ export default function FacilityBookingClient({
 
             <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-4">
               <div className="text-sm text-white/50">
-                {duration > 0 ? `${duration} hod. vybrane` : "Vyber aspon jednu hodinu"}
+                {duration > 0
+                  ? `${duration} hod. vybrane`
+                  : "Vyber aspon jednu hodinu"}
               </div>
               <button
                 disabled={duration === 0 || loading}

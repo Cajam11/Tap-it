@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 import BookingTimeline from "./BookingTimeline";
@@ -178,9 +179,15 @@ export default async function MyBookingsPage() {
 
         <div className="relative z-10 mx-auto w-full max-w-7xl space-y-8">
           <header className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
-              Bookings
-            </p>
+            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-white/35">
+              <Link
+                href="/bookings"
+                className="inline-flex items-center gap-2 transition hover:text-white/65"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Bookings
+              </Link>
+            </div>
             <h1 className="text-4xl font-black tracking-tight text-white">
               Moje rezervacie
             </h1>

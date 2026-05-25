@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { BookableService } from "@/lib/types";
 
@@ -78,9 +80,13 @@ function getFacilityCopy(serviceName: string) {
 export default function FacilityBookingClient({
   service,
   bookings,
+  backHref,
+  backLabel,
 }: {
   service: BookableService;
   bookings: FacilityBooking[];
+  backHref: string;
+  backLabel: string;
 }) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -233,7 +239,18 @@ export default function FacilityBookingClient({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-2 transition hover:text-white/65"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {backLabel}
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
       <div className="flex flex-col gap-6">
         <div className="group relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
           <div className="absolute inset-0">
@@ -433,6 +450,7 @@ export default function FacilityBookingClient({
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

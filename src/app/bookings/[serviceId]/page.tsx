@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { expireStalePendingBookings } from "@/lib/bookings";
@@ -58,6 +60,21 @@ export default async function ServiceDetailPage({
   }
 
   const typedService = service as BookableService;
+
+  const backHref =
+    typedService.type === "facility"
+      ? "/bookings/priestory"
+      : typedService.type === "group"
+        ? "/bookings/skupinove-lekcie"
+        : "/bookings/trainers";
+
+  const backLabel =
+    typedService.type === "facility"
+      ? "Priestory"
+      : typedService.type === "group"
+        ? "Skupinové lekcie"
+        : "Tréneri";
+
   const isScheduled = typedService.type === "group" || typedService.type === "trainer";
   let schedules: ServiceSchedule[] = [];
   let facilityBookings: FacilityBooking[] = [];
@@ -130,9 +147,19 @@ export default async function ServiceDetailPage({
 
         <div className={`relative z-10 mx-auto w-full space-y-12 ${typedService.type === "facility" ? "max-w-7xl" : "max-w-4xl"}`}>
           {typedService.type === "facility" ? (
-            <FacilityBookingClient service={typedService} bookings={facilityBookings} />
+            <FacilityBookingClient service={typedService} bookings={facilityBookings} backHref={backHref} backLabel={backLabel} />
           ) : (
             <>
+              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+                <Link
+                  href={backHref}
+                  className="inline-flex items-center gap-2 transition hover:text-white/65"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {backLabel}
+                </Link>
+              </div>
+
               <div className="mb-8 border-b border-white/10 pb-8">
                 <h1 className="mb-2 text-4xl font-bold tracking-tight text-white">{typedService.name}</h1>
                 <p className="text-lg text-white/60">

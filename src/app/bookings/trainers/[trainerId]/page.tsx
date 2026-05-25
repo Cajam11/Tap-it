@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { expireStalePendingBookings } from "@/lib/bookings";
@@ -123,6 +125,16 @@ export default async function TrainerBookingPage({
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-7xl pt-6">
+          <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+            <Link
+              href="/bookings/trainers"
+              className="inline-flex items-center gap-2 transition hover:text-white/65"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Tréneri
+            </Link>
+          </div>
+
           <TrainerBookingClient
             trainerProfile={trainerProfile}
             service={typedService}

@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import NavBarAuth from "@/components/NavBarAuth";
 import StripePaymentForm from "@/components/bookings/StripePaymentForm";
@@ -23,10 +25,10 @@ export default async function CheckoutPage({
   searchParams,
 }: {
   params: Promise<{ serviceId: string }>;
-  searchParams: Promise<{ scheduleId?: string; duration?: string; start?: string }>;
+  searchParams: Promise<{ scheduleId?: string; duration?: string; start?: string; trainerId?: string }>;
 }) {
   const { serviceId } = await params;
-  const { scheduleId, duration: durationParam, start: startParam } = await searchParams;
+  const { scheduleId, duration: durationParam, start: startParam, trainerId } = await searchParams;
 
   const supabase = await createClient();
   const {
@@ -138,7 +140,19 @@ export default async function CheckoutPage({
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-xl space-y-8">
-          <h1 className="mb-8 text-3xl font-bold tracking-tight text-white">Dokoncenie rezervacie</h1>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+              <Link
+                href={trainerId ? `/bookings/trainers/${trainerId}` : `/bookings/${serviceId}`}
+                className="inline-flex items-center gap-2 transition hover:text-white/65"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Späť
+              </Link>
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight text-white">Dokoncenie rezervacie</h1>
+          </div>
 
           <div className="mb-8 space-y-2 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-white backdrop-blur-xl sm:p-8">
             <p className="text-white/60">Sluzba:</p>

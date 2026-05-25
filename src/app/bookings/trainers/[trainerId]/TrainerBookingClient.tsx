@@ -97,7 +97,7 @@ export default function TrainerBookingClient({
     if (!selectedScheduleId) return;
     setLoading(true);
     router.push(
-      `/bookings/${service.id}/checkout?scheduleId=${selectedScheduleId}`,
+      `/bookings/${service.id}/checkout?scheduleId=${selectedScheduleId}&trainerId=${trainerProfile.id}`,
     );
   };
 

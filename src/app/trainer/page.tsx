@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import { Calendar } from "lucide-react";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -99,16 +101,26 @@ export default async function TrainerPage() {
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto w-full max-w-6xl space-y-8">
-          <header className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.25em] text-white/45">
-              Tréner
-            </p>
-            <h1 className="text-4xl font-black leading-tight tracking-tight text-white">
-              Váš tréningový plán
-            </h1>
-            <p className="text-white/60">
-              Prehľad najbližších tréningov a skupinových lekcií.
-            </p>
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/45">
+                Tréner
+              </p>
+              <h1 className="text-4xl font-black leading-tight tracking-tight text-white">
+                Váš tréningový plán
+              </h1>
+              <p className="text-white/60">
+                Prehľad najbližších tréningov a skupinových lekcií.
+              </p>
+            </div>
+            
+            <Link
+              href="/trainer/availability"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 active:scale-[0.98]"
+            >
+              <Calendar className="h-4 w-4" />
+              Nastaviť dostupnosť
+            </Link>
           </header>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">

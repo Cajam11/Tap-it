@@ -9,6 +9,7 @@ type TimelineActivity = {
   start_time: string;
   end_time: string;
   trainerName: string | null;
+  trainerId: string | null;
   color: string;
   label: string;
   status: string;
@@ -23,6 +24,7 @@ type UpcomingBooking = {
   status: string;
   service_id: string;
   schedule_id: string | null;
+  trainerId: string | null;
   bookable_services: {
     name: string;
     type: string;
@@ -197,7 +199,7 @@ export default function BookingTimeline({
                         <Link
                           href={
                             activity.schedule_id
-                              ? `/bookings/${activity.service_id}/checkout?scheduleId=${activity.schedule_id}`
+                              ? `/bookings/${activity.service_id}/checkout?scheduleId=${activity.schedule_id}${activity.trainerId ? `&trainerId=${activity.trainerId}` : ""}`
                               : `/bookings/${activity.service_id}/checkout?start=${activity.start_time}&duration=${Math.round(
                                   (new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) /
                                     (1000 * 60 * 60)
@@ -238,7 +240,7 @@ export default function BookingTimeline({
                     <Link
                       href={
                         booking.schedule_id
-                          ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}`
+                          ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}${booking.trainerId ? `&trainerId=${booking.trainerId}` : ""}`
                           : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
                               (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
                                 (1000 * 60 * 60)

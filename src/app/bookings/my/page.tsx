@@ -161,12 +161,19 @@ export default async function MyBookingsPage() {
       return {
         ...booking,
         trainerName,
+        trainerId: schedule?.trainer_id ?? null,
         label,
         color: ACTIVITY_COLORS[index % ACTIVITY_COLORS.length],
       };
     });
 
-  const upcomingPreview = activeBookings.slice(0, 4);
+  const upcomingPreview = activeBookings.slice(0, 4).map((booking) => {
+    const schedule = booking.schedule_id ? schedulesById.get(booking.schedule_id) : null;
+    return {
+      ...booking,
+      trainerId: schedule?.trainer_id ?? null,
+    };
+  });
   const historyItems = items.slice(0, 12);
 
   return (
@@ -233,21 +240,27 @@ export default async function MyBookingsPage() {
                           <span className="min-w-16 text-right text-sm font-semibold text-white">
                             {booking.total_price.toFixed(2)} EUR
                           </span>
-                          {booking.status === "pending" && (
-                            <Link
-                              href={
-                                booking.schedule_id
-                                  ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}`
-                                  : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
-                                      (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
-                                        (1000 * 60 * 60)
-                                    )}`
-                              }
-                              className="ml-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500"
-                            >
-                              Zaplatiť
-                            </Link>
-                          )}
+                          {booking.status === "pending" && (() => {
+                            const schedule = booking.schedule_id ? schedulesById.get(booking.schedule_id) : null;
+                            const trainerId = schedule?.trainer_id;
+                            const isTrainer = booking.bookable_services?.type === "trainer";
+
+                            const href = booking.schedule_id
+                              ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}${isTrainer && trainerId ? `&trainerId=${trainerId}` : ""}`
+                              : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
+                                  (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
+                                    (1000 * 60 * 60)
+                                )}`;
+
+                            return (
+                              <Link
+                                href={href}
+                                className="ml-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500"
+                              >
+                                Zaplatiť
+                              </Link>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

@@ -16,6 +16,7 @@ type FacilityBooking = {
   start_time: string;
   end_time: string;
   status: string;
+  user_id: string;
 };
 
 export default async function ServiceDetailPage({
@@ -127,7 +128,7 @@ export default async function ServiceDetailPage({
 
     const { data: bookingData } = await admin
       .from("bookings")
-      .select("id, start_time, end_time, status")
+      .select("id, start_time, end_time, status, user_id")
       .eq("service_id", serviceId)
       .in("status", ["pending", "paid"])
       .gte("end_time", start.toISOString())
@@ -147,7 +148,7 @@ export default async function ServiceDetailPage({
 
         <div className={`relative z-10 mx-auto w-full space-y-12 ${typedService.type === "facility" ? "max-w-7xl" : "max-w-4xl"}`}>
           {typedService.type === "facility" ? (
-            <FacilityBookingClient service={typedService} bookings={facilityBookings} backHref={backHref} backLabel={backLabel} />
+            <FacilityBookingClient service={typedService} bookings={facilityBookings} backHref={backHref} backLabel={backLabel} currentUserId={user.id} />
           ) : (
             <>
               <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 type TimelineActivity = {
   id: string;
@@ -10,11 +11,18 @@ type TimelineActivity = {
   trainerName: string | null;
   color: string;
   label: string;
+  status: string;
+  service_id: string;
+  schedule_id: string | null;
 };
 
 type UpcomingBooking = {
   id: string;
   start_time: string;
+  end_time: string;
+  status: string;
+  service_id: string;
+  schedule_id: string | null;
   bookable_services: {
     name: string;
     type: string;
@@ -181,8 +189,25 @@ export default function BookingTimeline({
                           : "Farba patri tejto aktivite"}
                       </div>
                     </div>
-                    <div className="shrink-0 text-sm font-semibold">
-                      {formatTime(activity.start_time)} - {formatTime(activity.end_time)}
+                    <div className="flex shrink-0 items-center gap-3">
+                      <div className="text-sm font-semibold">
+                        {formatTime(activity.start_time)} - {formatTime(activity.end_time)}
+                      </div>
+                      {activity.status === "pending" && (
+                        <Link
+                          href={
+                            activity.schedule_id
+                              ? `/bookings/${activity.service_id}/checkout?scheduleId=${activity.schedule_id}`
+                              : `/bookings/${activity.service_id}/checkout?start=${activity.start_time}&duration=${Math.round(
+                                  (new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) /
+                                    (1000 * 60 * 60)
+                                )}`
+                          }
+                          className="rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-red-500"
+                        >
+                          Zaplatiť
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -205,9 +230,26 @@ export default function BookingTimeline({
                 <span className="min-w-0 truncate text-white/75">
                   {booking.bookable_services?.name ?? "Rezervacia"}
                 </span>
-                <span className="shrink-0 text-white/45">
-                  {formatDateTime(booking.start_time)}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-white/45">
+                    {formatDateTime(booking.start_time)}
+                  </span>
+                  {booking.status === "pending" && (
+                    <Link
+                      href={
+                        booking.schedule_id
+                          ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}`
+                          : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
+                              (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
+                                (1000 * 60 * 60)
+                            )}`
+                      }
+                      className="rounded bg-red-600/20 px-2 py-0.5 text-[10px] font-medium text-red-100 transition hover:bg-red-500/30"
+                    >
+                      Zaplatiť
+                    </Link>
+                  )}
+                </div>
               </div>
             ))}
           </div>

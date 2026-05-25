@@ -20,6 +20,11 @@ type UpdatableBookingsQuery = {
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
+type DeleteableBookingsQuery = {
+  delete(): DeleteableBookingsQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
+};
+
 type ExpirableBookingsQuery = {
   update(values: Record<string, unknown>): ExpirableBookingsQuery;
   eq(column: string, value: string): ExpirableBookingsQuery;
@@ -73,6 +78,62 @@ export async function createBookingIntent(
   const admin = createAdminClient();
   await expireStalePendingBookings(serviceId);
 
+  // 1. Check if user already holds a fresh pending booking for this exact request
+  let query = admin
+    .from("bookings")
+    .select("id, stripe_pi_id")
+    .eq("user_id", userId)
+    .eq("service_id", serviceId)
+    .eq("status", "pending")
+    .eq("start_time", startTime.toISOString())
+    .eq("end_time", endTime.toISOString());
+
+  if (scheduleId) {
+    query = query.eq("schedule_id", scheduleId);
+  } else {
+    query = query.is("schedule_id", null);
+  }
+
+  const { data: earlyPendingBooking } = await query.maybeSingle<{ id: string; stripe_pi_id: string | null }>();
+
+  if (earlyPendingBooking?.id) {
+    const stripe = getStripeServerClient();
+
+    if (earlyPendingBooking.stripe_pi_id) {
+      const existingIntent = await stripe.paymentIntents.retrieve(earlyPendingBooking.stripe_pi_id);
+      if (existingIntent.client_secret) {
+        return {
+          clientSecret: existingIntent.client_secret,
+          bookingId: earlyPendingBooking.id,
+        };
+      }
+    }
+
+    const newIntent = await stripe.paymentIntents.create({
+      amount: Math.round(totalPrice * 100),
+      currency: "eur",
+      metadata: {
+        user_id: userId,
+        booking_id: earlyPendingBooking.id,
+        service_name: serviceName,
+      },
+    });
+
+    if (!newIntent.client_secret) {
+      throw new Error("Could not create Stripe payment intent.");
+    }
+
+    await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+      .update({ stripe_pi_id: newIntent.id })
+      .eq("id", earlyPendingBooking.id);
+
+    return {
+      clientSecret: newIntent.client_secret,
+      bookingId: earlyPendingBooking.id,
+    };
+  }
+
+  // 2. Perform regular validation for new booking
   const { data: serviceRow } = await admin
     .from("bookable_services")
     .select("id, type")
@@ -98,85 +159,16 @@ export async function createBookingIntent(
       throw new Error("Tento termín je už obsadený.");
     }
 
-    const { data: existingPaidBooking } = await admin
-      .from("bookings")
-      .select("id")
-      .eq("schedule_id", scheduleId)
-      .eq("status", "paid")
-      .maybeSingle<{ id: string }>();
-
-    if (existingPaidBooking?.id) {
-      throw new Error("Tento termín je už obsadený.");
-    }
-
     const { data: existingScheduleBooking } = await admin
       .from("bookings")
       .select("id")
       .eq("user_id", userId)
       .eq("schedule_id", scheduleId)
-      .in("status", ["pending", "paid"])
+      .eq("status", "paid")
       .maybeSingle<{ id: string }>();
 
     if (existingScheduleBooking?.id) {
       throw new Error("Tento termín už máte rezervovaný.");
-    }
-
-    const { data: existingPendingBooking } = await admin
-      .from("bookings")
-      .select("id, stripe_pi_id")
-      .eq("user_id", userId)
-      .eq("schedule_id", scheduleId)
-      .eq("status", "pending")
-      .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
-
-    if (existingPendingBooking?.id) {
-      const stripe = getStripeServerClient();
-
-      if (existingPendingBooking.stripe_pi_id) {
-        const existingIntent = await stripe.paymentIntents.retrieve(existingPendingBooking.stripe_pi_id);
-        if (existingIntent.client_secret) {
-          return {
-            clientSecret: existingIntent.client_secret,
-            bookingId: existingPendingBooking.id,
-          };
-        }
-      }
-
-      const newIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalPrice * 100),
-        currency: "eur",
-        metadata: {
-          user_id: userId,
-          booking_id: existingPendingBooking.id,
-          service_name: serviceName,
-        },
-      });
-
-      if (!newIntent.client_secret) {
-        throw new Error("Could not create Stripe payment intent.");
-      }
-
-      await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-        .update({ stripe_pi_id: newIntent.id })
-        .eq("id", existingPendingBooking.id);
-
-      return {
-        clientSecret: newIntent.client_secret,
-        bookingId: existingPendingBooking.id,
-      };
-    }
-
-    const { data: existingTimeBooking } = await admin
-      .from("bookings")
-      .select("id")
-      .eq("service_id", serviceId)
-      .eq("start_time", startTime.toISOString())
-      .eq("end_time", endTime.toISOString())
-      .in("status", ["pending", "paid"])
-      .maybeSingle<{ id: string }>();
-
-    if (existingTimeBooking?.id) {
-      throw new Error("Tento termín je už obsadený.");
     }
   }
 
@@ -211,15 +203,21 @@ export async function createBookingIntent(
   if (serviceRow.type === "facility") {
     const { data: overlappingBooking } = await admin
       .from("bookings")
-      .select("id")
+      .select("id, user_id, status")
       .eq("service_id", serviceId)
       .in("status", ["pending", "paid"])
       .lt("start_time", endTime.toISOString())
       .gt("end_time", startTime.toISOString())
-      .maybeSingle<{ id: string }>();
+      .maybeSingle<{ id: string; user_id: string; status: string }>();
 
-    if (overlappingBooking?.id) {
-      throw new Error("Tento cas je uz obsadeny.");
+    if (overlappingBooking) {
+      if (overlappingBooking.user_id === userId && overlappingBooking.status === "pending") {
+        await (admin.from("bookings") as unknown as DeleteableBookingsQuery)
+          .delete()
+          .eq("id", overlappingBooking.id);
+      } else {
+        throw new Error("Tento cas je uz obsadeny.");
+      }
     }
   }
 
@@ -241,54 +239,6 @@ export async function createBookingIntent(
     if (serviceRow.type === "facility" && isBookingConflictError(bookingError)) {
       throw new Error("Tento cas je uz obsadeny.");
     }
-
-    if (scheduleId) {
-      const { data: pendingFallback } = await admin
-        .from("bookings")
-        .select("id, stripe_pi_id")
-        .eq("user_id", userId)
-        .eq("schedule_id", scheduleId)
-        .eq("status", "pending")
-        .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
-
-      if (pendingFallback?.id) {
-        const stripe = getStripeServerClient();
-
-        if (pendingFallback.stripe_pi_id) {
-          const existingIntent = await stripe.paymentIntents.retrieve(pendingFallback.stripe_pi_id);
-          if (existingIntent.client_secret) {
-            return {
-              clientSecret: existingIntent.client_secret,
-              bookingId: pendingFallback.id,
-            };
-          }
-        }
-
-        const newIntent = await stripe.paymentIntents.create({
-          amount: Math.round(totalPrice * 100),
-          currency: "eur",
-          metadata: {
-            user_id: userId,
-            booking_id: pendingFallback.id,
-            service_name: serviceName,
-          },
-        });
-
-        if (!newIntent.client_secret) {
-          throw new Error("Could not create Stripe payment intent.");
-        }
-
-        await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-          .update({ stripe_pi_id: newIntent.id })
-          .eq("id", pendingFallback.id);
-
-        return {
-          clientSecret: newIntent.client_secret,
-          bookingId: pendingFallback.id,
-        };
-      }
-    }
-
     throw new Error("Could not create local booking record.");
   }
 

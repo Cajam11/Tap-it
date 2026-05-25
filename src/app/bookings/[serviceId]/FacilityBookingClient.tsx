@@ -12,6 +12,7 @@ type FacilityBooking = {
   start_time: string;
   end_time: string;
   status: string;
+  user_id: string;
 };
 
 const OPEN_HOUR = 6;
@@ -82,11 +83,13 @@ export default function FacilityBookingClient({
   bookings,
   backHref,
   backLabel,
+  currentUserId,
 }: {
   service: BookableService;
   bookings: FacilityBooking[];
   backHref: string;
   backLabel: string;
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -107,7 +110,7 @@ export default function FacilityBookingClient({
   }, [router]);
 
   const bookedHoursByDate = useMemo(() => {
-    const map = new Map<string, Map<number, string>>();
+    const map = new Map<string, Map<number, { status: string; userId: string }>>();
 
     bookings.forEach((booking) => {
       const start = new Date(booking.start_time);
@@ -121,7 +124,7 @@ export default function FacilityBookingClient({
         if (hour >= OPEN_HOUR && hour < CLOSE_HOUR) {
           const key = toDateKey(cursor);
           if (!map.has(key)) map.set(key, new Map());
-          map.get(key)!.set(hour, booking.status);
+          map.get(key)!.set(hour, { status: booking.status, userId: booking.user_id });
         }
 
         cursor.setHours(cursor.getHours() + 1);
@@ -143,10 +146,12 @@ export default function FacilityBookingClient({
 
     while (cursor <= end) {
       const key = toDateKey(cursor);
-      const booked = bookedHoursByDate.get(key) ?? new Map<number, string>();
+      const booked = bookedHoursByDate.get(key) ?? new Map<number, { status: string; userId: string }>();
       const hasAvailableHour = HOURS.some((hour) => {
         const slot = getSlotDate(key, hour);
-        return slot > now && !booked.has(hour);
+        const bookingData = booked.get(hour);
+        const isAvailable = !bookingData || (bookingData.status === "pending" && bookingData.userId === currentUserId);
+        return slot > now && isAvailable;
       });
 
       if (hasAvailableHour) available.add(key);
@@ -154,15 +159,15 @@ export default function FacilityBookingClient({
     }
 
     return available;
-  }, [bookedHoursByDate]);
+  }, [bookedHoursByDate, currentUserId]);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const blanks = Array.from({ length: firstDay });
   const days = Array.from({ length: daysInMonth }).map((_, index) => index + 1);
   const bookedHours = selectedDateStr
-    ? (bookedHoursByDate.get(selectedDateStr) ?? new Map<number, string>())
-    : new Map<number, string>();
+    ? (bookedHoursByDate.get(selectedDateStr) ?? new Map<number, { status: string; userId: string }>())
+    : new Map<number, { status: string; userId: string }>();
   const now = new Date();
   const sortedSelectedHours = [...selectedHours].sort((a, b) => a - b);
   const duration = sortedSelectedHours.length;
@@ -394,13 +399,15 @@ export default function FacilityBookingClient({
             <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
               {HOURS.map((hour) => {
                 const slotStart = getSlotDate(selectedDateStr, hour);
-                const bookingStatus = bookedHours.get(hour);
-                const isBooked = Boolean(bookingStatus);
+                const bookingData = bookedHours.get(hour);
+                const isBooked = Boolean(bookingData);
+                const bookingStatus = bookingData?.status;
                 const isPending = bookingStatus === "pending";
+                const isCurrentUserPending = isPending && bookingData?.userId === currentUserId;
                 const isPast =
                   isSameDate(now, selectedDateStr) && slotStart <= now;
                 const isSelected = selectedHours.includes(hour);
-                const disabled = isBooked || isPast;
+                const disabled = (isBooked && !isCurrentUserPending) || isPast;
 
                 return (
                   <button
@@ -414,13 +421,15 @@ export default function FacilityBookingClient({
                           ? isPending
                             ? "cursor-not-allowed border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through"
                             : "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
-                          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                          : isCurrentUserPending
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-200/90 hover:bg-amber-500/20 hover:text-amber-100"
+                            : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <span>{hour}:00</span>
                     {isPending && (
                       <span className="mt-1 block text-[11px] no-underline">
-                        drzane
+                        {isCurrentUserPending ? "tvoje držané" : "drzane"}
                       </span>
                     )}
                     {bookingStatus === "paid" && (

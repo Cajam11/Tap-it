@@ -87,16 +87,20 @@ export default async function CheckoutPage({
   } else {
     if (!startParam) redirect(`/bookings/${serviceId}`);
 
+    const safeStartParam = startParam.replace(" ", "+");
     const duration = Math.max(1, Math.min(16, parseInt(durationParam || "1", 10)));
-    startTime = new Date(startParam);
+    startTime = new Date(safeStartParam);
     endTime = new Date(startTime);
     endTime.setHours(endTime.getHours() + duration);
+
+    const now = new Date();
+    const minValidStart = new Date(now.getTime() - 20 * 60 * 1000);
 
     if (
       !isValidFacilityStart(startTime) ||
       endTime <= startTime ||
       endTime.getHours() > FACILITY_CLOSE_HOUR ||
-      startTime <= new Date()
+      startTime < minValidStart
     ) {
       redirect(`/bookings/${serviceId}`);
     }

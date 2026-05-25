@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
@@ -218,13 +219,28 @@ export default async function MyBookingsPage() {
                             {formatDateTime(booking.start_time)} - {formatTime(booking.end_time)}
                           </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                           <span className={`rounded-full border px-3 py-1 text-xs ${getStatusClass(booking.status)}`}>
                             {getStatusLabel(booking.status)}
                           </span>
                           <span className="min-w-16 text-right text-sm font-semibold text-white">
                             {booking.total_price.toFixed(2)} EUR
                           </span>
+                          {booking.status === "pending" && (
+                            <Link
+                              href={
+                                booking.schedule_id
+                                  ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}`
+                                  : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
+                                      (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
+                                        (1000 * 60 * 60)
+                                    )}`
+                              }
+                              className="ml-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500"
+                            >
+                              Zaplatiť
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,1 +1,1 @@
-export { default } from "../../../[serviceId]/checkout/loading";
+export { default } from "@/components/bookings/CheckoutLoading";

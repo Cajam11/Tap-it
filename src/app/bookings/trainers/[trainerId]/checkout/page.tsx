@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import BookingCheckoutPage from "../../../[serviceId]/checkout/BookingCheckoutPage";
+import BookingCheckoutPage from "@/components/bookings/BookingCheckoutPage";
 
 type TrainerCheckoutSearchParams = {
   scheduleId?: string;

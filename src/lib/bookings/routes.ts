@@ -8,8 +8,9 @@ export function getServiceDetailHref(
   if (serviceType === "facility") return `/bookings/priestory/${serviceId}`;
   if (serviceType === "group") return `/bookings/skupinove-lekcie/${serviceId}`;
   if (serviceType === "trainer" && trainerId) return `/bookings/trainers/${trainerId}`;
+  if (serviceType === "trainer") return "/bookings/trainers";
 
-  return `/bookings/${serviceId}`;
+  return "/bookings";
 }
 
 export function getServiceCheckoutHref(
@@ -21,5 +22,5 @@ export function getServiceCheckoutHref(
   if (serviceType === "group") return `/bookings/skupinove-lekcie/${serviceId}/checkout`;
   if (serviceType === "trainer" && trainerId) return `/bookings/trainers/${trainerId}/checkout`;
 
-  return `/bookings/${serviceId}/checkout`;
+  return "/bookings";
 }

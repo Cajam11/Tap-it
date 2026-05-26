@@ -9,8 +9,6 @@ import BookingSelector from "./BookingSelector";
 import FacilityBookingClient from "./FacilityBookingClient";
 import { BookableService, ServiceSchedule } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 type FacilityBooking = {
   id: string;
   start_time: string;

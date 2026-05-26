@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { BookableService, ServiceSchedule } from "@/lib/types";
+import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 
 // Pomocne datumove funkcie
 function getDaysInMonth(year: number, month: number) {
@@ -99,7 +100,7 @@ export default function TrainerBookingClient({
     if (!selectedScheduleId) return;
     setLoading(true);
     router.push(
-      `/bookings/${service.id}/checkout?scheduleId=${selectedScheduleId}&trainerId=${trainerProfile.id}`,
+      `${getServiceCheckoutHref(service.type, service.id, trainerProfile.id)}?scheduleId=${selectedScheduleId}&serviceId=${service.id}`,
     );
   };
 

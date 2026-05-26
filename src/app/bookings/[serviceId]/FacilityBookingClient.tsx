@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { BookableService } from "@/lib/types";
+import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 
 type FacilityBooking = {
   id: string;
@@ -240,7 +241,7 @@ export default function FacilityBookingClient({
       duration: duration.toString(),
     });
 
-    router.push(`/bookings/${service.id}/checkout?${params.toString()}`);
+    router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
   };
 
   return (

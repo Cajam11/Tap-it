@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookableService, ServiceSchedule } from "@/lib/types";
+import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 
 export default function BookingSelector({
   service,
@@ -27,7 +28,7 @@ export default function BookingSelector({
     if (selectedScheduleId) params.set("scheduleId", selectedScheduleId);
     if (!isScheduled) params.set("duration", duration.toString());
     
-    router.push(`/bookings/${service.id}/checkout?${params.toString()}`);
+    router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
   };
 
   return (

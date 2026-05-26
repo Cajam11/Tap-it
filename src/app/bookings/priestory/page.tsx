@@ -177,7 +177,7 @@ function ServiceCard({ service, image }: { service: Service; image: string }) {
 
   return (
     <Link
-      href={`/bookings/${service.id}`}
+      href={`/bookings/priestory/${service.id}`}
       className="group relative flex min-h-[24rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white transition hover:-translate-y-1 hover:border-red-500/40 hover:bg-white/[0.05]"
     >
       <div className="absolute inset-0">

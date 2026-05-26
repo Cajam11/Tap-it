@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 
 type TimelineActivity = {
   id: string;
@@ -15,6 +16,9 @@ type TimelineActivity = {
   status: string;
   service_id: string;
   schedule_id: string | null;
+  bookable_services: {
+    type: string;
+  } | null;
 };
 
 type UpcomingBooking = {
@@ -199,8 +203,8 @@ export default function BookingTimeline({
                         <Link
                           href={
                             activity.schedule_id
-                              ? `/bookings/${activity.service_id}/checkout?scheduleId=${activity.schedule_id}${activity.trainerId ? `&trainerId=${activity.trainerId}` : ""}`
-                              : `/bookings/${activity.service_id}/checkout?start=${activity.start_time}&duration=${Math.round(
+                              ? `${getServiceCheckoutHref(activity.bookable_services?.type, activity.service_id, activity.trainerId)}?scheduleId=${activity.schedule_id}${activity.bookable_services?.type === "trainer" ? `&serviceId=${activity.service_id}` : ""}`
+                              : `${getServiceCheckoutHref(activity.bookable_services?.type, activity.service_id, activity.trainerId)}?start=${activity.start_time}&duration=${Math.round(
                                   (new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) /
                                     (1000 * 60 * 60)
                                 )}`
@@ -240,8 +244,8 @@ export default function BookingTimeline({
                     <Link
                       href={
                         booking.schedule_id
-                          ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}${booking.trainerId ? `&trainerId=${booking.trainerId}` : ""}`
-                          : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
+                          ? `${getServiceCheckoutHref(booking.bookable_services?.type, booking.service_id, booking.trainerId)}?scheduleId=${booking.schedule_id}${booking.bookable_services?.type === "trainer" ? `&serviceId=${booking.service_id}` : ""}`
+                          : `${getServiceCheckoutHref(booking.bookable_services?.type, booking.service_id, booking.trainerId)}?start=${booking.start_time}&duration=${Math.round(
                               (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
                                 (1000 * 60 * 60)
                             )}`

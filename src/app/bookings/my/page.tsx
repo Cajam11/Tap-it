@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 import BookingTimeline from "./BookingTimeline";
 
 type BookingStatus = "pending" | "paid" | "cancelled" | "refunded";
@@ -245,9 +246,14 @@ export default async function MyBookingsPage() {
                             const trainerId = schedule?.trainer_id;
                             const isTrainer = booking.bookable_services?.type === "trainer";
 
+                            const checkoutHref = getServiceCheckoutHref(
+                              booking.bookable_services?.type,
+                              booking.service_id,
+                              trainerId,
+                            );
                             const href = booking.schedule_id
-                              ? `/bookings/${booking.service_id}/checkout?scheduleId=${booking.schedule_id}${isTrainer && trainerId ? `&trainerId=${trainerId}` : ""}`
-                              : `/bookings/${booking.service_id}/checkout?start=${booking.start_time}&duration=${Math.round(
+                              ? `${checkoutHref}?scheduleId=${booking.schedule_id}${isTrainer ? `&serviceId=${booking.service_id}` : ""}`
+                              : `${checkoutHref}?start=${booking.start_time}&duration=${Math.round(
                                   (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
                                     (1000 * 60 * 60)
                                 )}`;

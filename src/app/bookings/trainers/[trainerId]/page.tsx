@@ -94,16 +94,16 @@ export default async function TrainerBookingPage({
   const { data: bookedSchedules } = scheduleIds.length
     ? await admin
         .from("bookings")
-        .select("schedule_id, status")
+        .select("schedule_id, status, user_id")
         .eq("service_id", resolvedServiceId)
         .in("status", ["pending", "paid"])
         .in("schedule_id", scheduleIds)
-    : { data: [] as { schedule_id: string | null; status: string }[] };
+    : { data: [] as { schedule_id: string | null; status: string; user_id: string }[] };
 
   const scheduleBookingStatus = new Map(
     (bookedSchedules ?? [])
-      .filter((booking): booking is { schedule_id: string; status: string } => Boolean(booking.schedule_id))
-      .map((booking) => [booking.schedule_id, booking.status])
+      .filter((booking): booking is { schedule_id: string; status: string; user_id: string } => Boolean(booking.schedule_id))
+      .map((booking) => [booking.schedule_id, { status: booking.status, userId: booking.user_id }])
   );
 
   const visibleSchedules = schedules.map((schedule) =>
@@ -111,7 +111,8 @@ export default async function TrainerBookingPage({
       ? {
           ...schedule,
           current_capacity: 0,
-          booking_status: scheduleBookingStatus.get(schedule.id) as "pending" | "paid" | null,
+          booking_status: scheduleBookingStatus.get(schedule.id)?.status as "pending" | "paid" | null,
+          booking_user_id: scheduleBookingStatus.get(schedule.id)?.userId ?? null,
         }
       : schedule
   );
@@ -139,6 +140,7 @@ export default async function TrainerBookingPage({
             trainerProfile={trainerProfile}
             service={typedService}
             schedules={visibleSchedules}
+            currentUserId={user.id}
           />
         </div>
       </main>

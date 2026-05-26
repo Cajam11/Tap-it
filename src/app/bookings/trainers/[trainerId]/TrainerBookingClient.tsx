@@ -20,6 +20,7 @@ export default function TrainerBookingClient({
   trainerProfile,
   service,
   schedules,
+  currentUserId,
 }: {
   trainerProfile: {
     id: string;
@@ -29,6 +30,7 @@ export default function TrainerBookingClient({
   };
   service: BookableService;
   schedules: ServiceSchedule[];
+  currentUserId: string;
 }) {
   const router = useRouter();
 
@@ -230,8 +232,18 @@ export default function TrainerBookingClient({
 
               {days.map((day) => {
                 const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const hasSlots =
-                  (schedulesByDate.get(dateKey)?.length ?? 0) > 0;
+                const daySlots = schedulesByDate.get(dateKey) ?? [];
+                const hasSlots = daySlots.some((slot) => {
+                  const isCurrentUserPending =
+                    slot.booking_status === "pending" &&
+                    slot.booking_user_id === currentUserId;
+                  const isLocked =
+                    slot.booking_status === "paid" ||
+                    (slot.booking_status === "pending" && !isCurrentUserPending) ||
+                    ((slot.current_capacity !== null && slot.current_capacity <= 0) && !isCurrentUserPending);
+
+                  return !isLocked;
+                });
 
                 return (
                   <button
@@ -288,6 +300,8 @@ export default function TrainerBookingClient({
                   const isSelected = slot.id === selectedScheduleId;
                   const isPending = slot.booking_status === "pending";
                   const isPaid = slot.booking_status === "paid";
+                  const isCurrentUserPending =
+                    isPending && slot.booking_user_id === currentUserId;
                   const isFull =
                     slot.current_capacity !== null &&
                     slot.current_capacity <= 0;
@@ -295,7 +309,8 @@ export default function TrainerBookingClient({
                     "sk-SK",
                     { hour: "2-digit", minute: "2-digit" },
                   );
-                  const isLocked = isPending || isPaid || isFull;
+                  const isLocked =
+                    isPaid || (isPending && !isCurrentUserPending) || (isFull && !isCurrentUserPending);
 
                   return (
                     <button
@@ -304,18 +319,20 @@ export default function TrainerBookingClient({
                       disabled={isLocked}
                       className={`p-4 rounded-xl text-center transition-all ${
                         isSelected
-                          ? "bg-red-500/20 border border-red-500/50 text-white font-bold"
-                          : isLocked
-                            ? isPending
-                              ? "border border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through cursor-not-allowed"
-                              : "border border-white/10 bg-white/5 text-white/25 line-through cursor-not-allowed"
+                        ? "bg-red-500/20 border border-red-500/50 text-white font-bold"
+                        : isLocked
+                          ? isPending
+                            ? "border border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through cursor-not-allowed"
+                            : "border border-white/10 bg-white/5 text-white/25 line-through cursor-not-allowed"
+                          : isCurrentUserPending
+                            ? "border border-amber-500/30 bg-amber-500/10 text-amber-200/90 hover:bg-amber-500/20 hover:text-amber-100"
                             : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       {timeStr}
                       {isPending && (
-                        <span className="mt-1 block text-[11px] no-underline text-amber-100">
-                          drzane
+                        <span className="mt-1 block text-[11px] no-underline">
+                          {isCurrentUserPending ? "tvoje drzane" : "drzane"}
                         </span>
                       )}
                       {isPaid && (

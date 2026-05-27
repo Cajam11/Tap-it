@@ -144,6 +144,97 @@
   transition: all 0.5s;
 }
 
+/* Pridaj Sa button — fill-left wipe (UIverse by alexroumi) */
+.btn-join {
+  border: unset;
+  border-radius: 9999px;
+  color: #ffffff;
+  z-index: 1;
+  background: #dc2626;
+  position: relative;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 0 30px rgba(220, 38, 38, 0.35);
+  transition: all 250ms;
+  overflow: hidden;
+  display: inline-block;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1rem 2.5rem;
+}
+
+.btn-join::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  border-radius: 9999px;
+  background-color: #ef4444;
+  z-index: -1;
+  transition: all 250ms;
+}
+
+.btn-join:hover {
+  color: #ffffff;
+}
+
+.btn-join:hover::before {
+  width: 100%;
+}
+
+/* Reusable fill-left wipe effect — applies only the animation, no font/padding overrides */
+.btn-wipe-fill {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.btn-wipe-fill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background-color: #ef4444;
+  z-index: -1;
+  transition: width 250ms;
+}
+
+.btn-wipe-fill:hover::before {
+  width: 100%;
+}
+
+/* Membership "Vybrať" button — slide-right arrow (UIverse by NorthFishHasNa) */
+.btn-select span {
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: padding-right 0.5s;
+}
+
+.btn-select span::after {
+  content: "»";
+  position: absolute;
+  opacity: 0;
+  top: 0;
+  right: -15px;
+  transition: opacity 0.5s, right 0.5s;
+}
+
+.btn-select:hover span {
+  padding-right: 15px;
+}
+
+.btn-select:hover span::after {
+  opacity: 1;
+  right: 0;
+}
+
 /* Animated checkbox — UIverse by WhiteNervosa (adapted for project theme) */
 .cbx-wrapper {
   position: relative;

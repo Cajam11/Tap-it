@@ -363,7 +363,7 @@ export default async function LandingPage() {
             <div className="mt-12 flex items-center gap-5 flex-wrap">
               <Link
                 href="/register"
-                className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold px-10 py-4 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none shadow-[0_0_30px_rgba(220,38,38,0.35)] text-base uppercase tracking-wide"
+                className="btn-join touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide"
               >
                 Pridaj sa
               </Link>
@@ -454,7 +454,7 @@ export default async function LandingPage() {
               </p>
               <Link
                 href="#pricing"
-                className="inline-block mt-8 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-sm px-8 py-3.5 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide"
+                className="btn-wipe-fill inline-block mt-8 bg-red-600 text-white font-bold text-sm px-8 py-3.5 rounded-full touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide"
               >
                 Zobraziť celý rozvrh
               </Link>
@@ -813,7 +813,7 @@ export default async function LandingPage() {
               {PRICING.map((p, i) => (
                 <FadeIn key={p.name} delay={i * 100}>
                   <div
-                    className={`rounded-3xl p-8 border h-full flex flex-col ${
+                    className={`rounded-3xl p-8 border h-full flex flex-col transition-transform duration-300 hover:-translate-y-2 ${
                       p.highlight
                         ? "border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.12)]"
                         : "border-white/[0.08]"
@@ -856,13 +856,13 @@ export default async function LandingPage() {
                     </ul>
                     <Link
                       href={user ? "/membership" : "/register"}
-                      className={`mt-8 block text-center text-sm font-bold py-4 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide ${
+                      className={`btn-select mt-8 block text-center text-sm font-bold py-4 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide ${
                         p.highlight
                           ? "bg-red-600 hover:bg-red-500 text-white"
                           : "bg-white/[0.07] hover:bg-white/[0.12] text-white/70 hover:text-white border border-white/[0.08]"
                       }`}
                     >
-                      Vybrať
+                      <span>Vybrať</span>
                     </Link>
                   </div>
                 </FadeIn>

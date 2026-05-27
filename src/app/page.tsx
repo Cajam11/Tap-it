@@ -935,7 +935,7 @@ export default async function LandingPage() {
             <FadeIn className="mt-16" delay={300}>
               <Link
                 href="/register"
-                className="inline-block bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-base px-10 py-4 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none shadow-[0_0_28px_rgba(220,38,38,0.3)] uppercase tracking-wide"
+                className="btn-wipe inline-block bg-red-600 text-white font-bold text-base px-10 py-4 rounded-full touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none shadow-[0_0_28px_rgba(220,38,38,0.3)] uppercase tracking-wide"
               >
                 Stiahnuť Tap-it
               </Link>

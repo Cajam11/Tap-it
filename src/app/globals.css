@@ -115,6 +115,35 @@
   }
 }
 
+/* Wipe hover effect for CTA button */
+.btn-wipe {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.btn-wipe:hover {
+  color: #dc2626 !important;
+}
+
+.btn-wipe::after {
+  content: "";
+  background: #fef2f2;
+  position: absolute;
+  z-index: -1;
+  left: -20%;
+  right: -20%;
+  top: 0;
+  bottom: 0;
+  transform: skewX(-45deg) scale(0, 1);
+  transition: all 0.5s;
+}
+
+.btn-wipe:hover::after {
+  transform: skewX(-45deg) scale(1, 1);
+  transition: all 0.5s;
+}
+
 /* Keep role selects on system sans without ligature substitutions to avoid garbled option text in some browsers. */
 .admin-role-select,
 .admin-role-select option {

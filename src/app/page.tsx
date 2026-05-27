@@ -287,14 +287,6 @@ export default async function LandingPage() {
 
   return (
     <SplashWrapper>
-      {/* Skip link */}
-      <a
-        href="#main"
-        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-4 focus-visible:left-4 focus-visible:z-[100] focus-visible:bg-white focus-visible:text-black focus-visible:px-4 focus-visible:py-2 focus-visible:rounded-md"
-      >
-        Skip to main content
-      </a>
-
       {/* -- Floating pill nav ------------------------------------------- */}
       <NavBarAuth
         navLinks={NAV_LINKS}
@@ -533,7 +525,7 @@ export default async function LandingPage() {
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link
                   href="/register"
-                  className="bg-white/[0.06] hover:bg-white/[0.12] text-white font-semibold text-sm px-8 py-4 rounded-full border border-white/[0.12] transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide"
+                  className="btn-wipe-fill btn-wipe-fill-white bg-white/[0.06] text-white font-semibold text-sm px-8 py-4 rounded-full border border-white/[0.12] touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none uppercase tracking-wide"
                 >
                   Vyber si svoj priestor
                 </Link>

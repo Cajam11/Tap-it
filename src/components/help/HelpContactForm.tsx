@@ -77,7 +77,7 @@ export default function HelpContactForm() {
         <div className="flex justify-start sm:justify-end">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-red-600 px-7 py-3 text-base font-semibold text-white transition hover:bg-red-500"
+            className="btn-wipe-fill inline-flex items-center justify-center rounded-full bg-red-600 px-7 py-3 text-base font-semibold text-white transition hover:bg-red-500"
           >
             Odoslať
           </button>

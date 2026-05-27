@@ -837,7 +837,7 @@ export default function ProfileEditor({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-full bg-red-600 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+          className="btn-wipe-fill rounded-full bg-red-600 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
         >
           {saving ? "Ukladam..." : "Ulozit zmeny"}
         </button>

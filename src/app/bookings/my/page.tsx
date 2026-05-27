@@ -204,10 +204,13 @@ export default async function MyBookingsPage() {
             </p>
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)]">
-            <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
-              <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-                <div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)] lg:items-stretch">
+            {/* Left Column: List of history bookings */}
+            <div className="relative h-[500px] min-w-0 lg:h-auto">
+              <div className="flex h-full flex-col lg:absolute lg:inset-0">
+                <section className="flex flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
+                  <div className="flex flex-none items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div>
                   <h2 className="text-xl font-semibold text-white">Historia bookingov</h2>
                   <p className="text-sm text-white/45">Poslednych {historyItems.length} rezervacii</p>
                 </div>
@@ -217,9 +220,9 @@ export default async function MyBookingsPage() {
               </div>
 
               {historyItems.length === 0 ? (
-                <p className="mt-6 text-white/50">Zatial nemate ziadne rezervacie.</p>
+                <p className="mt-6 flex-none text-white/50">Zatial nemate ziadne rezervacie.</p>
               ) : (
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 flex-1 space-y-3 overflow-y-auto pr-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
                   {historyItems.map((booking) => (
                     <div
                       key={booking.id}
@@ -274,6 +277,8 @@ export default async function MyBookingsPage() {
                 </div>
               )}
             </section>
+              </div>
+            </div>
 
             <BookingTimeline activities={timelineActivities} upcomingPreview={upcomingPreview} />
           </div>

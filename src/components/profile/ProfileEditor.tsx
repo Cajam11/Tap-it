@@ -744,62 +744,85 @@ export default function ProfileEditor({
           Sukromie vo fitku
         </h2>
         <div className="space-y-4">
-          <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showInGymList}
-              onChange={(e) => setShowInGymList(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
-            />
-            <span>
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="cbx-wrapper">
+              <input
+                type="checkbox"
+                id="cbx-show-in-gym"
+                checked={showInGymList}
+                onChange={(e) => setShowInGymList(e.target.checked)}
+                className="hidden"
+              />
+              <label htmlFor="cbx-show-in-gym" className="check">
+                <svg width="18px" height="18px" viewBox="0 0 18 18">
+                  <path d="M 1 9 L 1 9 c 0 -5 3 -8 8 -8 L 9 1 C 14 1 17 5 17 9 L 17 9 c 0 4 -4 8 -8 8 L 9 17 C 5 17 1 14 1 9 L 1 9 Z" />
+                  <polyline points="1 9 7 14 15 4" />
+                </svg>
+              </label>
+            </div>
+            <label htmlFor="cbx-show-in-gym" className="flex-1 cursor-pointer">
               <span className="block text-sm font-medium text-white">
                 Zobrazit ma v zozname ludi vo fitku
               </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ked je vypnute, nebudes viditelny ani ako anonymous.
               </span>
-            </span>
-          </label>
+            </label>
+          </div>
 
-          <label
-            className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}
-          >
-            <input
-              type="checkbox"
-              checked={showNameInGymList}
-              onChange={(e) => setShowNameInGymList(e.target.checked)}
-              disabled={!showInGymList}
-              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
-            />
-            <span>
+          <div className={`flex items-center gap-3 rounded-xl border p-3 ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+            <div className="cbx-wrapper">
+              <input
+                type="checkbox"
+                id="cbx-show-name"
+                checked={showNameInGymList}
+                onChange={(e) => setShowNameInGymList(e.target.checked)}
+                disabled={!showInGymList}
+                className="hidden"
+              />
+              <label htmlFor="cbx-show-name" className={`check ${!showInGymList ? "pointer-events-none" : ""}`}>
+                <svg width="18px" height="18px" viewBox="0 0 18 18">
+                  <path d="M 1 9 L 1 9 c 0 -5 3 -8 8 -8 L 9 1 C 14 1 17 5 17 9 L 17 9 c 0 4 -4 8 -8 8 L 9 17 C 5 17 1 14 1 9 L 1 9 Z" />
+                  <polyline points="1 9 7 14 15 4" />
+                </svg>
+              </label>
+            </div>
+            <label htmlFor="cbx-show-name" className={`flex-1 ${showInGymList ? "cursor-pointer" : "cursor-not-allowed"}`}>
               <span className="block text-sm font-medium text-white">
                 Zobrazit moje meno
               </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ak je vypnute, ostatni uvidia iba Anonymous.
               </span>
-            </span>
-          </label>
+            </label>
+          </div>
 
-          <label
-            className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}
-          >
-            <input
-              type="checkbox"
-              checked={showAvatarInGymList}
-              onChange={(e) => setShowAvatarInGymList(e.target.checked)}
-              disabled={!showInGymList}
-              className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500 disabled:cursor-not-allowed"
-            />
-            <span>
+          <div className={`flex items-center gap-3 rounded-xl border p-3 ${showInGymList ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02] opacity-60"}`}>
+            <div className="cbx-wrapper">
+              <input
+                type="checkbox"
+                id="cbx-show-avatar"
+                checked={showAvatarInGymList}
+                onChange={(e) => setShowAvatarInGymList(e.target.checked)}
+                disabled={!showInGymList}
+                className="hidden"
+              />
+              <label htmlFor="cbx-show-avatar" className={`check ${!showInGymList ? "pointer-events-none" : ""}`}>
+                <svg width="18px" height="18px" viewBox="0 0 18 18">
+                  <path d="M 1 9 L 1 9 c 0 -5 3 -8 8 -8 L 9 1 C 14 1 17 5 17 9 L 17 9 c 0 4 -4 8 -8 8 L 9 17 C 5 17 1 14 1 9 L 1 9 Z" />
+                  <polyline points="1 9 7 14 15 4" />
+                </svg>
+              </label>
+            </div>
+            <label htmlFor="cbx-show-avatar" className={`flex-1 ${showInGymList ? "cursor-pointer" : "cursor-not-allowed"}`}>
               <span className="block text-sm font-medium text-white">
                 Zobrazit moj avatar
               </span>
               <span className="block text-xs text-white/50 mt-0.5">
                 Ked je vypnute, zobrazi sa predvolena anonymous ikona.
               </span>
-            </span>
-          </label>
+            </label>
+          </div>
 
           {showInGymList && !showNameInGymList && !showAvatarInGymList ? (
             <p className="text-xs text-white/45">

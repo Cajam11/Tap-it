@@ -144,6 +144,81 @@
   transition: all 0.5s;
 }
 
+/* Animated checkbox — UIverse by WhiteNervosa (adapted for project theme) */
+.cbx-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.check {
+  cursor: pointer;
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+  -webkit-tap-highlight-color: transparent;
+  transform: translate3d(0, 0, 0);
+}
+
+.check::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.08);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.check svg {
+  position: relative;
+  z-index: 1;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1.5;
+  transform: translate3d(0, 0, 0);
+  transition: stroke 0.2s ease;
+}
+
+.check svg path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.3s linear;
+}
+
+.check svg polyline {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 66;
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+.check:hover::before {
+  opacity: 1;
+}
+
+.check:hover svg {
+  stroke: #ef4444;
+}
+
+.cbx-wrapper input:checked + .check svg {
+  stroke: #ef4444;
+}
+
+.cbx-wrapper input:checked + .check svg path {
+  stroke-dashoffset: 60;
+  transition: stroke-dashoffset 0.3s linear;
+}
+
+.cbx-wrapper input:checked + .check svg polyline {
+  stroke-dashoffset: 42;
+  transition: stroke-dashoffset 0.2s linear 0.15s;
+}
+
 /* Keep role selects on system sans without ligature substitutions to avoid garbled option text in some browsers. */
 .admin-role-select,
 .admin-role-select option {

@@ -3,6 +3,7 @@ import NavBarAuth from "@/components/NavBarAuth";
 import HelpContactForm from "@/components/help/HelpContactForm";
 import HelpFaqAccordion from "@/components/help/HelpFaqAccordion";
 import { createClient } from "@/lib/supabase/server";
+import { CircleHelp } from "lucide-react";
 
 export const metadata = {
   title: "Pomoc | Tap-it",
@@ -38,12 +39,6 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         number: 3,
-        question: "Platnosť môjho QR kódu vypršala — ako ho obnovím?",
-        answer:
-          "QR kód sa obnoví automaticky po predĺžení alebo zaplatení členstva. Ak si členstvo obnovil a kód stále nefunguje, kontaktuj nás.",
-      },
-      {
-        number: 4,
         question: "Nemám pri sebe telefón — môžem vstúpiť inak?",
         answer:
           "Áno, v takom prípade sa prihlás na recepcii a pracovník ti vstup umožní po overení tvojej totožnosti.",
@@ -54,68 +49,22 @@ const FAQ_SECTIONS: FaqSection[] = [
     title: "Členstvo & platby",
     items: [
       {
-        number: 5,
-        question: "Ako zruším alebo zmením svoje členstvo?",
-        answer:
-          "Členstvo môžeš zmeniť alebo zrušiť priamo vo svojom profile v sekcii „Členstvo“. Zrušenie je potrebné vykonať najneskôr 7 dní pred ďalším fakturačným obdobím.",
-      },
-      {
-        number: 6,
+        number: 4,
         question: "Kedy sa mi strhne platba za mesačnú permanentku?",
         answer:
           "Platba sa strhuje vždy v ten istý deň v mesiaci, v ktorý si si členstvo prvýkrát aktivoval.",
       },
       {
-        number: 7,
+        number: 5,
         question: "Akceptujete MultiSport alebo UpBalanse kartu?",
         answer:
           "Áno, akceptujeme MultiSport aj UpBalanse. Skupinové tréningy sú zahrnuté aj pri vstupe cez tieto karty.",
       },
       {
-        number: 8,
+        number: 6,
         question: "Mám ročnú permanentku — môžem navštevovať obe pobočky?",
         answer:
           "Áno, ročná permanentka platí v oboch pobočkách — OC Tehelko aj ePORT Mall.",
-      },
-    ],
-  },
-  {
-    title: "Registrácia & účet",
-    items: [
-      {
-        number: 9,
-        question: "Zabudol som heslo — ako ho resetnem?",
-        answer:
-          "Na prihlasovacej stránke klikni na „Zabudol som heslo“ a postupuj podľa inštrukcií zaslaných na tvoj e-mail.",
-      },
-      {
-        number: 10,
-        question: "Ako zmením svoje osobné údaje alebo e-mailovú adresu?",
-        answer:
-          "Osobné údaje môžeš upraviť v nastaveniach svojho účtu po prihlásení.",
-      },
-      {
-        number: 11,
-        question: "Môžem mať jeden účet pre viacerých ľudí?",
-        answer:
-          "Nie, každý člen musí mať vlastný účet z bezpečnostných dôvodov — QR kód je viazaný na konkrétnu osobu.",
-      },
-    ],
-  },
-  {
-    title: "Pobočky & prevádzka",
-    items: [
-      {
-        number: 12,
-        question: "Kde sa nachádzajú vaše pobočky?",
-        answer:
-          "Máme dve pobočky: OC Tehelko na Bajkalskej 2 a ePORT Mall na Ivanskej ceste 26.",
-      },
-      {
-        number: 13,
-        question: "Ako zistím aktuálnu obsadenosť fitka?",
-        answer:
-          "Aktuálna obsadenosť je zobrazená priamo na hlavnej stránke v reálnom čase.",
       },
     ],
   },
@@ -141,26 +90,45 @@ export default async function HelpPage() {
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
-    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+    full_name:
+      typeof profile?.full_name === "string" ? profile.full_name : null,
+    avatar_url:
+      typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
   };
 
   return (
     <>
-      <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={NAV_LINKS}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="min-h-screen bg-[#080808] px-4 pb-16 pt-28 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-6xl space-y-12">
-          <section className="max-w-4xl">
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Pomoc a podpora</h1>
-            <p className="mt-4 text-[15px] text-white/65 sm:text-base">
-              Tu nájdeš najčastejšie otázky a odpovede. Ak potrebuješ pomoc, použi kontaktný formulár nižšie.
+        <div className="mx-auto w-full max-w-3xl space-y-12">
+          <section className="flex flex-col items-center text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-sm text-white/60">
+              <CircleHelp className="h-4 w-4" />
+              FAQ
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Často kladené otázky
+            </h1>
+            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/55 sm:text-base">
+              Tu nájdeš najčastejšie otázky a odpovede. Ak potrebuješ pomoc,
+              použi kontaktný formulár nižšie.
             </p>
           </section>
 

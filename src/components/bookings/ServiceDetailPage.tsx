@@ -94,24 +94,30 @@ export default async function ServiceDetailPage({
       await expireStalePendingBookings(serviceId);
 
       const scheduleIds = schedules.map((schedule) => schedule.id);
-      const { data: bookedSchedules } = await admin
+      const { data: pendingBookings } = await admin
         .from("bookings")
         .select("schedule_id")
         .eq("service_id", serviceId)
-        .in("status", ["pending", "paid"])
+        .eq("status", "pending")
         .in("schedule_id", scheduleIds);
 
-      const bookedSchedulesArr = (bookedSchedules ?? []) as Array<{ schedule_id?: string | null }>;
+      const pendingBookingsArr = (pendingBookings ?? []) as Array<{ schedule_id: string | null }>;
+      const pendingCounts = new Map<string, number>();
+      for (const booking of pendingBookingsArr) {
+        if (booking.schedule_id) {
+          pendingCounts.set(booking.schedule_id, (pendingCounts.get(booking.schedule_id) || 0) + 1);
+        }
+      }
 
-      const lockedScheduleIds = new Set(
-        bookedSchedulesArr.map((booking) => booking.schedule_id).filter((id): id is string => Boolean(id))
-      );
-
-      schedules = schedules.map((schedule) =>
-        lockedScheduleIds.has(schedule.id)
-          ? { ...schedule, current_capacity: 0 }
-          : schedule
-      );
+      schedules = schedules.map((schedule) => {
+        const pending = pendingCounts.get(schedule.id) || 0;
+        return {
+          ...schedule,
+          current_capacity: schedule.current_capacity !== null 
+            ? Math.max(0, schedule.current_capacity - pending) 
+            : null
+        };
+      });
     }
   }
 

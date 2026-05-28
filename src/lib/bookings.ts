@@ -155,8 +155,21 @@ export async function createBookingIntent(
       throw new Error("Termín nebol nájdený.");
     }
 
-    if (scheduleRow.current_capacity !== null && scheduleRow.current_capacity <= 0) {
-      throw new Error("Tento termín je už obsadený.");
+    if (scheduleRow.current_capacity !== null) {
+      if (scheduleRow.current_capacity <= 0) {
+        throw new Error("Tento termín je už obsadený.");
+      }
+
+      const { count: pendingOthersCount } = await admin
+        .from("bookings")
+        .select("*", { count: "exact", head: true })
+        .eq("schedule_id", scheduleId)
+        .eq("status", "pending")
+        .neq("user_id", userId);
+
+      if (scheduleRow.current_capacity - (pendingOthersCount ?? 0) <= 0) {
+        throw new Error("Tento termín je práve rezervovaný iným používateľom.");
+      }
     }
 
     const { data: existingScheduleBooking } = await admin

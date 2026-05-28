@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import NavBarAuth from "@/components/NavBarAuth";
@@ -152,6 +153,18 @@ export default async function BookingCheckoutPage({
 
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
+  let trainerProfile: { full_name: string | null; avatar_url: string | null; bio: string | null } | null = null;
+  if (trainerId) {
+    const { data: routeTrainerProfile } = await supabase.from("profiles").select("full_name, avatar_url, bio").eq("id", trainerId).single();
+    trainerProfile = routeTrainerProfile;
+  }
+
+  const isFacility = typedService.type === "facility";
+  const coverImage = trainerProfile?.avatar_url || (isFacility ? "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?auto=format&fit=crop&w=1200&q=80" : "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80");
+
+  const displayName = trainerProfile?.full_name || typedService.name;
+  const avatarFallback = displayName.trim().charAt(0).toUpperCase();
+
   return (
     <>
       <NavBarAuth navLinks={[]} initialUser={navUser} initialProfile={navProfile} />
@@ -160,48 +173,107 @@ export default async function BookingCheckoutPage({
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-xl space-y-8">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
-              <Link
-                href={detailHref}
-                className="inline-flex items-center gap-2 transition hover:text-white/65"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Spat
-              </Link>
-            </div>
-
-            <h1 className="text-3xl font-bold tracking-tight text-white">Dokoncenie rezervacie</h1>
+        <div className="relative z-10 mx-auto w-full max-w-7xl pt-6">
+          <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+            <Link
+              href={detailHref}
+              className="inline-flex items-center gap-2 transition hover:text-white/65"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Spat
+            </Link>
           </div>
 
-          <div className="mb-8 space-y-2 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-white backdrop-blur-xl sm:p-8">
-            <p className="text-white/60">Sluzba:</p>
-            <p className="text-xl font-semibold">{typedService.name}</p>
-            <p className="text-sm text-white/55">
-              {startTime.toLocaleDateString("sk-SK")} {startTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })} -{" "}
-              {endTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
-            </p>
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
+            
+            {/* Lavy stlpec - Zhrnutie */}
+            <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
+              <div className="relative min-h-[24rem] flex-grow">
+                <div className="absolute inset-0">
+                  {coverImage ? (
+                    <Image
+                      src={coverImage}
+                      alt={displayName}
+                      fill
+                      sizes="(min-width: 1024px) 40vw, 100vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
+                      <span className="text-6xl font-semibold text-white/70">
+                        {avatarFallback}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-x-0 bottom-0 h-[80%] bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-6 z-10 sm:p-8">
+                  <h2 className="text-3xl font-bold text-white">{displayName}</h2>
+                  {!isFacility && trainerProfile?.bio && (
+                    <p className="mt-3 text-sm leading-relaxed text-white/65 line-clamp-3">
+                      {trainerProfile.bio}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            <div className="mt-6 border-t border-white/10 pt-6">
-              <div className="flex items-center justify-between text-xl font-bold">
-                <span>K uhrade:</span>
-                <span className="text-red-500">{totalPrice.toFixed(2)} EUR</span>
+              <div className="shrink-0 border-t border-white/5 bg-[#0d0d0d]/80 p-6 backdrop-blur-xl sm:p-8">
+                <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
+                  Tvoja rezervacia
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/60">Sluzba</span>
+                    <span className="font-medium text-white">{typedService.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/60">Termin</span>
+                    <span className="font-medium text-white text-right">
+                      {startTime.toLocaleDateString("sk-SK")} <br className="sm:hidden" />
+                      {startTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                      {endTime.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <div className="h-px w-full bg-white/10" />
+                  <div className="flex items-center justify-between text-base">
+                    <span className="text-white/80">K uhrade</span>
+                    <span className="font-bold text-red-500">
+                      {totalPrice.toFixed(2)} EUR
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Pravy stlpec - Checkout formulare */}
+            <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+              <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-white">
+                    Dokoncenie rezervacie
+                  </h2>
+                  <p className="text-white/50 mt-1">
+                    Skontrolujte si udaje a zadajte platobnu kartu pre potvrdenie.
+                  </p>
+                </div>
+
+                {errorMsg && (
+                  <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+                    {errorMsg}
+                  </div>
+                )}
+
+                {clientSecret && stripeKey ? (
+                  <StripePaymentForm clientSecret={clientSecret} publishableKey={stripeKey} />
+                ) : (
+                  !errorMsg && (
+                    <div className="text-white/50 animate-pulse text-sm">
+                      Nacitavam platobnu branu...
+                    </div>
+                  )
+                )}
+              </div>
+
           </div>
-
-          {errorMsg && (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-              {errorMsg}
-            </div>
-          )}
-
-          {clientSecret && stripeKey && (
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl sm:p-8">
-              <StripePaymentForm clientSecret={clientSecret} publishableKey={stripeKey} />
-            </div>
-          )}
         </div>
       </main>
     </>

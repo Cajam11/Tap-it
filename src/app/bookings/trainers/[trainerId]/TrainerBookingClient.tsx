@@ -108,10 +108,10 @@ export default function TrainerBookingClient({
   const avatarFallback = displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
+    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
       {/* ĽAVÝ STĹPEC - Informácie o trénerovi a resumé */}
-      <div className="flex flex-col gap-6">
-        <div className="group relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
+      <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
+        <div className="relative min-h-[24rem] flex-grow">
           <div className="absolute inset-0">
             {trainerProfile.avatar_url ? (
               <Image
@@ -119,7 +119,7 @@ export default function TrainerBookingClient({
                 alt={displayName}
                 fill
                 className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                sizes="(min-width: 1024px) 40vw, 100vw"
                 priority
               />
             ) : (
@@ -130,40 +130,35 @@ export default function TrainerBookingClient({
               </div>
             )}
           </div>
-
-          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black via-black/80 to-transparent" />
-
-          <div className="relative mt-auto p-6">
+          <div className="absolute inset-x-0 bottom-0 h-[80%] bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-6 z-10 sm:p-8">
             <h2 className="text-3xl font-bold text-white">{displayName}</h2>
             {trainerProfile.bio && (
-              <p className="mt-3 text-sm leading-relaxed text-white/60 line-clamp-3">
+              <p className="mt-3 text-sm leading-relaxed text-white/65 line-clamp-3">
                 {trainerProfile.bio}
               </p>
             )}
           </div>
         </div>
 
-        {/* Vybraný termín - Zhrnutie */}
-        <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md">
-          <h3 className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-4">
+        <div className="shrink-0 border-t border-white/5 bg-[#0d0d0d]/80 p-6 backdrop-blur-xl sm:p-8">
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
             Tvoja rezervácia
           </h3>
-
           <div className="space-y-4">
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-white/60">Služba</span>
-              <span className="text-white font-medium">Osobný tréning</span>
+              <span className="font-medium text-white">Osobný tréning</span>
             </div>
-
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-white/60">Termín</span>
-              <span className="text-white font-medium">
+              <span className="font-medium text-white text-right">
                 {selectedSchedule ? (
                   <>
                     {new Date(selectedSchedule.start_time).toLocaleDateString(
                       "sk-SK",
                     )}{" "}
-                    o{" "}
+                    <br className="sm:hidden" />
                     {new Date(selectedSchedule.start_time).toLocaleTimeString(
                       "sk-SK",
                       { hour: "2-digit", minute: "2-digit" },
@@ -174,13 +169,11 @@ export default function TrainerBookingClient({
                 )}
               </span>
             </div>
-
-            <div className="h-px w-full bg-white/10 my-2" />
-
-            <div className="flex justify-between items-center text-base">
+            <div className="h-px w-full bg-white/10" />
+            <div className="flex items-center justify-between text-base">
               <span className="text-white/80">Cena</span>
-              <span className="text-white font-bold">
-                {service.base_price}€
+              <span className="font-bold text-white">
+                {service.base_price.toFixed(2)} EUR
               </span>
             </div>
           </div>
@@ -188,9 +181,9 @@ export default function TrainerBookingClient({
       </div>
 
       {/* PRAVÝ STĹPEC - Kalendár a časy */}
-      <div className="flex flex-col gap-6">
+      <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
         {!selectedDateStr ? (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-md">
+          <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-white">
                 Vyberte si dátum
@@ -226,7 +219,7 @@ export default function TrainerBookingClient({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 flex-1 auto-rows-fr">
               {blanks.map((_, i) => (
                 <div key={`blank-${i}`} className="p-4" />
               ))}
@@ -254,7 +247,7 @@ export default function TrainerBookingClient({
                       setSelectedDateStr(dateKey);
                       setSelectedScheduleId(null);
                     }}
-                    className={`relative p-3 rounded-2xl text-center transition-all ${
+                    className={`relative flex items-center justify-center rounded-2xl text-lg transition-all ${
                       hasSlots
                         ? "bg-white/5 text-white hover:bg-red-500/20 hover:text-red-300 border border-transparent hover:border-red-500/30 font-medium cursor-pointer"
                         : "text-white/20 cursor-not-allowed"
@@ -262,7 +255,7 @@ export default function TrainerBookingClient({
                   >
                     {day}
                     {hasSlots && (
-                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />
+                      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500" />
                     )}
                   </button>
                 );
@@ -270,7 +263,7 @@ export default function TrainerBookingClient({
             </div>
           </div>
         ) : (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-md">
+          <div className="flex flex-col h-full">
             <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={() => {
@@ -351,7 +344,7 @@ export default function TrainerBookingClient({
               )}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-white/10">
+            <div className="mt-auto flex justify-end pt-4 border-t border-white/10">
               <button
                 disabled={!selectedScheduleId || loading}
                 onClick={handleContinue}

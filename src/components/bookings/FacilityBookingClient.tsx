@@ -256,58 +256,63 @@ export default function FacilityBookingClient({
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
-      <div className="flex flex-col gap-6">
-        <div className="group relative flex min-h-[28rem] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
-          <div className="absolute inset-0">
-            <Image
-              src={content.image}
-              alt={content.title}
-              fill
-              sizes="(min-width: 1024px) 40vw, 100vw"
-              className="object-cover"
-            />
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
+        <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
+          <div className="relative min-h-[24rem] flex-grow">
+            <div className="absolute inset-0">
+              <Image
+                src={content.image}
+                alt={content.title}
+                fill
+                sizes="(min-width: 1024px) 40vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 h-[80%] bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 z-10 sm:p-8">
+              <h2 className="text-3xl font-bold text-white">{content.title}</h2>
+              <p className="mt-3 text-sm leading-relaxed text-white/65">
+                {content.description}
+              </p>
+            </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black via-black/80 to-transparent" />
-          <div className="relative mt-auto p-6">
-            <h2 className="text-3xl font-bold text-white">{content.title}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-white/65">
-              {content.description}
-            </p>
+
+          <div className="shrink-0 border-t border-white/5 bg-[#0d0d0d]/80 p-6 backdrop-blur-xl sm:p-8">
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
+              Tvoja rezervacia
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/60">Priestor</span>
+                <span className="font-medium text-white">{service.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/60">Cas</span>
+                <span className="font-medium text-white text-right">
+                  {selectedDateStr && duration > 0 ? (
+                    <>
+                      {new Date(selectedDateStr).toLocaleDateString("sk-SK")} <br className="sm:hidden" />
+                      {sortedSelectedHours[0]}:00 - {sortedSelectedHours[duration - 1] + 1}:00
+                    </>
+                  ) : (
+                    "Zatial nevybrany"
+                  )}
+                </span>
+              </div>
+              <div className="h-px w-full bg-white/10" />
+              <div className="flex items-center justify-between text-base">
+                <span className="text-white/80">Cena</span>
+                <span className="font-bold text-white">
+                  {totalPrice.toFixed(2)} EUR
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
-            Tvoja rezervacia
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/60">Priestor</span>
-              <span className="font-medium text-white">{service.name}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/60">Cas</span>
-              <span className="font-medium text-white">
-                {selectedDateStr && duration > 0
-                  ? `${sortedSelectedHours[0]}:00 - ${sortedSelectedHours[duration - 1] + 1}:00`
-                  : "Zatial nevybrany"}
-              </span>
-            </div>
-            <div className="h-px w-full bg-white/10" />
-            <div className="flex items-center justify-between text-base">
-              <span className="text-white/80">Cena</span>
-              <span className="font-bold text-white">
-                {totalPrice.toFixed(2)} EUR
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        {!selectedDateStr ? (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+        <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+          {!selectedDateStr ? (
+            <div className="flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">
                 Vyberte si datum
@@ -343,7 +348,7 @@ export default function FacilityBookingClient({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 flex-1 auto-rows-fr">
               {blanks.map((_, index) => (
                 <div key={`blank-${index}`} className="p-4" />
               ))}
@@ -356,7 +361,7 @@ export default function FacilityBookingClient({
                     key={day}
                     disabled={!hasSlots}
                     onClick={() => handleDateSelect(dateKey)}
-                    className={`relative rounded-2xl p-3 text-center transition-all ${
+                    className={`relative rounded-2xl flex items-center justify-center text-lg transition-all ${
                       hasSlots
                         ? "cursor-pointer border border-transparent bg-white/5 font-medium text-white hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300"
                         : "cursor-not-allowed text-white/20"
@@ -364,7 +369,7 @@ export default function FacilityBookingClient({
                   >
                     {day}
                     {hasSlots && (
-                      <span className="absolute bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-red-500" />
+                      <span className="absolute bottom-2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
                     )}
                   </button>
                 );
@@ -372,7 +377,7 @@ export default function FacilityBookingClient({
             </div>
           </div>
         ) : (
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+          <div className="flex flex-col h-full">
             <div className="mb-8 flex items-center gap-4">
               <button
                 onClick={() => {
@@ -443,7 +448,7 @@ export default function FacilityBookingClient({
               })}
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+            <div className="mt-auto flex items-center justify-between gap-4 border-t border-white/10 pt-4">
               <div className="text-sm text-white/50">
                 {duration > 0
                   ? `${duration} hod. vybrane`

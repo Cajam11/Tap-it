@@ -198,7 +198,7 @@ export default async function MembershipPage() {
                       <div className="mt-auto pt-6">
                         <Link
                           href={`/membership/payment?plan=${encodeURIComponent(plan.name)}`}
-                          className="block w-full rounded-full bg-red-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-red-500"
+                          className="btn-wipe-fill block w-full rounded-full bg-red-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-red-500"
                         >
                           Pokračovať na platbu
                         </Link>
@@ -222,7 +222,7 @@ export default async function MembershipPage() {
             <div className="flex justify-center">
               <Link
                 href="/membership/details"
-                className="rounded-full bg-red-600 px-8 py-3 text-center font-semibold text-white transition hover:bg-red-500"
+                className="btn-wipe-fill rounded-full bg-red-600 px-8 py-3 text-center font-semibold text-white transition hover:bg-red-500"
               >
                 Detaily členstva
               </Link>

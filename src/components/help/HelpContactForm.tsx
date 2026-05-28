@@ -16,7 +16,9 @@ export default function HelpContactForm() {
       return;
     }
 
-    setInfoMessage("Odosielanie správ ešte nie je aktívne. Skús to, prosím, neskôr.");
+    setInfoMessage(
+      "Odosielanie správ ešte nie je aktívne. Skús to, prosím, neskôr.",
+    );
   }
 
   return (
@@ -28,7 +30,10 @@ export default function HelpContactForm() {
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         <div className="space-y-2.5">
-          <label htmlFor="help-name" className="block text-base font-medium text-white/85">
+          <label
+            htmlFor="help-name"
+            className="block text-base font-medium text-white/85"
+          >
             Meno
           </label>
           <input
@@ -44,7 +49,10 @@ export default function HelpContactForm() {
         </div>
 
         <div className="space-y-2.5">
-          <label htmlFor="help-email" className="block text-base font-medium text-white/85">
+          <label
+            htmlFor="help-email"
+            className="block text-base font-medium text-white/85"
+          >
             E-mail
           </label>
           <input
@@ -60,7 +68,10 @@ export default function HelpContactForm() {
         </div>
 
         <div className="space-y-2.5">
-          <label htmlFor="help-issue" className="block text-base font-medium text-white/85">
+          <label
+            htmlFor="help-issue"
+            className="block text-base font-medium text-white/85"
+          >
             Otázka / Problém
           </label>
           <textarea
@@ -74,10 +85,10 @@ export default function HelpContactForm() {
           />
         </div>
 
-        <div className="flex justify-start sm:justify-end">
+        <div className="flex justify-center">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-red-600 px-7 py-3 text-base font-semibold text-white transition hover:bg-red-500"
+            className="btn-wipe-fill inline-flex items-center justify-center rounded-full bg-red-600 px-7 py-3 text-base font-semibold text-white transition hover:bg-red-500"
           >
             Odoslať
           </button>

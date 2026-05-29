@@ -16,6 +16,7 @@ type BookingRow = {
   end_time: string;
   status: BookingStatus;
   total_price: number;
+  created_at: string;
   bookable_services: {
     name: string;
     type: string;
@@ -113,9 +114,9 @@ export default async function MyBookingsPage() {
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, service_id, schedule_id, start_time, end_time, status, total_price, bookable_services(name, type)")
+    .select("id, service_id, schedule_id, start_time, end_time, status, total_price, created_at, bookable_services(name, type)")
     .eq("user_id", user.id)
-    .order("start_time", { ascending: false });
+    .order("created_at", { ascending: false });
 
   const items = (bookings ?? []).map((booking) => ({
     ...booking,
@@ -147,6 +148,14 @@ export default async function MyBookingsPage() {
 
   const trainersById = new Map(((trainerRows ?? []) as TrainerRow[]).map((trainer) => [trainer.id, trainer]));
   const now = new Date();
+  const historyItems = [...items].sort((a, b) => {
+    const statusPriority = Number(b.status === "pending") - Number(a.status === "pending");
+    if (statusPriority !== 0) {
+      return statusPriority;
+    }
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
   const activeBookings = items
     .filter((booking) => booking.status !== "cancelled" && booking.status !== "refunded")
     .filter((booking) => new Date(booking.end_time) >= now)
@@ -175,7 +184,7 @@ export default async function MyBookingsPage() {
       trainerId: schedule?.trainer_id ?? null,
     };
   });
-  const historyItems = items.slice(0, 12);
+  const historyPreview = historyItems.slice(0, 12);
 
   return (
     <>
@@ -212,18 +221,18 @@ export default async function MyBookingsPage() {
                   <div className="flex flex-none items-center justify-between gap-4 border-b border-white/10 pb-4">
                   <div>
                   <h2 className="text-xl font-semibold text-white">Historia bookingov</h2>
-                  <p className="text-sm text-white/45">Poslednych {historyItems.length} rezervacii</p>
+                      <p className="text-sm text-white/45">Poslednych {historyPreview.length} rezervacii</p>
                 </div>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
                   {items.length} spolu
                 </span>
               </div>
 
-              {historyItems.length === 0 ? (
+              {historyPreview.length === 0 ? (
                 <p className="mt-6 flex-none text-white/50">Zatial nemate ziadne rezervacie.</p>
               ) : (
                 <div className="mt-5 flex-1 space-y-3 overflow-y-auto pr-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
-                  {historyItems.map((booking) => (
+                  {historyPreview.map((booking) => (
                     <div
                       key={booking.id}
                       className="rounded-lg border border-white/10 bg-black/20 px-4 py-4 transition hover:border-white/18 hover:bg-white/[0.04]"

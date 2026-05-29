@@ -47,41 +47,6 @@ function normalizeService(rawService: BookingRow["bookable_services"] | BookingR
   return Array.isArray(rawService) ? rawService[0] ?? null : rawService ?? null;
 }
 
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("sk-SK", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("sk-SK", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function getStatusLabel(status: BookingStatus) {
-  if (status === "paid") return "Zaplatene";
-  if (status === "pending") return "Caka na platbu";
-  if (status === "cancelled") return "Zrusene";
-  return "Refundovane";
-}
-
-function getStatusClass(status: BookingStatus) {
-  if (status === "paid") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-  if (status === "pending") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
-  if (status === "cancelled") return "border-white/10 bg-white/[0.03] text-white/45";
-  return "border-sky-300/30 bg-sky-400/10 text-sky-100";
-}
 
 export default async function MyBookingsPage() {
   const supabase = await createClient();
@@ -248,16 +213,6 @@ export default async function MyBookingsPage() {
             <div className="relative h-[500px] min-w-0 lg:h-auto">
               <div className="flex h-full flex-col lg:absolute lg:inset-0">
                 <section className="flex flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
-                  <div className="flex flex-none items-center justify-between gap-4 border-b border-white/10 pb-4">
-                  <div>
-                  <h2 className="text-xl font-semibold text-white">Historia bookingov</h2>
-                      <p className="text-sm text-white/45">Zobrazuje sa po 10 rezervacii</p>
-                </div>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
-                  {items.length} spolu
-                </span>
-              </div>
-
               <BookingHistoryList items={historyItems} />
             </section>
               </div>

@@ -5,6 +5,7 @@ import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 import BookingTimeline from "./BookingTimeline";
+import BookingHistoryList, { type BookingHistoryItem } from "./BookingHistoryList";
 
 type BookingStatus = "pending" | "paid" | "cancelled" | "refunded";
 
@@ -148,13 +149,44 @@ export default async function MyBookingsPage() {
 
   const trainersById = new Map(((trainerRows ?? []) as TrainerRow[]).map((trainer) => [trainer.id, trainer]));
   const now = new Date();
-  const historyItems = [...items].sort((a, b) => {
+  const historyItems: BookingHistoryItem[] = [...items].sort((a, b) => {
     const statusPriority = Number(b.status === "pending") - Number(a.status === "pending");
     if (statusPriority !== 0) {
       return statusPriority;
     }
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  }).map((booking) => {
+    const schedule = booking.schedule_id ? schedulesById.get(booking.schedule_id) : null;
+    const trainerId = schedule?.trainer_id;
+    const isTrainer = booking.bookable_services?.type === "trainer";
+
+    const paymentHref = booking.status === "pending"
+      ? booking.schedule_id
+        ? `${getServiceCheckoutHref(
+            booking.bookable_services?.type,
+            booking.service_id,
+            trainerId,
+          )}?scheduleId=${booking.schedule_id}${isTrainer ? `&serviceId=${booking.service_id}` : ""}`
+        : `${getServiceCheckoutHref(
+            booking.bookable_services?.type,
+            booking.service_id,
+            trainerId,
+          )}?start=${booking.start_time}&duration=${Math.round(
+            (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
+              (1000 * 60 * 60),
+          )}`
+      : null;
+
+    return {
+      id: booking.id,
+      title: booking.bookable_services?.name ?? "Rezervacia",
+      start_time: booking.start_time,
+      end_time: booking.end_time,
+      status: booking.status,
+      total_price: booking.total_price,
+      paymentHref,
+    };
   });
   const activeBookings = items
     .filter((booking) => booking.status !== "cancelled" && booking.status !== "refunded")
@@ -184,8 +216,6 @@ export default async function MyBookingsPage() {
       trainerId: schedule?.trainer_id ?? null,
     };
   });
-  const historyPreview = historyItems.slice(0, 12);
-
   return (
     <>
       <NavBarAuth navLinks={NAV_LINKS} initialUser={navUser} initialProfile={navProfile} />
@@ -221,70 +251,14 @@ export default async function MyBookingsPage() {
                   <div className="flex flex-none items-center justify-between gap-4 border-b border-white/10 pb-4">
                   <div>
                   <h2 className="text-xl font-semibold text-white">Historia bookingov</h2>
-                      <p className="text-sm text-white/45">Poslednych {historyPreview.length} rezervacii</p>
+                      <p className="text-sm text-white/45">Zobrazuje sa po 10 rezervacii</p>
                 </div>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
                   {items.length} spolu
                 </span>
               </div>
 
-              {historyPreview.length === 0 ? (
-                <p className="mt-6 flex-none text-white/50">Zatial nemate ziadne rezervacie.</p>
-              ) : (
-                <div className="mt-5 flex-1 space-y-3 overflow-y-auto pr-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
-                  {historyPreview.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="rounded-lg border border-white/10 bg-black/20 px-4 py-4 transition hover:border-white/18 hover:bg-white/[0.04]"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="truncate text-base font-semibold text-white">
-                            {booking.bookable_services?.name ?? "Rezervacia"}
-                          </div>
-                          <div className="mt-1 text-sm text-white/55">
-                            {formatDateTime(booking.start_time)} - {formatTime(booking.end_time)}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          <span className={`rounded-full border px-3 py-1 text-xs ${getStatusClass(booking.status)}`}>
-                            {getStatusLabel(booking.status)}
-                          </span>
-                          <span className="min-w-16 text-right text-sm font-semibold text-white">
-                            {booking.total_price.toFixed(2)} EUR
-                          </span>
-                          {booking.status === "pending" && (() => {
-                            const schedule = booking.schedule_id ? schedulesById.get(booking.schedule_id) : null;
-                            const trainerId = schedule?.trainer_id;
-                            const isTrainer = booking.bookable_services?.type === "trainer";
-
-                            const checkoutHref = getServiceCheckoutHref(
-                              booking.bookable_services?.type,
-                              booking.service_id,
-                              trainerId,
-                            );
-                            const href = booking.schedule_id
-                              ? `${checkoutHref}?scheduleId=${booking.schedule_id}${isTrainer ? `&serviceId=${booking.service_id}` : ""}`
-                              : `${checkoutHref}?start=${booking.start_time}&duration=${Math.round(
-                                  (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
-                                    (1000 * 60 * 60)
-                                )}`;
-
-                            return (
-                              <Link
-                                href={href}
-                                className="ml-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500"
-                              >
-                                Zaplatiť
-                              </Link>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <BookingHistoryList items={historyItems} />
             </section>
               </div>
             </div>

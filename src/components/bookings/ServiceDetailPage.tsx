@@ -81,7 +81,7 @@ export default async function ServiceDetailPage({
   if (isScheduled) {
     const { data: scheduleData } = await supabase
       .from("service_schedules")
-      .select("*")
+      .select("*, profiles:trainer_id(full_name, avatar_url, bio)")
       .eq("service_id", serviceId)
       .gte("start_time", new Date().toISOString())
       .order("start_time", { ascending: true })

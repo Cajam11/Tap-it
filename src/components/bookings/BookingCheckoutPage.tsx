@@ -45,7 +45,7 @@ export default async function BookingCheckoutPage({
     start: startParam,
     trainerId: queryTrainerId,
   } = await searchParams;
-  const trainerId = routeTrainerId ?? queryTrainerId ?? null;
+  let trainerId = routeTrainerId ?? queryTrainerId ?? null;
 
   const supabase = await createClient();
   const {
@@ -92,12 +92,15 @@ export default async function BookingCheckoutPage({
 
     const { data: sched } = await supabase
       .from("service_schedules")
-      .select("*")
+      .select("*, profiles:trainer_id(full_name, avatar_url, bio)")
       .eq("id", scheduleId)
       .single();
 
     if (!sched) redirect(detailHref);
     schedule = sched as ServiceSchedule;
+    if (!trainerId && schedule.trainer_id) {
+      trainerId = schedule.trainer_id;
+    }
 
     startTime = new Date(schedule.start_time);
     endTime = new Date(schedule.end_time);

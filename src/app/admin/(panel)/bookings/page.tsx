@@ -3,11 +3,35 @@ import { hasMinAdminRole } from "@/lib/admin-authz";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Plus, Repeat } from "lucide-react";
-import AdminCalendarView from "@/components/admin/AdminCalendarView";
+import AdminBookingsWorkspace from "@/components/admin/AdminBookingsWorkspace";
 
 export const metadata = {
   title: "Bookings Management | Tap-it Admin",
+};
+
+type GroupService = {
+  id: string;
+  name: string;
+  base_price: number;
+  price_unit: "hour" | "minute" | "session";
+  capacity: number | null;
+  metadata: Record<string, unknown> | null;
+};
+
+type TrainerOption = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
+type RecurringRule = {
+  id: string;
+  service_id: string;
+  trainer_id: string | null;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  active_until: string | null;
 };
 
 export default async function AdminBookingsPage() {
@@ -43,28 +67,37 @@ export default async function AdminBookingsPage() {
     .lte("start_time", endRange.toISOString())
     .order("start_time", { ascending: true });
 
-  return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Bookings & Calendar</h1>
-          <p className="text-white/60">
-            Manage all bookings, classes, and schedules across the gym.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-medium border border-white/10">
-            <Repeat className="w-4 h-4" />
-            Recurring Class
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium">
-            <Plus className="w-4 h-4" />
-            New Class
-          </button>
-        </div>
-      </div>
+  const { data: groupServices } = await supabaseAdmin
+    .from("bookable_services")
+    .select("id, name, base_price, price_unit, capacity, metadata")
+    .eq("type", "group")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
 
-      <AdminCalendarView initialBookings={bookings || []} />
-    </div>
+  const { data: trainers } = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("role", "trainer")
+    .order("full_name", { ascending: true });
+
+  const typedGroupServices = (groupServices ?? []) as GroupService[];
+  const typedTrainers = (trainers ?? []) as TrainerOption[];
+  const serviceIds = typedGroupServices.map((service) => service.id);
+  const { data: recurringRules } = serviceIds.length
+    ? await supabaseAdmin
+        .from("recurring_rules")
+        .select("id, service_id, trainer_id, day_of_week, start_time, end_time, active_until")
+        .in("service_id", serviceIds)
+        .order("day_of_week", { ascending: true })
+    : { data: [] };
+  const typedRecurringRules = (recurringRules ?? []) as RecurringRule[];
+
+  return (
+    <AdminBookingsWorkspace
+      bookings={bookings || []}
+      services={typedGroupServices}
+      trainers={typedTrainers}
+      rules={typedRecurringRules}
+    />
   );
 }

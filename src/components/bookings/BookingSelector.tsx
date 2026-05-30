@@ -73,6 +73,11 @@ export default function BookingSelector({
                       {isFull ? "Obsadené" : `Voľné miesta: ${schedule.current_capacity}`}
                     </div>
                   )}
+                  {service.type === "group" && schedule.profiles?.full_name && (
+                    <div className="mt-1 text-sm text-white/45">
+                      Instruktor: {schedule.profiles.full_name}
+                    </div>
+                  )}
                 </button>
               );
             })

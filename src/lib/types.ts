@@ -70,6 +70,7 @@ export interface ServiceSchedule {
   id: string;
   service_id: string;
   trainer_id: string | null;
+  profiles?: Pick<Profile, "full_name" | "avatar_url" | "bio"> | null;
   recurring_rule_id?: string | null;
   booking_status?: BookingStatus | null;
   booking_user_id?: string | null;

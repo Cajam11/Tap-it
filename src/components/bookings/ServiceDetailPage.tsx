@@ -150,7 +150,7 @@ export default async function ServiceDetailPage({
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className={`relative z-10 mx-auto w-full space-y-12 ${typedService.type === "facility" ? "max-w-7xl" : "max-w-4xl"}`}>
+        <div className="relative z-10 mx-auto w-full max-w-7xl space-y-12">
           {typedService.type === "facility" ? (
             <FacilityBookingClient service={typedService} bookings={facilityBookings} backHref={backHref} backLabel={backLabel} currentUserId={user.id} />
           ) : (

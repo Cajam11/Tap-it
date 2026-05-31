@@ -1,9 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarClock } from "lucide-react";
 import { BookableService, ServiceSchedule } from "@/lib/types";
 import { getServiceCheckoutHref } from "@/lib/bookings/routes";
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 export default function BookingSelector({
   service,
@@ -13,94 +27,354 @@ export default function BookingSelector({
   schedules: ServiceSchedule[];
 }) {
   const router = useRouter();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [duration, setDuration] = useState<number>(1);
   const [loading, setLoading] = useState(false);
 
   const isScheduled = service.type === "group" || service.type === "trainer";
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+
+  const schedulesByDate = useMemo(() => {
+    const map = new Map<string, ServiceSchedule[]>();
+
+    for (const schedule of schedules) {
+      const start = new Date(schedule.start_time);
+      const end = new Date(schedule.end_time);
+      const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+
+      if (durationMinutes !== 60) {
+        continue;
+      }
+
+      const key = toDateKey(start);
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(schedule);
+    }
+
+    for (const slotList of map.values()) {
+      slotList.sort((left, right) => new Date(left.start_time).getTime() - new Date(right.start_time).getTime());
+    }
+
+    return map;
+  }, [schedules]);
+
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>();
+    const now = new Date();
+    const start = new Date(currentYear, currentMonth, 1);
+    const end = new Date(currentYear, currentMonth + 1, 0);
+
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const key = toDateKey(cursor);
+      const daySlots = schedulesByDate.get(key) ?? [];
+      const hasAvailableSlot = daySlots.some((schedule) => {
+        const startTime = new Date(schedule.start_time);
+        const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
+        return startTime > now && !isFull;
+      });
+
+      if (hasAvailableSlot) {
+        dates.add(key);
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return dates;
+  }, [currentMonth, currentYear, schedulesByDate]);
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+  const blanks = Array.from({ length: firstDay });
+  const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
+  const availableSlots = selectedDateStr ? schedulesByDate.get(selectedDateStr) ?? [] : [];
+  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId) ?? null;
 
   const handleContinue = () => {
     if (isScheduled && !selectedScheduleId) return;
-    
+
     setLoading(true);
-    // Redirect to checkout with necessary query params
     const params = new URLSearchParams();
-    if (selectedScheduleId) params.set("scheduleId", selectedScheduleId);
-    if (!isScheduled) params.set("duration", duration.toString());
-    
+
+    if (selectedScheduleId) {
+      params.set("scheduleId", selectedScheduleId);
+    }
+
+    if (!isScheduled) {
+      params.set("duration", duration.toString());
+    }
+
     router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
   };
 
-  return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
-      <h2 className="text-2xl font-bold mb-6 text-white">Zvoľte si termín</h2>
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+    setSelectedDateStr(null);
+    setSelectedScheduleId(null);
+  };
 
-      {isScheduled ? (
-        <div className="space-y-4 text-white">
-          {schedules.length === 0 ? (
-            <p className="text-white/40">Momentálne nie sú dostupné žiadne voľné termíny.</p>
-          ) : (
-            schedules.map((schedule) => {
-              const start = new Date(schedule.start_time);
-              const end = new Date(schedule.end_time);
-              const isSelected = selectedScheduleId === schedule.id;
-              const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
+  const prevMonth = () => {
+    setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+    setSelectedDateStr(null);
+    setSelectedScheduleId(null);
+  };
 
-              return (
-                <button
-                  key={schedule.id}
-                  onClick={() => setSelectedScheduleId(schedule.id)}
-                  disabled={isFull}
-                  className={`w-full text-left p-4 rounded-xl border transition-all ${
-                    isSelected
-                      ? "border-red-500/50 bg-red-500/10 text-white"
-                      : isFull
-                        ? "border-white/10 bg-white/5 text-white/30 line-through cursor-not-allowed"
-                        : "border-white/10 bg-white/5 hover:border-white/20 text-white/80 hover:text-white"
-                  }`}
-                >
-                  <div className="flex justify-between items-center text-[15px]">
-                    <span className="font-semibold">
-                      {start.toLocaleDateString("sk-SK")}
-                    </span>
-                    <span className={isSelected ? "text-red-400 font-bold" : "text-white/90"}>
-                      {start.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                      {end.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+  const handleDateSelect = (dateKey: string) => {
+    setSelectedDateStr(dateKey);
+    setSelectedScheduleId(null);
+  };
+
+  if (isScheduled) {
+    return (
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
+        <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
+          <div className="relative min-h-[24rem] flex-grow overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 via-[#0d0d0d] to-black" />
+            <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_top_left,_rgba(255,255,255,0.16),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(239,68,68,0.12),_transparent_40%)]" />
+            <div className="absolute inset-0 flex items-end">
+              <div className="p-6 sm:p-8">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.32em] text-white/45">
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Skupinová lekcia
+                </div>
+                <h2 className="mt-4 text-3xl font-bold text-white">{service.name}</h2>
+                <p className="mt-3 max-w-md text-sm leading-relaxed text-white/65">
+                  Vyber si dátum a čas v rovnakom vizuálnom štýle ako ostatné booking flow. Presne ten istý checkout sa použije aj ďalej.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-white/5 bg-[#0d0d0d]/80 p-6 backdrop-blur-xl sm:p-8">
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/40">
+              Tvoja rezervacia
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/60">Služba</span>
+                <span className="font-medium text-white">{service.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/60">Cas</span>
+                <span className="font-medium text-white text-right">
+                  {selectedSchedule ? (
+                    <>
+                      {new Date(selectedSchedule.start_time).toLocaleDateString("sk-SK")} <br className="sm:hidden" />
+                      {new Date(selectedSchedule.start_time).toLocaleTimeString("sk-SK", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })} - {new Date(selectedSchedule.end_time).toLocaleTimeString("sk-SK", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </>
+                  ) : (
+                    "Zatial nevybrany"
+                  )}
+                </span>
+              </div>
+              <div className="h-px w-full bg-white/10" />
+              {selectedSchedule?.current_capacity !== null && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Volne miesta</span>
+                  <span className="font-medium text-white">
+                    {selectedSchedule?.current_capacity && selectedSchedule.current_capacity > 0
+                      ? selectedSchedule.current_capacity
+                      : "Obsadene"}
+                  </span>
+                </div>
+              )}
+              {selectedSchedule?.profiles?.full_name && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Instruktor</span>
+                  <span className="font-medium text-white text-right">
+                    {selectedSchedule.profiles.full_name}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+          {!selectedDateStr ? (
+            <div className="flex h-full flex-col">
+              <div className="mb-8 flex items-center justify-between gap-4">
+                <h2 className="text-2xl font-bold text-white">Vyberte si dátum</h2>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="p-2 text-white/50 transition hover:text-white"
+                  >
+                    ←
+                  </button>
+                  <span className="min-w-[120px] text-center text-lg font-medium text-white">
+                    {currentDate.toLocaleString("sk-SK", { month: "long" })} {currentYear}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="p-2 text-white/50 transition hover:text-white"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4 grid grid-cols-7 gap-2 text-center">
+                {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((day) => (
+                  <div key={day} className="py-2 text-xs font-semibold uppercase text-white/40">
+                    {day}
                   </div>
-                  {schedule.current_capacity !== null && (
-                    <div className="mt-2 text-sm text-white/50">
-                      {isFull ? "Obsadené" : `Voľné miesta: ${schedule.current_capacity}`}
-                    </div>
-                  )}
-                  {service.type === "group" && schedule.profiles?.full_name && (
-                    <div className="mt-1 text-sm text-white/45">
-                      Instruktor: {schedule.profiles.full_name}
-                    </div>
-                  )}
+                ))}
+              </div>
+
+              <div className="grid flex-1 auto-rows-fr grid-cols-7 gap-2 sm:gap-3">
+                {blanks.map((_, index) => (
+                  <div key={`blank-${index}`} className="p-4" />
+                ))}
+
+                {days.map((day) => {
+                  const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                  const hasSlots = availableDates.has(dateKey);
+
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      disabled={!hasSlots}
+                      onClick={() => handleDateSelect(dateKey)}
+                      className={`relative flex items-center justify-center rounded-2xl text-lg transition-all ${
+                        hasSlots
+                          ? "cursor-pointer border border-transparent bg-white/5 font-medium text-white hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300"
+                          : "cursor-not-allowed text-white/20"
+                      }`}
+                    >
+                      {day}
+                      {hasSlots && (
+                        <span className="absolute bottom-2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="mb-8 flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDateStr(null);
+                    setSelectedScheduleId(null);
+                  }}
+                  className="rounded-full bg-white/5 p-2 text-white/60 transition hover:text-white"
+                >
+                  ←
                 </button>
-              );
-            })
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Vyberte si čas</h2>
+                  <p className="text-white/50">
+                    {new Date(selectedDateStr).toLocaleDateString("sk-SK", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-3">
+                {availableSlots.length > 0 ? (
+                  availableSlots.map((schedule) => {
+                    const start = new Date(schedule.start_time);
+                    const end = new Date(schedule.end_time);
+                    const isSelected = schedule.id === selectedScheduleId;
+                    const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
+                    const disabled = isFull;
+
+                    return (
+                      <button
+                        key={schedule.id}
+                        type="button"
+                        onClick={() => setSelectedScheduleId(schedule.id)}
+                        disabled={disabled}
+                        className={`rounded-xl border p-4 text-center transition-all ${
+                          isSelected
+                            ? "border-red-500/50 bg-red-500/20 font-bold text-white"
+                            : disabled
+                              ? "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
+                              : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span>
+                          {start.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className="mt-1 block text-[11px] no-underline text-white/45">
+                          {end.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {schedule.current_capacity !== null && (
+                          <span className="mt-1 block text-[11px] no-underline">
+                            {isFull ? "obsadene" : `volne miesta: ${schedule.current_capacity}`}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full py-8 text-center text-white/40">
+                    V tento deň nie sú voľné časy.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-auto flex items-center justify-end border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  disabled={!selectedScheduleId || loading}
+                  onClick={handleContinue}
+                  className="rounded-xl bg-red-600 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Spracovavam..." : "Pokracovat k platbe"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
-      ) : (
-        <div className="space-y-4">
-          <label className="block text-white/60 mb-2 font-medium">Trvanie ({service.price_unit === 'minute' ? 'minút' : 'hodín'})</label>
-          <input
-            type="number"
-            min="1"
-            max="120"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500/50 transition-colors"
-          />
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
+      <h2 className="mb-6 text-2xl font-bold text-white">Zvoľte si termín</h2>
+
+      <div className="space-y-4">
+        <label className="block font-medium text-white/60">
+          Trvanie ({service.price_unit === "minute" ? "minút" : "hodín"})
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="120"
+          value={duration}
+          onChange={(event) => setDuration(Number(event.target.value))}
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white transition-colors focus:border-red-500/50 focus:outline-none"
+        />
+      </div>
 
       <button
+        type="button"
         onClick={handleContinue}
-        disabled={loading || (isScheduled && !selectedScheduleId)}
-        className="mt-8 flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={loading}
+        className="mt-8 flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Spracovávam..." : "Pokračovať k platbe"}
       </button>

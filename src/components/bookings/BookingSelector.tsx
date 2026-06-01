@@ -130,13 +130,22 @@ export default function BookingSelector({
     setSelectedScheduleId(null);
   };
 
+  const coverImage = (service.metadata as { image_url?: string } | null)?.image_url;
+
   if (isScheduled) {
     return (
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
         <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">
           <div className="relative min-h-[24rem] flex-grow overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 via-[#0d0d0d] to-black" />
-            <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_top_left,_rgba(255,255,255,0.16),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(239,68,68,0.12),_transparent_40%)]" />
+            {coverImage ? (
+              <div 
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${coverImage})` }}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-red-950/60 via-[#0d0d0d] to-black" />
+            )}
+            <div className="absolute inset-0 bg-black/60 [background-image:radial-gradient(circle_at_top_left,_rgba(255,255,255,0.16),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(239,68,68,0.12),_transparent_40%)]" />
             <div className="absolute inset-0 flex items-end">
               <div className="p-6 sm:p-8">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.32em] text-white/45">

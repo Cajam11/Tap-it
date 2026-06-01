@@ -16,6 +16,7 @@ type Service = {
   name: string;
   base_price: number;
   price_unit: "hour" | "minute" | "session";
+  metadata: Record<string, unknown> | null;
 };
 
 export default async function GroupClassesPage() {
@@ -58,7 +59,7 @@ export default async function GroupClassesPage() {
 
   const { data: services } = await supabase
     .from("bookable_services")
-    .select("id, name, base_price, price_unit")
+    .select("id, name, base_price, price_unit, metadata")
     .eq("type", "group")
     .eq("is_active", true)
     .order("name", { ascending: true });
@@ -115,17 +116,16 @@ export default async function GroupClassesPage() {
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {groupClasses.map((service, index) => (
-                <ServiceCard
-                  key={service.id}
-                  service={service}
-                  image={
-                    GROUP_CLASS_PLACEHOLDER_IMAGES[
-                      index % GROUP_CLASS_PLACEHOLDER_IMAGES.length
-                    ]
-                  }
-                />
-              ))}
+              {groupClasses.map((service, index) => {
+                const coverImage = (service.metadata?.image_url as string) || GROUP_CLASS_PLACEHOLDER_IMAGES[index % GROUP_CLASS_PLACEHOLDER_IMAGES.length];
+                return (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    image={coverImage}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

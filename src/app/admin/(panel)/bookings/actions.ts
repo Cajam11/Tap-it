@@ -21,6 +21,7 @@ type ServiceInput = {
   exerciseKind: string;
   basePrice: number;
   capacity: number | null;
+  imageUrl?: string | null;
 };
 
 type RecurringRuleRow = {
@@ -135,6 +136,7 @@ export async function saveGroupClassService(input: ServiceInput) {
     metadata: {
       room: room || null,
       exercise_kind: exerciseKind || name,
+      image_url: input.imageUrl || null,
     },
   };
 

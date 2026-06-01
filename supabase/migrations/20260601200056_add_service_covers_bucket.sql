@@ -1,0 +1,6 @@
+insert into storage.buckets (id, name, public) values ('service-covers', 'service-covers', true) on conflict (id) do nothing;
+
+create policy "Anyone can read service-covers" on storage.objects for select using (bucket_id = 'service-covers');
+create policy "Authenticated users can upload service-covers" on storage.objects for insert with check (bucket_id = 'service-covers' and auth.role() = 'authenticated');
+create policy "Authenticated users can update service-covers" on storage.objects for update with check (bucket_id = 'service-covers' and auth.role() = 'authenticated');
+create policy "Authenticated users can delete service-covers" on storage.objects for delete using (bucket_id = 'service-covers' and auth.role() = 'authenticated');

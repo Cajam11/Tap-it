@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Check, Dumbbell, Save } from "lucide-react";
+import { CalendarClock, Check, Dumbbell, Save, Image as ImageIcon } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import {
   saveGroupClassRecurringRule,
   saveGroupClassService,
@@ -54,6 +55,8 @@ type FormState = {
   days: number[];
   startTime: string;
   endTime: string;
+  imageUrl: string;
+  imageFile: File | null;
 };
 
 const EMPTY_FORM: FormState = {
@@ -67,6 +70,8 @@ const EMPTY_FORM: FormState = {
   days: [],
   startTime: "16:00",
   endTime: "17:00",
+  imageUrl: "",
+  imageFile: null,
 };
 
 const DAYS = [
@@ -102,6 +107,8 @@ function formFromService(service: GroupService, serviceRules: RuleRow[]): FormSt
     days: serviceRules.map((rule) => rule.day_of_week),
     startTime: normalizeTime(firstRule?.start_time),
     endTime: normalizeTime(firstRule?.end_time, "17:00"),
+    imageUrl: readMetadataText(service.metadata, "image_url") ?? "",
+    imageFile: null,
   };
 }
 
@@ -184,6 +191,33 @@ export default function GroupClassRulesManager({
     setMessage("");
 
     startTransition(async () => {
+      let coverUrl = form.imageUrl;
+      
+      if (form.imageFile) {
+        const supabase = createClient();
+        const fileExt = form.imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage.from("service-covers").upload(fileName, form.imageFile);
+        
+        if (error) {
+          setMessage(`Chyba pri nahrávani obrázka: ${error.message}`);
+          return;
+        }
+        
+        const { data: { publicUrl } } = supabase.storage.from("service-covers").getPublicUrl(data.path);
+        
+        // Vymazanie starého obrázka zo storage (ak nejaký bol)
+        if (form.imageUrl && form.imageUrl !== publicUrl) {
+          const oldPathMatch = form.imageUrl.match(/service-covers\/(.+)$/);
+          if (oldPathMatch && oldPathMatch[1]) {
+            await supabase.storage.from("service-covers").remove([oldPathMatch[1]]);
+          }
+        }
+        
+        coverUrl = publicUrl;
+      }
+
       const serviceResult = await saveGroupClassService({
         serviceId: form.serviceId,
         name: form.name,
@@ -191,6 +225,7 @@ export default function GroupClassRulesManager({
         exerciseKind: form.exerciseKind,
         basePrice: Number(form.basePrice),
         capacity: form.capacity.trim() ? Number(form.capacity) : null,
+        imageUrl: coverUrl,
       });
 
       if (serviceResult.error || !serviceResult.serviceId) {
@@ -316,6 +351,8 @@ function ClassForm({
   onToggleDay: (day: number) => void;
   onSave: () => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="space-y-5 rounded-lg border border-white/10 bg-black/20 p-5">
       <div className="grid gap-4 md:grid-cols-2">
@@ -373,6 +410,54 @@ function ClassForm({
             className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-red-500"
           />
         </label>
+
+        <div className="space-y-2 md:col-span-2">
+          <span className="text-sm text-white/60">Cover obrázok</span>
+          <div className="flex items-center gap-4">
+            {(form.imageFile || form.imageUrl) ? (
+              <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10 bg-black/40">
+                <img 
+                  src={form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageUrl} 
+                  alt="Cover preview" 
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-white/30">
+                <ImageIcon className="h-6 w-6" />
+              </div>
+            )}
+            
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUpdate("imageFile", file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-lg border border-white/15 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+              >
+                Vybrať obrázok
+              </button>
+              {form.imageFile && (
+                <button
+                  type="button"
+                  onClick={() => onUpdate("imageFile", null)}
+                  className="ml-3 text-xs text-red-400 hover:underline"
+                >
+                  Zrušiť výber
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="h-px bg-white/10" />

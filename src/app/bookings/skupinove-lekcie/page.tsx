@@ -7,8 +7,8 @@ import { ArrowLeft } from "lucide-react";
 
 const GROUP_CLASS_PLACEHOLDER_IMAGES = [
   "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80",
-  "https://images.pexels.com/photos/6456037/pexels-photo-6456037.jpeg?auto=compress&cs=tinysrgb&w=1200",
   "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&q=80",
+  "https://www.hayashi.cz/cdn/shop/files/free-sq.jpg?v=1728372049&width=460",
 ] as const;
 
 type Service = {

@@ -32,20 +32,32 @@ export default async function ServiceDetailPage({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
 
   const navUser = {
     id: user.id,
     email: user.email ?? null,
     user_metadata: {
-      full_name: typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined,
-      avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : undefined,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : undefined,
+      avatar_url:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     },
   };
 
   const navProfile = {
-    full_name: typeof profile?.full_name === "string" ? profile.full_name : null,
-    avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+    full_name:
+      typeof profile?.full_name === "string" ? profile.full_name : null,
+    avatar_url:
+      typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
   };
 
   const { data: service, error } = await supabase
@@ -74,7 +86,8 @@ export default async function ServiceDetailPage({
         ? "Skupinové lekcie"
         : "Tréneri";
 
-  const isScheduled = typedService.type === "group" || typedService.type === "trainer";
+  const isScheduled =
+    typedService.type === "group" || typedService.type === "trainer";
   let schedules: ServiceSchedule[] = [];
   let facilityBookings: FacilityBooking[] = [];
 
@@ -101,11 +114,16 @@ export default async function ServiceDetailPage({
         .eq("status", "pending")
         .in("schedule_id", scheduleIds);
 
-      const pendingBookingsArr = (pendingBookings ?? []) as Array<{ schedule_id: string | null }>;
+      const pendingBookingsArr = (pendingBookings ?? []) as Array<{
+        schedule_id: string | null;
+      }>;
       const pendingCounts = new Map<string, number>();
       for (const booking of pendingBookingsArr) {
         if (booking.schedule_id) {
-          pendingCounts.set(booking.schedule_id, (pendingCounts.get(booking.schedule_id) || 0) + 1);
+          pendingCounts.set(
+            booking.schedule_id,
+            (pendingCounts.get(booking.schedule_id) || 0) + 1,
+          );
         }
       }
 
@@ -113,9 +131,10 @@ export default async function ServiceDetailPage({
         const pending = pendingCounts.get(schedule.id) || 0;
         return {
           ...schedule,
-          current_capacity: schedule.current_capacity !== null 
-            ? Math.max(0, schedule.current_capacity - pending) 
-            : null
+          current_capacity:
+            schedule.current_capacity !== null
+              ? Math.max(0, schedule.current_capacity - pending)
+              : null,
         };
       });
     }
@@ -144,18 +163,28 @@ export default async function ServiceDetailPage({
 
   return (
     <>
-      <NavBarAuth navLinks={[]} initialUser={navUser} initialProfile={navProfile} />
+      <NavBarAuth
+        navLinks={[]}
+        initialUser={navUser}
+        initialProfile={navProfile}
+      />
 
       <main className="relative min-h-screen overflow-hidden bg-[#080808] px-4 pb-16 pt-24 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl space-y-12">
+        <div className="relative z-10 mx-auto w-full max-w-7xl pt-6">
           {typedService.type === "facility" ? (
-            <FacilityBookingClient service={typedService} bookings={facilityBookings} backHref={backHref} backLabel={backLabel} currentUserId={user.id} />
+            <FacilityBookingClient
+              service={typedService}
+              bookings={facilityBookings}
+              backHref={backHref}
+              backLabel={backLabel}
+              currentUserId={user.id}
+            />
           ) : (
             <>
-              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
+              <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
                 <Link
                   href={backHref}
                   className="inline-flex items-center gap-2 transition hover:text-white/65"
@@ -163,18 +192,6 @@ export default async function ServiceDetailPage({
                   <ArrowLeft className="h-3.5 w-3.5" />
                   {backLabel}
                 </Link>
-              </div>
-
-              <div className="mb-8 border-b border-white/10 pb-8">
-                <h1 className="mb-2 text-4xl font-bold tracking-tight text-white">{typedService.name}</h1>
-                <p className="text-lg text-white/60">
-                  Zakladna cena: {typedService.base_price} EUR /{" "}
-                  {typedService.price_unit === "session"
-                    ? "vstup"
-                    : typedService.price_unit === "minute"
-                      ? "minuta"
-                      : "hodina"}
-                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-8">

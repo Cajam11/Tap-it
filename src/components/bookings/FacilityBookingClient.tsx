@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Breadcrumb from "./Breadcrumb";
 import type { BookableService } from "@/lib/types";
 import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 
@@ -246,15 +245,13 @@ export default function FacilityBookingClient({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-2 transition hover:text-white/65"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          {backLabel}
-        </Link>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Bookings", href: "/bookings" },
+          { label: backLabel, href: backHref },
+          { label: service.name },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16 items-stretch">
         <div className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] text-white">

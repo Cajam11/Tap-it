@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import Breadcrumb from "./Breadcrumb";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { expireStalePendingBookings } from "@/lib/bookings";
 import NavBarAuth from "@/components/NavBarAuth";
@@ -184,14 +183,14 @@ export default async function ServiceDetailPage({
             />
           ) : (
             <>
-              <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
-                <Link
-                  href={backHref}
-                  className="inline-flex items-center gap-2 transition hover:text-white/65"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  {backLabel}
-                </Link>
+              <div className="mb-8">
+                <Breadcrumb
+                  items={[
+                    { label: "Bookings", href: "/bookings" },
+                    { label: backLabel, href: backHref },
+                    { label: typedService.name },
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-8">

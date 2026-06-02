@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft } from "lucide-react";
+import Breadcrumb from "@/components/bookings/Breadcrumb";
 
 const GROUP_CLASS_PLACEHOLDER_IMAGES = [
   "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&q=80",
@@ -81,15 +81,12 @@ export default async function GroupClassesPage() {
         <div className="relative z-10 mx-auto w-full max-w-6xl space-y-12 lg:space-y-14">
           <div className="flex flex-col gap-6 pt-4 lg:pt-8">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.38em] text-white/35">
-                <Link
-                  href="/bookings"
-                  className="inline-flex items-center gap-2 transition hover:text-white/65"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Bookings
-                </Link>
-              </div>
+              <Breadcrumb
+                items={[
+                  { label: "Bookings", href: "/bookings" },
+                  { label: "Skupinové lekcie" },
+                ]}
+              />
             </div>
 
             <div className="max-w-3xl space-y-5">

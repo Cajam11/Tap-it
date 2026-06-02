@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock } from "lucide-react";
 import { BookableService, ServiceSchedule } from "@/lib/types";
@@ -19,12 +19,23 @@ function toDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function toMonthKey(year: number, month: number) {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+function getMonthOffset(date: Date) {
+  const today = new Date();
+  return (date.getFullYear() - today.getFullYear()) * 12 + date.getMonth() - today.getMonth();
+}
+
 export default function BookingSelector({
   service,
   schedules,
+  currentUserId,
 }: {
   service: BookableService;
   schedules: ServiceSchedule[];
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -32,23 +43,78 @@ export default function BookingSelector({
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [duration, setDuration] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+  const initialMonthKey = toMonthKey(new Date().getFullYear(), new Date().getMonth());
+  const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, ServiceSchedule[]>>({
+    [initialMonthKey]: schedules,
+  });
+  const [loadingMonthKey, setLoadingMonthKey] = useState<string | null>(null);
+  const [monthError, setMonthError] = useState<string | null>(null);
 
   const isScheduled = service.type === "group" || service.type === "trainer";
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
+  const currentMonthKey = toMonthKey(currentYear, currentMonth);
+  const currentMonthOffset = getMonthOffset(currentDate);
+  const canGoPrevMonth = currentMonthOffset > 0;
+  const canGoNextMonth = currentMonthOffset < 12;
+  const allSchedules = useMemo(
+    () => Object.values(schedulesByMonth).flat(),
+    [schedulesByMonth],
+  );
+
+  useEffect(() => {
+    if (!isScheduled || schedulesByMonth[currentMonthKey]) {
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingMonthKey(currentMonthKey);
+    setMonthError(null);
+
+    const params = new URLSearchParams({
+      year: currentYear.toString(),
+      month: (currentMonth + 1).toString(),
+    });
+
+    fetch(`/api/bookings/services/${service.id}/schedules?${params.toString()}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Nepodarilo sa nacitat terminy.");
+        }
+
+        return response.json() as Promise<{ schedules: ServiceSchedule[] }>;
+      })
+      .then((payload) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSchedulesByMonth((current) => ({
+          ...current,
+          [currentMonthKey]: payload.schedules,
+        }));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMonthError("Terminy pre tento mesiac sa nepodarilo nacitat.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingMonthKey(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMonth, currentMonthKey, currentYear, isScheduled, schedulesByMonth, service.id]);
 
   const schedulesByDate = useMemo(() => {
     const map = new Map<string, ServiceSchedule[]>();
 
-    for (const schedule of schedules) {
+    for (const schedule of allSchedules) {
       const start = new Date(schedule.start_time);
-      const end = new Date(schedule.end_time);
-      const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-
-      if (durationMinutes !== 60) {
-        continue;
-      }
-
       const key = toDateKey(start);
       if (!map.has(key)) {
         map.set(key, []);
@@ -61,7 +127,7 @@ export default function BookingSelector({
     }
 
     return map;
-  }, [schedules]);
+  }, [allSchedules]);
 
   const availableDates = useMemo(() => {
     const dates = new Set<string>();
@@ -73,13 +139,12 @@ export default function BookingSelector({
     while (cursor <= end) {
       const key = toDateKey(cursor);
       const daySlots = schedulesByDate.get(key) ?? [];
-      const hasAvailableSlot = daySlots.some((schedule) => {
+      const hasFutureSlot = daySlots.some((schedule) => {
         const startTime = new Date(schedule.start_time);
-        const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
-        return startTime > now && !isFull;
+        return startTime > now;
       });
 
-      if (hasAvailableSlot) {
+      if (hasFutureSlot) {
         dates.add(key);
       }
 
@@ -94,7 +159,8 @@ export default function BookingSelector({
   const blanks = Array.from({ length: firstDay });
   const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
   const availableSlots = selectedDateStr ? schedulesByDate.get(selectedDateStr) ?? [] : [];
-  const selectedSchedule = schedules.find((schedule) => schedule.id === selectedScheduleId) ?? null;
+  const selectedSchedule = allSchedules.find((schedule) => schedule.id === selectedScheduleId) ?? null;
+  const isCurrentMonthLoading = loadingMonthKey === currentMonthKey;
 
   const handleContinue = () => {
     if (isScheduled && !selectedScheduleId) return;
@@ -114,15 +180,21 @@ export default function BookingSelector({
   };
 
   const nextMonth = () => {
+    if (!canGoNextMonth) return;
+
     setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
     setSelectedDateStr(null);
     setSelectedScheduleId(null);
+    setMonthError(null);
   };
 
   const prevMonth = () => {
+    if (!canGoPrevMonth) return;
+
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
     setSelectedDateStr(null);
     setSelectedScheduleId(null);
+    setMonthError(null);
   };
 
   const handleDateSelect = (dateKey: string) => {
@@ -193,9 +265,12 @@ export default function BookingSelector({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-white/60">Volne miesta</span>
                   <span className="font-medium text-white">
-                    {selectedSchedule?.current_capacity && selectedSchedule.current_capacity > 0
-                      ? selectedSchedule.current_capacity
-                      : "Obsadene"}
+                    {selectedSchedule?.booking_status === "pending" &&
+                    selectedSchedule.booking_user_id === currentUserId
+                      ? "Tvoje drzane"
+                      : selectedSchedule?.current_capacity && selectedSchedule.current_capacity > 0
+                        ? selectedSchedule.current_capacity
+                        : "Obsadene"}
                   </span>
                 </div>
               )}
@@ -220,7 +295,8 @@ export default function BookingSelector({
                   <button
                     type="button"
                     onClick={prevMonth}
-                    className="p-2 text-white/50 transition hover:text-white"
+                    disabled={!canGoPrevMonth || isCurrentMonthLoading}
+                    className="p-2 text-white/50 transition hover:text-white disabled:cursor-not-allowed disabled:text-white/15"
                   >
                     ←
                   </button>
@@ -230,12 +306,18 @@ export default function BookingSelector({
                   <button
                     type="button"
                     onClick={nextMonth}
-                    className="p-2 text-white/50 transition hover:text-white"
+                    disabled={!canGoNextMonth || isCurrentMonthLoading}
+                    className="p-2 text-white/50 transition hover:text-white disabled:cursor-not-allowed disabled:text-white/15"
                   >
                     →
                   </button>
                 </div>
               </div>
+              {(isCurrentMonthLoading || monthError) && (
+                <div className="mb-4 text-center text-sm text-white/45">
+                  {isCurrentMonthLoading ? "Nacitavam terminy..." : monthError}
+                </div>
+              )}
 
               <div className="mb-4 grid grid-cols-7 gap-2 text-center">
                 {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((day) => (
@@ -306,8 +388,11 @@ export default function BookingSelector({
                     const start = new Date(schedule.start_time);
                     const end = new Date(schedule.end_time);
                     const isSelected = schedule.id === selectedScheduleId;
+                    const isPending = schedule.booking_status === "pending";
+                    const isCurrentUserPending =
+                      isPending && schedule.booking_user_id === currentUserId;
                     const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
-                    const disabled = isFull;
+                    const disabled = isFull && !isCurrentUserPending;
 
                     return (
                       <button
@@ -319,8 +404,12 @@ export default function BookingSelector({
                           isSelected
                             ? "border-red-500/50 bg-red-500/20 font-bold text-white"
                             : disabled
-                              ? "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
-                              : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                              ? isPending
+                                ? "cursor-not-allowed border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through"
+                                : "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
+                              : isCurrentUserPending
+                                ? "border-amber-500/30 bg-amber-500/10 text-amber-200/90 hover:bg-amber-500/20 hover:text-amber-100"
+                                : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                         }`}
                       >
                         <span>
@@ -329,9 +418,15 @@ export default function BookingSelector({
                         <span className="mt-1 block text-[11px] no-underline text-white/45">
                           {end.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
                         </span>
-                        {schedule.current_capacity !== null && (
+                        {(schedule.current_capacity !== null || isCurrentUserPending) && (
                           <span className="mt-1 block text-[11px] no-underline">
-                            {isFull ? "obsadene" : `volne miesta: ${schedule.current_capacity}`}
+                            {isCurrentUserPending
+                              ? "tvoje drzane"
+                              : isPending && isFull
+                                ? "drzane"
+                                : isFull
+                                ? "obsadene"
+                                : `volne miesta: ${schedule.current_capacity}`}
                           </span>
                         )}
                       </button>

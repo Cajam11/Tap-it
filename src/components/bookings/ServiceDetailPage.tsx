@@ -7,6 +7,10 @@ import NavBarAuth from "@/components/NavBarAuth";
 import BookingSelector from "./BookingSelector";
 import FacilityBookingClient from "./FacilityBookingClient";
 import { BookableService, ServiceSchedule } from "@/lib/types";
+import {
+  fetchServiceSchedulesForMonth,
+  getInitialScheduleMonth,
+} from "@/lib/booking-schedules";
 
 type FacilityBooking = {
   id: string;
@@ -91,52 +95,13 @@ export default async function ServiceDetailPage({
   let facilityBookings: FacilityBooking[] = [];
 
   if (isScheduled) {
-    const { data: scheduleData } = await supabase
-      .from("service_schedules")
-      .select("*, profiles:trainer_id(full_name, avatar_url, bio)")
-      .eq("service_id", serviceId)
-      .gte("start_time", new Date().toISOString())
-      .order("start_time", { ascending: true })
-      .limit(20);
-
-    schedules = (scheduleData ?? []) as ServiceSchedule[];
-
-    if (typedService.type === "trainer" && schedules.length > 0) {
-      const admin = createAdminClient();
-      await expireStalePendingBookings(serviceId);
-
-      const scheduleIds = schedules.map((schedule) => schedule.id);
-      const { data: pendingBookings } = await admin
-        .from("bookings")
-        .select("schedule_id")
-        .eq("service_id", serviceId)
-        .eq("status", "pending")
-        .in("schedule_id", scheduleIds);
-
-      const pendingBookingsArr = (pendingBookings ?? []) as Array<{
-        schedule_id: string | null;
-      }>;
-      const pendingCounts = new Map<string, number>();
-      for (const booking of pendingBookingsArr) {
-        if (booking.schedule_id) {
-          pendingCounts.set(
-            booking.schedule_id,
-            (pendingCounts.get(booking.schedule_id) || 0) + 1,
-          );
-        }
-      }
-
-      schedules = schedules.map((schedule) => {
-        const pending = pendingCounts.get(schedule.id) || 0;
-        return {
-          ...schedule,
-          current_capacity:
-            schedule.current_capacity !== null
-              ? Math.max(0, schedule.current_capacity - pending)
-              : null,
-        };
-      });
-    }
+    const initialMonth = getInitialScheduleMonth();
+    schedules = await fetchServiceSchedulesForMonth(
+      serviceId,
+      initialMonth.year,
+      initialMonth.month,
+      user.id,
+    );
   }
 
   if (typedService.type === "facility") {
@@ -194,7 +159,11 @@ export default async function ServiceDetailPage({
               </div>
 
               <div className="grid grid-cols-1 gap-8">
-                <BookingSelector service={typedService} schedules={schedules} />
+                <BookingSelector
+                  service={typedService}
+                  schedules={schedules}
+                  currentUserId={user.id}
+                />
               </div>
             </>
           )}

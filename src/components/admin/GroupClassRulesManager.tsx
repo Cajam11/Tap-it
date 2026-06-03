@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
+import NextImage from "next/image";
 import { CalendarClock, Check, Dumbbell, Save, Image as ImageIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -416,10 +417,11 @@ function ClassForm({
           <div className="flex items-center gap-4">
             {(form.imageFile || form.imageUrl) ? (
               <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10 bg-black/40">
-                <img 
-                  src={form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageUrl} 
-                  alt="Cover preview" 
-                  className="h-full w-full object-cover"
+                <NextImage
+                  src={form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageUrl!}
+                  alt="Cover preview"
+                  fill
+                  className="object-cover"
                 />
               </div>
             ) : (

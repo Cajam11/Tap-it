@@ -2,18 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
-import WeightChart from "@/components/profile/WeightChart";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Award,
-  CalendarCheck2,
-  Clock3,
-  Dumbbell,
-  ShieldCheck,
-  Trophy,
-  LineChart as LineChartIcon,
-  Settings,
-} from "lucide-react";
+import { Award, Dumbbell, Settings, User } from "lucide-react";
 
 const NAV_LINKS: [string, string][] = [];
 
@@ -170,18 +160,12 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-
   const [
     profileRes,
-    monthEntriesRes,
     totalCountRes,
     streakEntriesRes,
     membershipRes,
     dbBadgesRes,
-    weightLogsRes,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -190,11 +174,6 @@ export default async function ProfilePage() {
       )
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("entries")
-      .select("duration_min")
-      .eq("user_id", user.id)
-      .gte("check_in", monthStart.toISOString()),
     supabase
       .from("entries")
       .select("id", { count: "exact", head: true })
@@ -219,12 +198,6 @@ export default async function ProfilePage() {
       .eq("user_id", user.id)
       .order("earned_at", { ascending: false })
       .limit(6),
-    supabase
-      .from("weight_logs")
-      .select("id, weight_kg, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(120),
   ]);
 
   const profile = profileRes.data;
@@ -275,13 +248,7 @@ export default async function ProfilePage() {
     is_verified: profile?.is_verified ?? false,
   };
 
-  const monthTrainings = (monthEntriesRes.data ?? []).length;
   const totalTrainings = totalCountRes.count ?? 0;
-  const monthMinutes = (monthEntriesRes.data ?? []).reduce(
-    (acc, row) =>
-      acc + (typeof row.duration_min === "number" ? row.duration_min : 0),
-    0,
-  );
 
   const streakEntries = (streakEntriesRes.data ?? []).map(
     (item) => item.check_in,
@@ -291,28 +258,9 @@ export default async function ProfilePage() {
 
   const membershipRow = membershipRes.data;
   const hasActiveMembership = Boolean(membershipRow);
-  const membershipName =
-    membershipRow &&
-    typeof membershipRow.membership === "object" &&
-    membershipRow.membership !== null &&
-    "name" in membershipRow.membership &&
-    typeof membershipRow.membership.name === "string"
-      ? membershipRow.membership.name
-      : null;
-
-  const memberSinceRaw =
-    (typeof profile?.created_at === "string" ? profile.created_at : null) ??
-    user.created_at;
-
-  const memberSince = memberSinceRaw
-    ? new Date(memberSinceRaw).toLocaleDateString("sk-SK", {
-        year: "numeric",
-        month: "long",
-      })
-    : "neuvedene";
 
   const dynamicBadges = buildDynamicBadges({
-    monthTrainings,
+    monthTrainings: 0,
     totalTrainings,
     streak,
     hasActiveMembership,
@@ -339,8 +287,6 @@ export default async function ProfilePage() {
       [...dbBadges, ...dynamicBadges].map((badge) => [badge.name, badge]),
     ).values(),
   ).slice(0, 8);
-
-  const weightLogs = (weightLogsRes.data ?? []).reverse();
 
   const navUser = {
     id: user.id,
@@ -376,8 +322,10 @@ export default async function ProfilePage() {
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
         <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-6xl space-y-8">
-          <section className="relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl">
+        <div className="relative z-10 mx-auto w-full max-w-5xl space-y-8">
+
+          {/* Profile header — same style as membership page */}
+          <section className="relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
             <Link
               href="/settings"
               aria-label="Otvorit nastavenia"
@@ -385,234 +333,166 @@ export default async function ProfilePage() {
             >
               <Settings className="h-5 w-5" />
             </Link>
-            <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
-              <div className="flex flex-col items-center gap-4 lg:items-start">
-                <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 ring-4 ring-red-500/20">
-                  {initialProfile.avatar_url ? (
-                    <Image
-                      src={initialProfile.avatar_url}
-                      alt="Profilovy avatar"
-                      width={128}
-                      height={128}
-                      unoptimized
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-4xl font-black text-white">
-                      {(
-                        initialProfile.full_name.trim().charAt(0) || "U"
-                      ).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-white/40">
-                  Member since {memberSince}
-                </p>
-                <div className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-xs text-white/70">
-                  {hasActiveMembership
-                    ? "Aktivne clenstvo"
-                    : "Bez aktivneho clenstva"}
-                </div>
+
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
+                {initialProfile.avatar_url ? (
+                  <Image
+                    src={initialProfile.avatar_url}
+                    alt="Profilovy avatar"
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl font-black text-white">
+                    {(initialProfile.full_name.trim().charAt(0) || "U").toUpperCase()}
+                  </span>
+                )}
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">
-                  Profil
-                </p>
-                <h1 className="mt-2 text-4xl font-black leading-tight tracking-tight text-white">
+                <p className="text-xs uppercase tracking-[0.2em] text-white/45">PROFIL</p>
+                <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
                   {initialProfile.full_name}
                 </h1>
-                <p className="mt-2 text-sm text-white/55">
-                  {initialProfile.email}
-                </p>
+                <p className="mt-1 text-sm text-white/60">{initialProfile.email}</p>
+              </div>
+            </div>
+          </section>
 
-                <p className="mt-5 max-w-3xl text-white/75">
-                  {initialProfile.bio ||
-                    "Zatial bez bio. Doplnenie bude dostupne v nastaveniach profilu."}
-                </p>
+          {/* Details card — two-column layout with vertical divider */}
+          <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <User className="h-4 w-4 text-red-400" />
+              <h2 className="text-sm font-bold text-white">Detaily</h2>
+            </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Ciel
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.goal}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Uroven
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.experience_level}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Vyska / Vaha
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.height_cm ?? "-"} cm /{" "}
-                      {initialProfile.weight_kg ?? "-"} kg
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Vybavenie
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.equipment_level}
-                    </p>
+            <div className="grid gap-6 lg:grid-cols-2 lg:divide-x lg:divide-white/10">
+              {/* Left column */}
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1 text-xs text-white/50">Bio</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white">
+                    {initialProfile.bio || <span className="text-white/35">—</span>}
                   </div>
                 </div>
 
-                <div className="mt-6 border-t border-white/10 pt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Stav účtu
-                    </p>
-                    <p className={`mt-1 text-sm font-semibold ${initialProfile.is_verified ? "text-green-500" : "text-yellow-500"}`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="mb-1 text-xs text-white/50">Výška / Váha</p>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white">
+                      {initialProfile.height_cm ?? "-"} cm / {initialProfile.weight_kg ?? "-"} kg
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-white/50">Úroveň</p>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white capitalize">
+                      {initialProfile.experience_level}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-white/50">Cieľ / Vybavenie</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white capitalize">
+                    {initialProfile.goal} / {initialProfile.equipment_level}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="space-y-3 lg:pl-6">
+                <div>
+                  <p className="mb-1 text-xs text-white/50">Dátum narodenia</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white">
+                    {formatBirthDate(initialProfile.date_of_birth)}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="mb-1 text-xs text-white/50">Stav účtu</p>
+                    <div className={`rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm font-semibold ${initialProfile.is_verified ? "text-green-400" : "text-yellow-400"}`}>
                       {initialProfile.is_verified ? "Overený" : "Čaká na schválenie"}
-                    </p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 sm:col-span-1 lg:col-span-1">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Telefón
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {initialProfile.phone ?? "-"}
-                    </p>
+                  <div>
+                    <p className="mb-1 text-xs text-white/50">Telefón</p>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white">
+                      {initialProfile.phone ?? <span className="text-white/35">—</span>}
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 sm:col-span-2 lg:col-span-2">
-                    <p className="text-xs uppercase tracking-wide text-white/45">
-                      Adresa / Dátum narodenia
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {profileAddress.city || profileAddress.street || profileAddress.postalCode
-                        ? `${profileAddress.city || "-"} / ${profileAddress.street || "-"} / ${profileAddress.postalCode || "-"}`
-                        : "-"}
-                    </p>
-                    <p className="mt-1 text-xs text-white/55">
-                      Narodený: {formatBirthDate(initialProfile.date_of_birth)}
-                    </p>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs text-white/50">Adresa</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white">
+                    {profileAddress.city || profileAddress.street || profileAddress.postalCode
+                      ? `${profileAddress.city} / ${profileAddress.street} / ${profileAddress.postalCode}`
+                      : <span className="text-white/35">—</span>}
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-white/55">Treningy tento mesiac</p>
-                <CalendarCheck2 className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="mt-4 text-3xl font-black text-white">
-                {monthTrainings}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-white/55">Minut tento mesiac</p>
-                <Clock3 className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="mt-4 text-3xl font-black text-white">
-                {monthMinutes}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-white/55">Aktualny streak</p>
-                <Trophy className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="mt-4 text-3xl font-black text-white">
-                {streak} dni
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-white/55">Clenstvo</p>
-                <ShieldCheck className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="mt-4 text-lg font-bold text-white">
-                {hasActiveMembership
-                  ? (membershipName ?? "Aktivne")
-                  : "Neaktivne"}
-              </p>
-            </article>
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="mb-4 flex items-center gap-2 text-white">
-                <Award className="h-5 w-5 text-red-400" />
-                <h2 className="text-lg font-bold">Odznaky</h2>
+          {/* Bottom row — Odznaky + Aktivita */}
+          <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Award className="h-4 w-4 text-red-400" />
+                <h2 className="text-sm font-bold text-white">Odznaky</h2>
               </div>
 
               {uniqueBadges.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {uniqueBadges.map((badge) => (
                     <div
                       key={badge.key}
-                      className="rounded-xl border border-white/10 bg-black/20 p-4"
+                      className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5"
                     >
-                      <p className="text-sm font-semibold text-white">
-                        {badge.name}
-                      </p>
-                      <p className="mt-1 text-xs text-white/60">
-                        {badge.description}
-                      </p>
+                      <p className="text-xs font-semibold text-white">{badge.name}</p>
+                      <p className="mt-0.5 text-xs text-white/50">{badge.description}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-white/60">
-                  Zatial bez odznakov. Prvy ziskas po pravidelnych treningoch.
+                <p className="text-xs text-white/50">
+                  Zatiaľ bez odznakov. Prvý získaš po pravidelných tréningoch.
                 </p>
               )}
             </article>
 
-            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="mb-4 flex items-center gap-2 text-white">
-                <Dumbbell className="h-5 w-5 text-red-400" />
-                <h2 className="text-lg font-bold">Aktivita</h2>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Dumbbell className="h-4 w-4 text-red-400" />
+                <h2 className="text-sm font-bold text-white">Aktivita</h2>
               </div>
-              <div className="space-y-3 text-sm">
-                <p className="text-white/70">
-                  Celkovo treningov:{" "}
-                  <span className="font-semibold text-white">
-                    {totalTrainings}
-                  </span>
+              <div className="space-y-3 text-xs">
+                <p className="text-white/60">
+                  Celkovo tréningov:{" "}
+                  <span className="font-semibold text-white">{totalTrainings}</span>
                 </p>
-                <p className="text-white/70">
-                  Posledny trening:{" "}
+                <p className="text-white/60">
+                  Posledný tréning:{" "}
                   <span className="font-semibold text-white">
                     {lastTrainingAt
                       ? new Date(lastTrainingAt).toLocaleDateString("sk-SK")
-                      : "zatial ziadny"}
+                      : "zatiaľ žiadny"}
                   </span>
                 </p>
-                <p className="text-white/70">
-                  Dlzka preferencie:{" "}
+                <p className="text-white/60">
+                  Dĺžka preferencie:{" "}
                   <span className="font-semibold text-white">
                     {initialProfile.session_length_min} min
                   </span>
                 </p>
               </div>
             </article>
-          </section>
+          </div>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-            <div className="mb-6 flex items-center gap-2 text-white">
-              <LineChartIcon className="h-5 w-5 text-red-400" />
-              <h2 className="text-lg font-bold">Vývoj váhy</h2>
-            </div>
-            <WeightChart logs={weightLogs} />
-          </section>
         </div>
       </main>
     </>

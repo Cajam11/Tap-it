@@ -16,7 +16,7 @@ type FacilityBooking = {
 };
 
 const OPEN_HOUR = 6;
-const CLOSE_HOUR = 22;
+const CLOSE_HOUR = 21;
 const HOURS = Array.from(
   { length: CLOSE_HOUR - OPEN_HOUR },
   (_, index) => OPEN_HOUR + index,
@@ -78,6 +78,11 @@ function getFacilityCopy(serviceName: string) {
   };
 }
 
+function getCoverImage(service: BookableService, fallback: string) {
+  const imageUrl = service.metadata?.image_url;
+  return typeof imageUrl === "string" && imageUrl.trim().length > 0 ? imageUrl : fallback;
+}
+
 export default function FacilityBookingClient({
   service,
   bookings,
@@ -100,6 +105,7 @@ export default function FacilityBookingClient({
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
   const content = getFacilityCopy(service.name);
+  const coverImage = getCoverImage(service, content.image);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -258,7 +264,7 @@ export default function FacilityBookingClient({
           <div className="relative min-h-[24rem] flex-grow">
             <div className="absolute inset-0">
               <Image
-                src={content.image}
+                src={coverImage}
                 alt={content.title}
                 fill
                 sizes="(min-width: 1024px) 40vw, 100vw"

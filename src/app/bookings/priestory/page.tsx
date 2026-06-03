@@ -55,6 +55,7 @@ type Service = {
   name: string;
   base_price: number;
   price_unit: "hour" | "minute" | "session";
+  metadata: Record<string, unknown> | null;
 };
 
 export default async function FacilitiesPage() {
@@ -97,7 +98,7 @@ export default async function FacilitiesPage() {
 
   const { data: services } = await supabase
     .from("bookable_services")
-    .select("id, name, base_price, price_unit")
+    .select("id, name, base_price, price_unit, metadata")
     .eq("type", "facility")
     .eq("is_active", true)
     .order("name", { ascending: true });
@@ -153,7 +154,11 @@ export default async function FacilitiesPage() {
                 <ServiceCard
                   key={service.id}
                   service={service}
-                  image={getImageForService(service.name ?? "", index)}
+                  image={
+                    typeof service.metadata?.image_url === "string" && service.metadata.image_url
+                      ? service.metadata.image_url
+                      : getImageForService(service.name ?? "", index)
+                  }
                 />
               ))}
             </div>

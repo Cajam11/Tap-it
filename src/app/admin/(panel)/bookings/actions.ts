@@ -379,3 +379,75 @@ export async function saveGroupClassRecurringRule(input: RuleInput) {
     };
   }
 }
+
+export async function deleteGroupClassService(serviceId: string) {
+  try {
+    await assertCanManageBookings();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Neautorizovany pristup." };
+  }
+
+  if (!serviceId) {
+    return { error: "Chyba ID lekcie." };
+  }
+
+  const admin = createAdminClient();
+  const { data: service } = await admin
+    .from("bookable_services")
+    .select("id")
+    .eq("id", serviceId)
+    .eq("type", "group")
+    .maybeSingle<{ id: string }>();
+
+  if (!service) {
+    return { error: "Skupinova lekcia neexistuje." };
+  }
+
+  const now = new Date().toISOString();
+  const { count: activeBookingsCount } = await admin
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("service_id", serviceId)
+    .in("status", ["pending", "paid"])
+    .gte("start_time", now);
+
+  if ((activeBookingsCount ?? 0) > 0) {
+    return {
+      error:
+        "Tato lekcia ma buduce aktivne rezervacie. Najprv ich vybavte alebo zruste, potom ju mozete zmazat.",
+    };
+  }
+
+  const { error: deleteSchedulesError } = await admin
+    .from("service_schedules")
+    .delete()
+    .eq("service_id", serviceId)
+    .gte("start_time", now);
+
+  if (deleteSchedulesError) {
+    return { error: "Nepodarilo sa zmazat buduce terminy." };
+  }
+
+  const { error: deleteRulesError } = await admin
+    .from("recurring_rules")
+    .delete()
+    .eq("service_id", serviceId);
+
+  if (deleteRulesError) {
+    return { error: "Nepodarilo sa zmazat opakovacie pravidla." };
+  }
+
+  const { error } = await (admin.from("bookable_services") as unknown as UpdatableQuery)
+    .update({ is_active: false })
+    .eq("id", serviceId);
+
+  if (error) {
+    return { error: `Nepodarilo sa zmazat lekciu: ${error.message}` };
+  }
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/bookings/skupinove-lekcie");
+  revalidatePath(`/bookings/skupinove-lekcie/${serviceId}`);
+
+  return { success: true };
+}

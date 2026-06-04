@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { CalendarClock, Check, Dumbbell, Save, Image as ImageIcon } from "lucide-react";
+import { CalendarClock, Check, Dumbbell, Save, Image as ImageIcon, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  deleteGroupClassService,
   saveGroupClassRecurringRule,
   saveGroupClassService,
 } from "@/app/admin/(panel)/bookings/actions";
@@ -259,6 +260,28 @@ export default function GroupClassRulesManager({
     });
   };
 
+  const handleDelete = () => {
+    if (!form.serviceId) return;
+    const confirmed = window.confirm("Naozaj chcete zmazat tuto skupinovu lekciu?");
+    if (!confirmed) return;
+
+    setMessage("");
+
+    startTransition(async () => {
+      const result = await deleteGroupClassService(form.serviceId!);
+
+      if (result.error) {
+        setMessage(`Chyba: ${result.error}`);
+        return;
+      }
+
+      setForm(EMPTY_FORM);
+      setSelectedServiceId(null);
+      setMessage("Skupinova lekcia bola zmazana.");
+      router.refresh();
+    });
+  };
+
   return (
     <section className="min-h-full rounded-xl border border-white/10 bg-white/[0.03] p-5">
       <div className="flex flex-col gap-2 border-b border-white/10 pb-5">
@@ -326,6 +349,7 @@ export default function GroupClassRulesManager({
             onUpdate={updateForm}
             onToggleDay={toggleDay}
             onSave={handleSaveAll}
+            onDelete={handleDelete}
           />
         </div>
       </div>
@@ -342,6 +366,7 @@ function ClassForm({
   onUpdate,
   onToggleDay,
   onSave,
+  onDelete,
 }: {
   form: FormState;
   trainers: TrainerOption[];
@@ -351,6 +376,7 @@ function ClassForm({
   onUpdate: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onToggleDay: (day: number) => void;
   onSave: () => void;
+  onDelete: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -541,6 +567,18 @@ function ClassForm({
           <p className={`text-sm ${message.startsWith("Chyba") ? "text-red-300" : "text-green-300"}`}>
             {message}
           </p>
+        )}
+
+        {form.serviceId && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Zmazat lekciu
+          </button>
         )}
       </div>
     </div>

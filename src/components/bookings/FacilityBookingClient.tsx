@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "./Breadcrumb";
@@ -15,11 +15,22 @@ type FacilityBooking = {
   user_id: string;
 };
 
+type MinuteRangeState = {
+  available: boolean;
+  status: "available" | "own-pending" | "pending" | "paid" | "unavailable";
+  bookingId?: string;
+};
+
 const OPEN_HOUR = 6;
 const CLOSE_HOUR = 21;
+const MINUTE_STEP = 5;
 const HOURS = Array.from(
   { length: CLOSE_HOUR - OPEN_HOUR },
   (_, index) => OPEN_HOUR + index,
+);
+const MINUTE_SLOTS = Array.from(
+  { length: ((CLOSE_HOUR - OPEN_HOUR) * 60) / MINUTE_STEP },
+  (_, index) => index * MINUTE_STEP,
 );
 
 function getDaysInMonth(year: number, month: number) {
@@ -41,23 +52,33 @@ function getSlotDate(dateKey: string, hour: number) {
   return date;
 }
 
+function getMinuteSlotDate(dateKey: string, minutesAfterOpen: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day, OPEN_HOUR, minutesAfterOpen, 0, 0);
+  return date;
+}
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
+}
+
 function isSameDate(date: Date, dateKey: string) {
   return toDateKey(date) === dateKey;
 }
 
-function formatPrice(service: BookableService, duration: number) {
+function formatPrice(service: BookableService, durationHours: number, durationMinutes?: number) {
+  if (service.price_unit === "minute") {
+    return service.base_price * (durationMinutes ?? durationHours * 60);
+  }
+
   const firstHour = Number(service.metadata?.first_hour_price);
   const nextHour = Number(service.metadata?.next_hour_price);
 
   if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
-    return firstHour + Math.max(0, duration - 1) * nextHour;
+    return firstHour + Math.max(0, durationHours - 1) * nextHour;
   }
 
-  if (service.price_unit === "minute") {
-    return service.base_price * duration * 60;
-  }
-
-  return service.base_price * duration;
+  return service.base_price * durationHours;
 }
 
 function getFacilityCopy(serviceName: string) {
@@ -104,12 +125,14 @@ export default function FacilityBookingClient({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [selectedHours, setSelectedHours] = useState<number[]>([]);
+  const [selectedMinuteSlots, setSelectedMinuteSlots] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
   const content = getFacilityCopy(service.name);
   const coverImage = getCoverImage(service, content.image);
+  const isMinuteRate = service.price_unit === "minute";
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -144,6 +167,48 @@ export default function FacilityBookingClient({
     return map;
   }, [bookings]);
 
+  const getMinuteRangeState = useCallback(
+    (dateKey: string, startMinute: number, durationMinutes: number): MinuteRangeState => {
+      const start = getMinuteSlotDate(dateKey, startMinute);
+      const end = new Date(start.getTime() + durationMinutes * 60_000);
+      const close = getMinuteSlotDate(dateKey, (CLOSE_HOUR - OPEN_HOUR) * 60);
+
+      if (end > close || start <= new Date()) {
+        return { available: false, status: "unavailable" };
+      }
+
+      const overlappingBooking = bookings.find((booking) => {
+        const bookingStart = new Date(booking.start_time);
+        const bookingEnd = new Date(booking.end_time);
+        return start < bookingEnd && end > bookingStart;
+      });
+
+      if (!overlappingBooking) {
+        return { available: true, status: "available" };
+      }
+
+      const isOwnPending =
+        overlappingBooking.status === "pending" && overlappingBooking.user_id === currentUserId;
+
+      if (isOwnPending) {
+        return { available: true, status: "own-pending", bookingId: overlappingBooking.id };
+      }
+
+      return {
+        available: false,
+        status: overlappingBooking.status === "pending" ? "pending" : "paid",
+        bookingId: overlappingBooking.id,
+      };
+    },
+    [bookings, currentUserId],
+  );
+
+  const isMinuteRangeAvailable = useCallback(
+    (dateKey: string, startMinute: number, durationMinutes: number) =>
+      getMinuteRangeState(dateKey, startMinute, durationMinutes).available,
+    [getMinuteRangeState],
+  );
+
   const availableDates = useMemo(() => {
     const available = new Set<string>();
     const start = new Date();
@@ -156,6 +221,17 @@ export default function FacilityBookingClient({
 
     while (cursor <= end) {
       const key = toDateKey(cursor);
+
+      if (isMinuteRate) {
+        const hasAvailableMinuteSlot = MINUTE_SLOTS.some((minute) =>
+          isMinuteRangeAvailable(key, minute, MINUTE_STEP),
+        );
+
+        if (hasAvailableMinuteSlot) available.add(key);
+        cursor.setDate(cursor.getDate() + 1);
+        continue;
+      }
+
       const booked = bookedHoursByDate.get(key) ?? new Map<number, { status: string; userId: string }>();
       const hasAvailableHour = HOURS.some((hour) => {
         const slot = getSlotDate(key, hour);
@@ -169,7 +245,7 @@ export default function FacilityBookingClient({
     }
 
     return available;
-  }, [bookedHoursByDate, currentUserId]);
+  }, [bookedHoursByDate, currentUserId, isMinuteRate, isMinuteRangeAvailable]);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
@@ -180,24 +256,42 @@ export default function FacilityBookingClient({
     : new Map<number, { status: string; userId: string }>();
   const now = new Date();
   const sortedSelectedHours = [...selectedHours].sort((a, b) => a - b);
+  const sortedSelectedMinuteSlots = [...selectedMinuteSlots].sort((a, b) => a - b);
   const duration = sortedSelectedHours.length;
-  const totalPrice = duration > 0 ? formatPrice(service, duration) : 0;
+  const selectedMinuteStartDate =
+    selectedDateStr && sortedSelectedMinuteSlots.length > 0
+      ? getMinuteSlotDate(selectedDateStr, sortedSelectedMinuteSlots[0])
+      : null;
+  const selectedMinuteEndDate = selectedMinuteStartDate
+    ? new Date(selectedMinuteStartDate.getTime() + sortedSelectedMinuteSlots.length * MINUTE_STEP * 60_000)
+    : null;
+  const selectedDurationMinutes = sortedSelectedMinuteSlots.length * MINUTE_STEP;
+  const totalPrice = isMinuteRate
+    ? selectedMinuteStartDate
+      ? formatPrice(service, 0, selectedDurationMinutes)
+      : 0
+    : duration > 0
+      ? formatPrice(service, duration)
+      : 0;
 
   const nextMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
     setSelectedDateStr(null);
     setSelectedHours([]);
+    setSelectedMinuteSlots([]);
   };
 
   const prevMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
     setSelectedDateStr(null);
     setSelectedHours([]);
+    setSelectedMinuteSlots([]);
   };
 
   const handleDateSelect = (dateKey: string) => {
     setSelectedDateStr(dateKey);
     setSelectedHours([]);
+    setSelectedMinuteSlots([]);
   };
 
   const handleHourClick = (hour: number) => {
@@ -239,8 +333,101 @@ export default function FacilityBookingClient({
     setSelectedHours(isContiguous ? next : [hour]);
   };
 
+  const selectOwnPendingMinuteBooking = (bookingId: string) => {
+    const booking = bookings.find((item) => item.id === bookingId);
+    if (!booking || !selectedDateStr) return false;
+
+    const start = new Date(booking.start_time);
+    const end = new Date(booking.end_time);
+    const slots: number[] = [];
+    const cursor = new Date(start);
+
+    while (cursor < end) {
+      if (toDateKey(cursor) === selectedDateStr) {
+        const minutesAfterOpen = (cursor.getHours() - OPEN_HOUR) * 60 + cursor.getMinutes();
+
+        if (minutesAfterOpen >= 0 && minutesAfterOpen < (CLOSE_HOUR - OPEN_HOUR) * 60) {
+          slots.push(minutesAfterOpen);
+        }
+      }
+
+      cursor.setMinutes(cursor.getMinutes() + MINUTE_STEP);
+    }
+
+    if (slots.length === 0) return false;
+    setSelectedMinuteSlots(slots);
+    return true;
+  };
+
+  const handleMinuteSlotClick = (minute: number) => {
+    if (!selectedDateStr) return;
+
+    const rangeState = getMinuteRangeState(selectedDateStr, minute, MINUTE_STEP);
+    if (!rangeState.available) return;
+
+    const current = [...selectedMinuteSlots].sort((a, b) => a - b);
+
+    if (current.includes(minute)) {
+      if (current.length === 1) {
+        setSelectedMinuteSlots([]);
+        return;
+      }
+
+      const first = current[0];
+      const last = current[current.length - 1];
+
+      if (minute === first) {
+        setSelectedMinuteSlots(current.slice(1));
+        return;
+      }
+
+      if (minute === last) {
+        setSelectedMinuteSlots(current.slice(0, -1));
+        return;
+      }
+
+      setSelectedMinuteSlots(current.filter((selectedMinute) => selectedMinute < minute));
+      return;
+    }
+
+    if (rangeState.status === "own-pending" && rangeState.bookingId) {
+      if (selectOwnPendingMinuteBooking(rangeState.bookingId)) return;
+    }
+
+    if (current.length === 0) {
+      setSelectedMinuteSlots([minute]);
+      return;
+    }
+
+    const next = [...current, minute].sort((a, b) => a - b);
+    const isContiguous = next.every(
+      (value, index) => index === 0 || value === next[index - 1] + MINUTE_STEP,
+    );
+    const isAvailableRange = next.every((selectedMinute) =>
+      getMinuteRangeState(selectedDateStr, selectedMinute, MINUTE_STEP).available,
+    );
+
+    setSelectedMinuteSlots(isContiguous && isAvailableRange ? next : [minute]);
+  };
+
   const handleContinue = () => {
-    if (!selectedDateStr || duration === 0) return;
+    if (!selectedDateStr) return;
+
+    if (isMinuteRate) {
+      if (sortedSelectedMinuteSlots.length === 0) return;
+
+      setLoading(true);
+      const start = getMinuteSlotDate(selectedDateStr, sortedSelectedMinuteSlots[0]);
+      const params = new URLSearchParams({
+        start: start.toISOString(),
+        durationMinutes: selectedDurationMinutes.toString(),
+      });
+
+      router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
+      return;
+    }
+
+    if (duration === 0) return;
 
     setLoading(true);
     const startHour = sortedSelectedHours[0];
@@ -296,7 +483,12 @@ export default function FacilityBookingClient({
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/60">Cas</span>
                 <span className="font-medium text-white text-right">
-                  {selectedDateStr && duration > 0 ? (
+                  {isMinuteRate && selectedDateStr && selectedMinuteStartDate && selectedMinuteEndDate ? (
+                    <>
+                      {new Date(selectedDateStr).toLocaleDateString("sk-SK")} <br className="sm:hidden" />
+                      {formatTime(selectedMinuteStartDate)} - {formatTime(selectedMinuteEndDate)}
+                    </>
+                  ) : selectedDateStr && duration > 0 ? (
                     <>
                       {new Date(selectedDateStr).toLocaleDateString("sk-SK")} <br className="sm:hidden" />
                       {sortedSelectedHours[0]}:00 - {sortedSelectedHours[duration - 1] + 1}:00
@@ -317,7 +509,7 @@ export default function FacilityBookingClient({
           </div>
         </div>
 
-        <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+        <div className="flex h-[42rem] max-h-[calc(100vh-8rem)] min-h-0 flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
           {!selectedDateStr ? (
             <div className="flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between">
@@ -384,12 +576,13 @@ export default function FacilityBookingClient({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col h-full">
-            <div className="mb-8 flex items-center gap-4">
+          <div className="flex min-h-0 flex-col h-full">
+            <div className="mb-8 flex shrink-0 items-center gap-4">
               <button
                 onClick={() => {
                   setSelectedDateStr(null);
                   setSelectedHours([]);
+                  setSelectedMinuteSlots([]);
                 }}
                 className="rounded-full bg-white/5 p-2 text-white/60 transition hover:text-white"
               >
@@ -397,7 +590,7 @@ export default function FacilityBookingClient({
               </button>
               <div>
                 <h2 className="text-2xl font-bold text-white">
-                  Vyberte si casy
+                  {isMinuteRate ? "Vyberte si cas" : "Vyberte si casy"}
                 </h2>
                 <p className="text-white/50">
                   {new Date(selectedDateStr).toLocaleDateString("sk-SK", {
@@ -409,8 +602,51 @@ export default function FacilityBookingClient({
               </div>
             </div>
 
-            <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
-              {HOURS.map((hour) => {
+            {isMinuteRate ? (
+              <div className="mb-8 min-h-0 flex-1 overflow-hidden">
+                <div className="grid h-full auto-rows-min grid-cols-3 gap-2 overflow-y-auto pr-1 text-[13px] sm:grid-cols-4 lg:grid-cols-5">
+                    {MINUTE_SLOTS.map((minute) => {
+                      const slotStart = getMinuteSlotDate(selectedDateStr, minute);
+                      const rangeState = getMinuteRangeState(selectedDateStr, minute, MINUTE_STEP);
+                      const disabled = !rangeState.available;
+                      const isSelected = selectedMinuteSlots.includes(minute);
+
+                      return (
+                        <button
+                          key={minute}
+                          type="button"
+                          onClick={() => handleMinuteSlotClick(minute)}
+                          disabled={disabled}
+                          className={`rounded-xl border px-3 py-3 text-center transition-all ${
+                            isSelected
+                              ? "border-red-500/50 bg-red-500/20 font-bold text-white"
+                              : disabled
+                                ? rangeState.status === "pending"
+                                  ? "cursor-not-allowed border-amber-300/25 bg-amber-400/10 text-amber-100/45 line-through"
+                                  : "cursor-not-allowed border-white/10 bg-white/5 text-white/25 line-through"
+                                : rangeState.status === "own-pending"
+                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200/90 hover:bg-amber-500/20 hover:text-amber-100"
+                                : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          <span>{formatTime(slotStart)}</span>
+                          {rangeState.status === "own-pending" && (
+                            <span className="mt-1 block text-[10px] no-underline">moje drzane</span>
+                          )}
+                          {rangeState.status === "pending" && (
+                            <span className="mt-1 block text-[10px] no-underline">drzane</span>
+                          )}
+                          {rangeState.status === "paid" && disabled && (
+                            <span className="mt-1 block text-[10px] no-underline">obsadene</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : (
+              <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
+                {HOURS.map((hour) => {
                 const slotStart = getSlotDate(selectedDateStr, hour);
                 const bookingData = bookedHours.get(hour);
                 const isBooked = Boolean(bookingData);
@@ -453,16 +689,21 @@ export default function FacilityBookingClient({
                   </button>
                 );
               })}
-            </div>
+              </div>
+            )}
 
-            <div className="mt-auto flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+            <div className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-white/10 pt-4">
               <div className="text-sm text-white/50">
-                {duration > 0
-                  ? `${duration} hod. vybrane`
-                  : "Vyber aspon jednu hodinu"}
+                {isMinuteRate
+                  ? selectedDurationMinutes > 0
+                    ? `${selectedDurationMinutes} min. vybrane`
+                    : "Vyber cas"
+                  : duration > 0
+                    ? `${duration} hod. vybrane`
+                    : "Vyber aspon jednu hodinu"}
               </div>
               <button
-                disabled={duration === 0 || loading}
+                disabled={(isMinuteRate ? selectedDurationMinutes === 0 : duration === 0) || loading}
                 onClick={handleContinue}
                 className="rounded-xl bg-red-600 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >

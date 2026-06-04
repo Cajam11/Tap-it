@@ -11,19 +11,27 @@ import { BookableService, ServiceSchedule } from "@/lib/types";
 
 const FACILITY_OPEN_HOUR = 6;
 const FACILITY_CLOSE_HOUR = 21;
+const FACILITY_MINUTE_STEP = 5;
 
 export type CheckoutSearchParams = {
   scheduleId?: string;
   duration?: string;
+  durationMinutes?: string;
   start?: string;
   trainerId?: string;
   serviceId?: string;
 };
 
-function isValidFacilityStart(date: Date) {
+function getFacilityCloseDate(date: Date) {
+  const close = new Date(date);
+  close.setHours(FACILITY_CLOSE_HOUR, 0, 0, 0);
+  return close;
+}
+
+function isValidFacilityStart(date: Date, isMinuteRate: boolean) {
   return (
     !Number.isNaN(date.getTime()) &&
-    date.getMinutes() === 0 &&
+    (isMinuteRate ? date.getMinutes() % FACILITY_MINUTE_STEP === 0 : date.getMinutes() === 0) &&
     date.getSeconds() === 0 &&
     date.getHours() >= FACILITY_OPEN_HOUR &&
     date.getHours() < FACILITY_CLOSE_HOUR
@@ -42,6 +50,7 @@ export default async function BookingCheckoutPage({
   const {
     scheduleId,
     duration: durationParam,
+    durationMinutes: durationMinutesParam,
     start: startParam,
     trainerId: queryTrainerId,
   } = await searchParams;
@@ -109,18 +118,30 @@ export default async function BookingCheckoutPage({
     if (!startParam) redirect(detailHref);
 
     const safeStartParam = startParam.replace(" ", "+");
+    const isMinuteRate = typedService.price_unit === "minute";
     const duration = Math.max(1, Math.min(16, parseInt(durationParam || "1", 10)));
+    const durationMinutes = Math.max(
+      FACILITY_MINUTE_STEP,
+      Math.min(30, parseInt(durationMinutesParam || "10", 10)),
+    );
     startTime = new Date(safeStartParam);
     endTime = new Date(startTime);
-    endTime.setHours(endTime.getHours() + duration);
+
+    if (isMinuteRate) {
+      endTime = new Date(startTime.getTime() + durationMinutes * 60_000);
+    } else {
+      endTime.setHours(endTime.getHours() + duration);
+    }
 
     const now = new Date();
     const minValidStart = new Date(now.getTime() - 20 * 60 * 1000);
+    const closeTime = getFacilityCloseDate(startTime);
 
     if (
-      !isValidFacilityStart(startTime) ||
+      !isValidFacilityStart(startTime, isMinuteRate) ||
+      (isMinuteRate && durationMinutes % FACILITY_MINUTE_STEP !== 0) ||
       endTime <= startTime ||
-      endTime.getHours() > FACILITY_CLOSE_HOUR ||
+      endTime > closeTime ||
       startTime < minValidStart
     ) {
       redirect(detailHref);
@@ -129,10 +150,10 @@ export default async function BookingCheckoutPage({
     const firstHour = Number(typedService.metadata?.first_hour_price);
     const nextHour = Number(typedService.metadata?.next_hour_price);
 
-    if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
+    if (isMinuteRate) {
+      totalPrice = typedService.base_price * durationMinutes;
+    } else if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
       totalPrice = firstHour + Math.max(0, duration - 1) * nextHour;
-    } else if (typedService.price_unit === "minute") {
-      totalPrice = typedService.base_price * duration * 60;
     } else {
       totalPrice = typedService.base_price * duration;
     }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import CookieConsent from "@/components/CookieConsent";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -20,7 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="sk" className="dark">
-      <body className={geist.className}>{children}</body>
+      <body className={geist.className}>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   );
 }

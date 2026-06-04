@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient } from "@/lib/stripe/server";
 import type { Membership } from "@/lib/types";
 
@@ -9,6 +10,40 @@ type DbMembership = Pick<
 >;
 
 const TX_INSERT_TIMEOUT_MS = 2500;
+
+type PendingTransactionRow = {
+  id: string;
+  membership_id: string | null;
+  amount: number;
+  metadata: Record<string, unknown> | null;
+};
+
+type UpdatableTransactionsQuery = {
+  update(values: Record<string, unknown>): UpdatableTransactionsQuery;
+  eq(column: string, value: string): Promise<{ error: unknown }>;
+};
+
+function asString(value: unknown) {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function isReusablePaymentIntentStatus(status: string) {
+  return (
+    status === "requires_payment_method" ||
+    status === "requires_confirmation" ||
+    status === "requires_action"
+  );
+}
+
+function isCancelablePaymentIntentStatus(status: string) {
+  return (
+    status === "requires_payment_method" ||
+    status === "requires_confirmation" ||
+    status === "requires_action" ||
+    status === "requires_capture" ||
+    status === "processing"
+  );
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -66,6 +101,67 @@ export async function POST(request: Request) {
 
   try {
     const stripe = getStripeServerClient();
+    const admin = createAdminClient();
+
+    const { data: pendingTransactions } = await admin
+      .from("transactions")
+      .select("id, membership_id, amount, metadata")
+      .eq("user_id", user.id)
+      .eq("type", "purchase")
+      .eq("status", "pending")
+      .not("membership_id", "is", null)
+      .order("created_at", { ascending: false });
+
+    for (const transaction of (pendingTransactions ?? []) as PendingTransactionRow[]) {
+      const paymentIntentId = asString(transaction.metadata?.stripe_payment_intent_id);
+      const sameMembership = transaction.membership_id === membershipRow.id;
+      const sameAmount = Math.round(Number(transaction.amount) * 100) === amountInCents;
+
+      if (sameMembership && sameAmount && paymentIntentId) {
+        try {
+          const existingIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+          if (existingIntent.client_secret && isReusablePaymentIntentStatus(existingIntent.status)) {
+            return NextResponse.json({
+              clientSecret: existingIntent.client_secret,
+              paymentIntentId: existingIntent.id,
+              amount: amountInEuros,
+              currency: "EUR",
+              reused: true,
+            });
+          }
+        } catch {
+          // If Stripe no longer knows this intent, mark the local pending transaction as failed below.
+        }
+      }
+
+      if (paymentIntentId) {
+        try {
+          const staleIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          if (isCancelablePaymentIntentStatus(staleIntent.status)) {
+            await stripe.paymentIntents.cancel(paymentIntentId, {
+              cancellation_reason: "abandoned",
+            });
+          }
+        } catch {
+          // Best effort cleanup only. The local transaction is still closed as failed.
+        }
+      }
+
+      await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+        .update({
+          status: "failed",
+          metadata: {
+            ...(transaction.metadata ?? {}),
+            failed_reason:
+              sameMembership && !sameAmount
+                ? "membership_price_changed"
+                : "replaced_by_new_membership_payment",
+            replaced_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", transaction.id);
+    }
 
     const paymentIntent = await stripe.paymentIntents.create(
       {
@@ -84,7 +180,7 @@ export async function POST(request: Request) {
       }
     );
 
-    const insertPromise = supabase.from("transactions").insert({
+    const insertPromise = admin.from("transactions").insert({
       user_id: user.id,
       membership_id: membershipRow.id,
       amount: amountInEuros,

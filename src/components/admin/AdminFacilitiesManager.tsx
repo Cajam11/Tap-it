@@ -3,9 +3,9 @@
 import { useRef, useState, useTransition } from "react";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
-import { Image as ImageIcon, Plus, Save, Warehouse } from "lucide-react";
+import { Image as ImageIcon, Plus, Save, Trash2, Warehouse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { saveFacilityService } from "@/app/admin/(panel)/priestory/actions";
+import { deleteFacilityService, saveFacilityService } from "@/app/admin/(panel)/priestory/actions";
 
 type FacilityService = {
   id: string;
@@ -142,6 +142,28 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
     });
   };
 
+  const handleDelete = () => {
+    if (!form.serviceId) return;
+    const confirmed = window.confirm("Naozaj chcete zmazat tento priestor?");
+    if (!confirmed) return;
+
+    setMessage("");
+
+    startTransition(async () => {
+      const result = await deleteFacilityService(form.serviceId!);
+
+      if (result.error) {
+        setMessage(`Chyba: ${result.error}`);
+        return;
+      }
+
+      setSelectedFacilityId(null);
+      setForm(EMPTY_FORM);
+      setMessage("Priestor bol zmazany.");
+      router.refresh();
+    });
+  };
+
   return (
     <div className="p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -197,6 +219,7 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
           message={message}
           onUpdate={updateForm}
           onSave={handleSave}
+          onDelete={handleDelete}
         />
       </section>
     </div>
@@ -209,12 +232,14 @@ function FacilityForm({
   message,
   onUpdate,
   onSave,
+  onDelete,
 }: {
   form: FormState;
   isPending: boolean;
   message: string;
   onUpdate: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onSave: () => void;
+  onDelete: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrl = form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageUrl;
@@ -351,6 +376,18 @@ function FacilityForm({
           <p className={`text-sm ${message.startsWith("Chyba") ? "text-red-300" : "text-green-300"}`}>
             {message}
           </p>
+        )}
+
+        {form.serviceId && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Zmazat priestor
+          </button>
         )}
       </div>
     </div>

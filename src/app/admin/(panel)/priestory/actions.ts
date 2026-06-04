@@ -132,3 +132,41 @@ export async function saveFacilityService(input: FacilityInput) {
 
   return { success: true, serviceId: data.id };
 }
+
+export async function deleteFacilityService(serviceId: string) {
+  try {
+    await assertCanManageFacilities();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Neautorizovany pristup." };
+  }
+
+  if (!serviceId) {
+    return { error: "Chyba ID priestoru." };
+  }
+
+  const admin = createAdminClient();
+  const { data: existingService } = await admin
+    .from("bookable_services")
+    .select("id")
+    .eq("id", serviceId)
+    .eq("type", "facility")
+    .maybeSingle<{ id: string }>();
+
+  if (!existingService) {
+    return { error: "Priestor neexistuje." };
+  }
+
+  const { error } = await (admin.from("bookable_services") as unknown as UpdatableQuery)
+    .update({ is_active: false })
+    .eq("id", serviceId);
+
+  if (error) {
+    return { error: `Nepodarilo sa zmazat priestor: ${error.message}` };
+  }
+
+  revalidatePath("/admin/priestory");
+  revalidatePath("/bookings/priestory");
+  revalidatePath(`/bookings/priestory/${serviceId}`);
+
+  return { success: true };
+}

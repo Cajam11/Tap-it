@@ -24,8 +24,8 @@ export const MEMBERSHIP_PLANS: MembershipPlan[] = [
   },
   {
     name: "Ročná",
-    price: "29 €",
-    period: "/ mesiac",
+    price: "630 €",
+    period: "/ rok",
     features: ["Neobmedzený vstup", "Sauna", "Skupinovky zadarmo", "IONT nápoj", "Uterák"],
     highlight: false,
   },

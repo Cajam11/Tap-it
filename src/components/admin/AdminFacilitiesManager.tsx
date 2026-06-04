@@ -20,6 +20,9 @@ type FormState = {
   serviceId: string | null;
   name: string;
   basePrice: string;
+  priceUnit: "hour" | "minute";
+  firstHourPrice: string;
+  nextHourPrice: string;
   imageUrl: string;
   imageFile: File | null;
 };
@@ -28,12 +31,16 @@ const EMPTY_FORM: FormState = {
   serviceId: null,
   name: "",
   basePrice: "0",
+  priceUnit: "hour",
+  firstHourPrice: "",
+  nextHourPrice: "",
   imageUrl: "",
   imageFile: null,
 };
 
 function readMetadataText(metadata: Record<string, unknown> | null, key: string) {
   const value = metadata?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
@@ -42,9 +49,16 @@ function formFromFacility(facility: FacilityService): FormState {
     serviceId: facility.id,
     name: facility.name,
     basePrice: String(facility.base_price ?? 0),
+    priceUnit: facility.price_unit === "minute" ? "minute" : "hour",
+    firstHourPrice: readMetadataText(facility.metadata, "first_hour_price") ?? "",
+    nextHourPrice: readMetadataText(facility.metadata, "next_hour_price") ?? "",
     imageUrl: readMetadataText(facility.metadata, "image_url") ?? "",
     imageFile: null,
   };
+}
+
+function formatUnit(unit: FacilityService["price_unit"] | FormState["priceUnit"]) {
+  return unit === "minute" ? "min." : "hod.";
 }
 
 export default function AdminFacilitiesManager({ facilities }: { facilities: FacilityService[] }) {
@@ -105,7 +119,10 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
         serviceId: form.serviceId,
         name: form.name,
         basePrice: Number(form.basePrice),
+        priceUnit: form.priceUnit,
         imageUrl: coverUrl,
+        firstHourPrice: form.firstHourPrice.trim() ? Number(form.firstHourPrice) : null,
+        nextHourPrice: form.nextHourPrice.trim() ? Number(form.nextHourPrice) : null,
       });
 
       if (result.error || !result.serviceId) {
@@ -166,7 +183,7 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
                 >
                   <span className="text-sm font-semibold">{facility.name}</span>
                   <span className="mt-1 block text-xs text-white/45">
-                    {Number(facility.base_price).toFixed(2)} EUR / hod.
+                    {Number(facility.base_price).toFixed(2)} EUR / {formatUnit(facility.price_unit)}
                   </span>
                 </button>
               );
@@ -224,7 +241,7 @@ function FacilityForm({
           </label>
 
           <label className="space-y-2 block">
-            <span className="text-sm text-white/60">Cena za hodinu</span>
+            <span className="text-sm text-white/60">Cena</span>
             <input
               type="number"
               min="0"
@@ -234,6 +251,46 @@ function FacilityForm({
               className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none focus:border-red-500"
             />
           </label>
+
+          <label className="space-y-2 block">
+            <span className="text-sm text-white/60">Rate</span>
+            <select
+              value={form.priceUnit}
+              onChange={(event) => onUpdate("priceUnit", event.target.value as FormState["priceUnit"])}
+              className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none focus:border-red-500"
+            >
+              <option value="hour">Za hodinu</option>
+              <option value="minute">Za minutu</option>
+            </select>
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 block">
+              <span className="text-sm text-white/60">Prva hodina</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.firstHourPrice}
+                onChange={(event) => onUpdate("firstHourPrice", event.target.value)}
+                placeholder="Volitelne"
+                className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-red-500"
+              />
+            </label>
+
+            <label className="space-y-2 block">
+              <span className="text-sm text-white/60">Kazda dalsia hodina</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.nextHourPrice}
+                onChange={(event) => onUpdate("nextHourPrice", event.target.value)}
+                placeholder="Volitelne"
+                className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-red-500"
+              />
+            </label>
+          </div>
 
           <div className="space-y-2">
             <span className="text-sm text-white/60">Cover obrazok</span>

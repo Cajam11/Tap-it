@@ -53,6 +53,10 @@ function formatPrice(service: BookableService, duration: number) {
     return firstHour + Math.max(0, duration - 1) * nextHour;
   }
 
+  if (service.price_unit === "minute") {
+    return service.base_price * duration * 60;
+  }
+
   return service.base_price * duration;
 }
 

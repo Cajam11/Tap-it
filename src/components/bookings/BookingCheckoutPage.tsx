@@ -10,7 +10,7 @@ import { getServiceDetailHref } from "@/lib/bookings/routes";
 import { BookableService, ServiceSchedule } from "@/lib/types";
 
 const FACILITY_OPEN_HOUR = 6;
-const FACILITY_CLOSE_HOUR = 22;
+const FACILITY_CLOSE_HOUR = 21;
 
 export type CheckoutSearchParams = {
   scheduleId?: string;
@@ -131,6 +131,8 @@ export default async function BookingCheckoutPage({
 
     if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
       totalPrice = firstHour + Math.max(0, duration - 1) * nextHour;
+    } else if (typedService.price_unit === "minute") {
+      totalPrice = typedService.base_price * duration * 60;
     } else {
       totalPrice = typedService.base_price * duration;
     }

@@ -10,7 +10,10 @@ type FacilityInput = {
   serviceId?: string | null;
   name: string;
   basePrice: number;
+  priceUnit: "hour" | "minute";
   imageUrl?: string | null;
+  firstHourPrice?: number | null;
+  nextHourPrice?: number | null;
 };
 
 type InsertableSelectQuery = {
@@ -46,7 +49,10 @@ export async function saveFacilityService(input: FacilityInput) {
 
   const name = normalizeText(input.name);
   const basePrice = Number(input.basePrice);
+  const priceUnit = input.priceUnit === "minute" ? "minute" : "hour";
   const imageUrl = input.imageUrl?.trim() || null;
+  const firstHourPrice = input.firstHourPrice === null || input.firstHourPrice === undefined ? null : Number(input.firstHourPrice);
+  const nextHourPrice = input.nextHourPrice === null || input.nextHourPrice === undefined ? null : Number(input.nextHourPrice);
 
   if (!name) {
     return { error: "Nazov priestoru je povinny." };
@@ -56,16 +62,32 @@ export async function saveFacilityService(input: FacilityInput) {
     return { error: "Cena musi byt nezaporne cislo." };
   }
 
+  const hasFirstHourPrice = firstHourPrice !== null && Number.isFinite(firstHourPrice);
+  const hasNextHourPrice = nextHourPrice !== null && Number.isFinite(nextHourPrice);
+
+  if (hasFirstHourPrice !== hasNextHourPrice) {
+    return { error: "Vypln cenu za prvu hodinu aj kazdu dalsiu hodinu, alebo nechaj obe prazdne." };
+  }
+
+  if (
+    (hasFirstHourPrice && firstHourPrice < 0) ||
+    (hasNextHourPrice && nextHourPrice < 0)
+  ) {
+    return { error: "Specialne ceny musia byt nezaporne cisla." };
+  }
+
   const admin = createAdminClient();
   const payload = {
     name,
     type: "facility",
     base_price: basePrice,
-    price_unit: "hour",
+    price_unit: priceUnit,
     capacity: null,
     is_active: true,
     metadata: {
       image_url: imageUrl,
+      first_hour_price: hasFirstHourPrice ? firstHourPrice : null,
+      next_hour_price: hasNextHourPrice ? nextHourPrice : null,
     },
   };
 

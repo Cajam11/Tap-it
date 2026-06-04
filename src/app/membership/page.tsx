@@ -5,7 +5,7 @@ import NavBarAuth from "@/components/NavBarAuth";
 import FlashMessageBanner from "@/components/FlashMessageBanner";
 import MembershipQrCard from "@/components/membership/MembershipQrCard";
 import { createClient } from "@/lib/supabase/server";
-import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import { buildMembershipDisplayPlans, type MembershipPlanRow } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import { parseFlashCookieValue } from "@/lib/flash";
 import { CheckCircle2 } from "lucide-react";
@@ -29,7 +29,7 @@ export default async function MembershipPage() {
     redirect("/login");
   }
 
-  const [profileRes, activeMembershipRes] = await Promise.all([
+  const [profileRes, activeMembershipRes, membershipsRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, avatar_url")
@@ -40,6 +40,9 @@ export default async function MembershipPage() {
       user.id,
       "membership_id, status, membership:memberships(name)",
     ),
+    supabase
+      .from("memberships")
+      .select("name, price, billing_cycle, is_single_entry"),
   ]);
 
   const { data: openEntries } = await supabase
@@ -105,6 +108,9 @@ export default async function MembershipPage() {
   const flashMessage = parseFlashCookieValue(
     (await cookies()).get("tapit_flash")?.value,
   );
+  const membershipPlans = buildMembershipDisplayPlans(
+    (membershipsRes.data ?? []) as MembershipPlanRow[],
+  );
 
   return (
     <>
@@ -161,7 +167,7 @@ export default async function MembershipPage() {
               </p>
 
               <div className="mt-8 grid gap-4 md:grid-cols-3 md:items-stretch">
-                {MEMBERSHIP_PLANS.map((plan) => {
+                {membershipPlans.map((plan) => {
                   const isActive = plan.name === activeMembershipName;
 
                   return (

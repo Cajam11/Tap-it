@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import FadeIn from "@/components/FadeIn";
-import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import { buildMembershipDisplayPlans, type MembershipPlanRow } from "@/lib/memberships";
 import LiveOccupancyCard from "@/components/LiveOccupancyCard";
 import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
 import GymNewsSection from "@/components/GymNewsSection";
@@ -150,8 +150,6 @@ const GALLERY = [
   },
 ];
 
-const PRICING = MEMBERSHIP_PLANS;
-
 const STEPS: Array<{
   n: number;
   title: string;
@@ -239,6 +237,13 @@ export default async function LandingPage() {
   if (typeof openEntriesCount === "number") {
     liveOccupancyCount = openEntriesCount;
   }
+
+  const { data: membershipRows } = await supabase
+    .from("memberships")
+    .select("name, price, billing_cycle, is_single_entry");
+  const pricing = buildMembershipDisplayPlans(
+    (membershipRows ?? []) as MembershipPlanRow[],
+  );
 
   let initialMembers: LivePresenceMember[] = [];
   if (user) {
@@ -802,7 +807,7 @@ export default async function LandingPage() {
             </FadeIn>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              {PRICING.map((p, i) => (
+              {pricing.map((p, i) => (
                 <FadeIn key={p.name} delay={i * 100}>
                   <div
                     className={`rounded-3xl p-8 border h-full flex flex-col transition-transform duration-300 hover:-translate-y-2 ${

@@ -5,7 +5,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import NavBarAuth from "@/components/NavBarAuth";
 import StripePaymentForm from "@/components/membership/StripePaymentForm";
-import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import {
+  buildMembershipDisplayPlans,
+  type MembershipPlanRow,
+} from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import { createClient } from "@/lib/supabase/server";
 import { setFlashMessage } from "@/lib/flash.server";
@@ -107,7 +110,13 @@ export default async function MembershipPaymentPage({
 
   const resolvedSearchParams = await searchParams;
   const selectedPlanName = resolvedSearchParams?.plan ?? "";
-  const selectedPlan = MEMBERSHIP_PLANS.find(
+  const { data: membershipRows } = await supabase
+    .from("memberships")
+    .select("name, price, billing_cycle, is_single_entry");
+  const membershipPlans = buildMembershipDisplayPlans(
+    (membershipRows ?? []) as MembershipPlanRow[],
+  );
+  const selectedPlan = membershipPlans.find(
     (plan) => plan.name === selectedPlanName,
   );
 

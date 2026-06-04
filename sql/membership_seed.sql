@@ -9,8 +9,8 @@ insert into public.memberships (
   price
 )
 values
-  ('Jednorazový vstup', 'entries', 1, null, true, 14.00),
-  ('Mesačná', 'monthly', null, 30, false, 39.00),
+  ('Jednorazový vstup', 'entries', 1, null, true, 10.00),
+  ('Mesačná', 'monthly', null, 30, false, 60.00),
   ('Ročná', 'yearly', null, 365, false, 630.00)
 on conflict (name)
 do update set

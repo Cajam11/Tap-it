@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
-import { MEMBERSHIP_PLANS } from "@/lib/memberships";
+import { getFeaturesByMembershipName } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import FlashMessageBanner from "@/components/FlashMessageBanner";
 import { parseFlashCookieValue } from "@/lib/flash";
@@ -17,11 +17,6 @@ function getPlanDisplayName(name: string) {
   if (name === "Mesačná") return "Mesačné";
   if (name === "Ročná") return "Ročné";
   return name;
-}
-
-function getFeaturesByMembershipName(name: string) {
-  const plan = MEMBERSHIP_PLANS.find((p) => p.name === name);
-  return plan?.features || [];
 }
 
 export default async function MembershipDetailsPage() {

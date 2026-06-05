@@ -29,6 +29,7 @@ import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
 import GymNewsSection from "@/components/GymNewsSection";
 
 import SplashWrapper from "@/components/SplashWrapper";
+import TrainerCarousel, { type LandingTrainer } from "@/components/TrainerCarousel";
 
 /* -------------------------------------------------------------------------------
    DATA
@@ -79,26 +80,9 @@ const GROUP_TRAININGS = [
   },
 ];
 
-const TRAINERS = [
-  {
-    name: "Ján Ostraczký",
-    phone: "+421 907 767 090",
-    lang: "Slovenský, Anglický",
-    img: "https://i.pravatar.cc/600?img=11",
-  },
-  {
-    name: "Tamara Iglorová",
-    phone: "+421 905 824 005",
-    lang: "Slovenská, Anglická",
-    img: "https://i.pravatar.cc/600?img=47",
-  },
-  {
-    name: "Laura Mifkufová",
-    phone: "+421 917 418 245",
-    lang: "Slovenská, Anglická",
-    img: "https://i.pravatar.cc/600?img=9",
-  },
-];
+type TrainerService = {
+  id: string;
+};
 
 const LOCATIONS = [
   {
@@ -289,6 +273,22 @@ export default async function LandingPage() {
     if (isExpired) return false;
     return true;
   });
+
+  const { data: trainerServiceData } = await supabase
+    .from("bookable_services")
+    .select("id")
+    .eq("type", "trainer")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const { data: trainerProfileData } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, bio, phone")
+    .eq("role", "trainer")
+    .order("full_name", { ascending: true });
+
+  const trainerService = trainerServiceData as TrainerService | null;
+  const trainers = (trainerProfileData ?? []) as LandingTrainer[];
 
   return (
     <SplashWrapper>
@@ -672,59 +672,10 @@ export default async function LandingPage() {
               </p>
             </FadeIn>
 
-            <ul
-              className="grid grid-cols-1 sm:grid-cols-3 gap-6 list-none p-0"
-              role="list"
-            >
-              {TRAINERS.map((t, i) => (
-                <FadeIn key={t.name} as="li" delay={i * 120}>
-                  <div className="group">
-                    {/* image card */}
-                    <div className="relative rounded-3xl overflow-hidden border border-white/[0.06] hover:border-white/[0.12] transition-colors duration-300">
-                      <Image
-                        src={t.img}
-                        alt={t.name}
-                        width={600}
-                        height={750}
-                        loading="lazy"
-                        sizes="(min-width: 640px) 33vw, 100vw"
-                        className="w-full aspect-[3/4] object-cover transition-[transform] duration-700 group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
-                      />
-                      <div
-                        className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"
-                        aria-hidden="true"
-                      />
-
-                      {/* arrow icon top-right like 77fitness */}
-                      <div
-                        className="absolute top-5 right-5 w-12 h-12 rounded-xl border border-white/20 bg-black/30 backdrop-blur-sm flex items-center justify-center"
-                        aria-hidden="true"
-                      >
-                        <ArrowUpRight className="w-5 h-5 text-white" />
-                      </div>
-
-                      {/* language overlay at bottom of image */}
-                      <div className="absolute bottom-0 inset-x-0 px-6 pb-5">
-                        <p className="text-sm text-white/60">{t.lang}</p>
-                      </div>
-                    </div>
-
-                    {/* name + phone below card */}
-                    <div className="mt-5 text-center">
-                      <p className="text-xl sm:text-2xl font-bold text-white">
-                        {t.name}
-                      </p>
-                      <a
-                        href={`tel:${t.phone.replace(/\s/g, "")}`}
-                        className="block text-base text-white/40 hover:text-white transition-colors mt-1 focus-visible:ring-2 focus-visible:ring-white rounded outline-none"
-                      >
-                        {t.phone}
-                      </a>
-                    </div>
-                  </div>
-                </FadeIn>
-              ))}
-            </ul>
+            <TrainerCarousel
+              trainers={trainers}
+              trainerServiceId={trainerService?.id ?? null}
+            />
           </div>
         </section>
 

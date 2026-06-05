@@ -147,12 +147,16 @@ export async function createBookingIntent(
   if (scheduleId) {
     const { data: scheduleRow } = await admin
       .from("service_schedules")
-      .select("id, current_capacity")
+      .select("id, current_capacity, trainer_id")
       .eq("id", scheduleId)
-      .maybeSingle<{ id: string; current_capacity: number | null }>();
+      .maybeSingle<{ id: string; current_capacity: number | null; trainer_id: string | null }>();
 
     if (!scheduleRow) {
       throw new Error("Termín nebol nájdený.");
+    }
+
+    if (scheduleRow.trainer_id && scheduleRow.trainer_id === userId) {
+      throw new Error("Nemôžete si rezervovať sám seba ako trénera.");
     }
 
     if (scheduleRow.current_capacity !== null) {

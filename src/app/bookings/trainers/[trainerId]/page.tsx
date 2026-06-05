@@ -26,6 +26,10 @@ export default async function TrainerBookingPage({
     redirect("/login");
   }
 
+  if (trainerId === user.id) {
+    redirect("/bookings/trainers");
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, avatar_url")

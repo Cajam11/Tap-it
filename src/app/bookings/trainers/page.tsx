@@ -67,6 +67,7 @@ export default async function TrainersPage() {
     .from("profiles")
     .select("id, full_name, avatar_url, bio")
     .eq("role", "trainer")
+    .neq("id", user.id)
     .order("full_name", { ascending: true });
 
   const trainers = (trainerProfiles ?? []) as TrainerProfile[];

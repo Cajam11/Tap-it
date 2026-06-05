@@ -22,12 +22,12 @@ export default function GymNewsSection({ news }: { news: GymNews[] }) {
             Aktuality z <span className="text-red-500">Gymu</span>
           </h2>
           
-          <div className="flex overflow-x-auto pb-8 -mx-4 px-4 snap-x snap-mandatory gap-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {news.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedNews(item)}
-                className="group relative flex-none w-[280px] sm:w-[350px] aspect-[4/5] sm:aspect-square snap-center sm:snap-start overflow-hidden rounded-3xl bg-neutral-900 border border-white/10 text-left transition-transform hover:scale-[1.02]"
+                className="group relative aspect-[4/5] sm:aspect-square overflow-hidden rounded-3xl bg-neutral-900 border border-white/10 text-left transition-transform hover:scale-[1.02]"
               >
                 {item.image_url ? (
                   <Image

@@ -78,16 +78,16 @@ export default function LegalSidebarToc({ toc }: { toc: TocItem[] }) {
             key={item.href}
             href={item.href}
             className={`group flex items-start gap-3 text-sm transition-colors pl-4 relative ${
-              isActive ? "text-white" : "text-white/50 hover:text-white"
+              isActive ? "text-white/50 md:text-white" : "text-white/50 hover:text-white"
             }`}
           >
             {isActive && (
-              <div className="absolute left-[-1px] top-1 bottom-1 w-[2px] bg-red-500 rounded-r" />
+              <div className="absolute left-[-1px] top-1 bottom-1 w-[2px] bg-red-500 rounded-r hidden md:block" />
             )}
             <span
               className={`font-semibold transition-colors ${
                 isActive
-                  ? "text-red-500"
+                  ? "text-white/70 md:text-red-500"
                   : "text-white/70 group-hover:text-red-400"
               }`}
             >

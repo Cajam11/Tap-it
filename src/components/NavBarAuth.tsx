@@ -187,7 +187,7 @@ export default function NavBarAuth({
 
   return (
     <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-6xl flex items-center justify-between h-14 px-6 rounded-full bg-black/40 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.55)]">
+      <div className="pointer-events-auto w-full max-w-6xl flex items-center justify-between h-14 px-4 sm:px-6 rounded-full bg-black/40 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.55)]">
         <Link
           href="/"
           className="font-extrabold text-white text-lg tracking-tight focus-visible:ring-2 focus-visible:ring-red-500 rounded-full px-1 outline-none"

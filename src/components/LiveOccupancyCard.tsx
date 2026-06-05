@@ -144,7 +144,7 @@ export default function LiveOccupancyCard({
   return (
     <FadeIn className={compact ? "w-full" : "mx-auto max-w-md"}>
       <div
-        className={`rounded-3xl border border-white/[0.08] ${compact ? "p-5" : "p-8"}`}
+        className={`rounded-3xl border border-white/[0.08] ${compact ? "p-5" : "p-6 sm:p-8"}`}
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",

@@ -82,7 +82,7 @@ export default async function LegalDocumentPage({
         initialProfile={navProfile}
         isAdmin={isAdmin}
       />
-      <main className="relative h-[100dvh] flex flex-col overflow-hidden bg-[#080808] text-white">
+      <main className="relative min-h-[100dvh] md:h-[100dvh] flex flex-col md:overflow-hidden bg-[#080808] text-white">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-[600px] w-[600px] rounded-full bg-red-600/10 blur-[150px]" />
         <div className="pointer-events-none absolute right-[-10%] top-[40%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
@@ -108,7 +108,7 @@ export default async function LegalDocumentPage({
           </header>
 
           <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 flex-1 min-h-0">
-            <aside className="w-full lg:w-72 shrink-0 overflow-y-auto pr-4 flex flex-col gap-8 pb-8 pt-2">
+            <aside className="w-full lg:w-72 shrink-0 md:overflow-y-auto pr-4 flex flex-col gap-8 pb-8 pt-2">
               <div className="space-y-5">
                 <p className="text-xs font-bold tracking-wider text-white/30 uppercase">
                   Obsah dokumentu
@@ -146,7 +146,7 @@ export default async function LegalDocumentPage({
 
             <div
               id="document-scroll-container"
-              className="flex-1 overflow-y-auto pr-4 pb-20 pt-2"
+              className="flex-1 md:overflow-y-auto pr-4 pb-20 pt-2"
             >
               <div
                 className="max-w-3xl space-y-12 text-[1.05rem] leading-relaxed text-white/80 

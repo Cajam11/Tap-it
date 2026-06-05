@@ -344,7 +344,7 @@ export default async function LandingPage() {
               Next Level Fitness • Powered by Tap-it
             </div>
 
-            <h1 className="text-6xl sm:text-8xl lg:text-[120px] xl:text-[140px] font-black text-white leading-[0.95] tracking-tight uppercase">
+            <h1 className="text-5xl sm:text-8xl lg:text-[120px] xl:text-[140px] font-black text-white leading-[0.95] tracking-tight uppercase">
               Špičkové
               <br />
               <span className="bg-gradient-to-r from-red-500 via-red-400 to-orange-400 bg-clip-text text-transparent">
@@ -387,7 +387,7 @@ export default async function LandingPage() {
             {HIGHLIGHTS.map(({ value, label, Icon }, i) => (
               <FadeIn key={label} delay={i * 80}>
                 <div
-                  className="rounded-3xl border border-white/[0.08] p-7 sm:p-8 text-center"
+                  className="rounded-3xl border border-white/[0.08] p-5 sm:p-8 text-center"
                   style={{
                     background:
                       "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
@@ -399,7 +399,7 @@ export default async function LandingPage() {
                     className="w-6 h-6 text-red-500 mx-auto mb-3"
                     aria-hidden="true"
                   />
-                  <p className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                  <p className="text-2xl sm:text-4xl font-black text-white tracking-tight">
                     {value}
                   </p>
                   <p className="text-xs text-white/40 mt-2 font-medium uppercase tracking-wider">
@@ -441,7 +441,7 @@ export default async function LandingPage() {
             <FadeIn>
               <h2
                 id="group-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Skupinové <span className="text-red-500">tréningy</span>
               </h2>
@@ -515,7 +515,7 @@ export default async function LandingPage() {
             <FadeIn>
               <h2
                 id="about-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white leading-[0.95] uppercase italic"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white leading-[0.95] uppercase italic"
               >
                 Dôvody
                 <br />
@@ -579,7 +579,7 @@ export default async function LandingPage() {
             <FadeIn className="text-center mb-16">
               <h2
                 id="locations-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Vyber si svoj <span className="text-red-500">priestor</span>
               </h2>
@@ -662,7 +662,7 @@ export default async function LandingPage() {
             <FadeIn className="text-center mb-16">
               <h2
                 id="trainers-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Osobní <span className="text-red-500">tréneri</span>
               </h2>
@@ -693,7 +693,7 @@ export default async function LandingPage() {
             <FadeIn className="text-center mb-14">
               <h2
                 id="gallery-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Vysokokvalitné <span className="text-red-500">vybavenie</span>
               </h2>
@@ -747,7 +747,7 @@ export default async function LandingPage() {
             <FadeIn className="text-center mb-14">
               <h2
                 id="pricing-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Vyber si <span className="text-red-500">členstvo</span>
               </h2>
@@ -842,7 +842,7 @@ export default async function LandingPage() {
             <FadeIn>
               <h2
                 id="entry-heading"
-                className="text-5xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
+                className="text-4xl sm:text-7xl lg:text-8xl font-black text-white uppercase italic leading-[0.95]"
               >
                 Bezproblémový vstup{" "}
                 <span className="text-red-500">s Tap-it</span>
@@ -853,12 +853,12 @@ export default async function LandingPage() {
               </p>
             </FadeIn>
 
-            <div className="mt-20 grid grid-cols-3 gap-8 sm:gap-16">
+            <div className="mt-20 grid grid-cols-3 gap-4 sm:gap-16">
               {STEPS.map(({ n, title, desc, Icon }, i) => (
                 <FadeIn key={title} delay={i * 120}>
                   <div className="flex flex-col items-center gap-5">
                     <div
-                      className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center"
                       style={{
                         background:
                           "linear-gradient(135deg, rgba(220,38,38,0.2), rgba(220,38,38,0.05))",
@@ -867,7 +867,7 @@ export default async function LandingPage() {
                       }}
                       aria-hidden="true"
                     >
-                      <Icon className="w-8 h-8 text-red-400" />
+                      <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-red-400" />
                     </div>
                     <p className="text-base sm:text-lg font-bold text-white">
                       {n}.&nbsp;{title}

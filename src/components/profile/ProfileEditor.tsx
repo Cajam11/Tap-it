@@ -371,7 +371,7 @@ export default function ProfileEditor({
           <h2 className="mb-4 text-sm uppercase tracking-wider text-white/60">
             Profil
           </h2>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5">
                 {avatarPreviewUrl ? (
@@ -400,7 +400,7 @@ export default function ProfileEditor({
               </label>
             </div>
 
-            <div className="flex-1 self-center -mt-8 space-y-2">
+            <div className="flex-1 self-center text-center sm:text-left sm:-mt-8 space-y-2">
               <h1 className="text-3xl font-bold text-white">
                 {initialProfile.full_name || "Anonymous"}
               </h1>

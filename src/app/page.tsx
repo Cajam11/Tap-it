@@ -387,7 +387,7 @@ export default async function LandingPage() {
             {HIGHLIGHTS.map(({ value, label, Icon }, i) => (
               <FadeIn key={label} delay={i * 80}>
                 <div
-                  className="rounded-3xl border border-white/[0.08] p-5 sm:p-8 text-center"
+                  className="h-full sm:h-auto rounded-3xl border border-white/[0.08] p-5 sm:p-8 text-center"
                   style={{
                     background:
                       "linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",

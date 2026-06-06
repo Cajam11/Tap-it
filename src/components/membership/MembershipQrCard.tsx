@@ -104,7 +104,7 @@ export default function MembershipQrCard({
           {errorText ? <p className="mt-2 text-sm text-red-300">{errorText}</p> : null}
         </div>
 
-        <div className="self-start rounded-2xl border border-white/15 bg-white p-4">
+        <div className="self-center md:self-start rounded-2xl border border-white/15 bg-white p-4">
           <QRCodeSVG
             value={qrValue || "loading"}
             size={192}

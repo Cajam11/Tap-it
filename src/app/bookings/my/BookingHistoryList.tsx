@@ -145,7 +145,7 @@ export default function BookingHistoryList({ items }: BookingHistoryListProps) {
           )}
         </div>
 
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm text-white/60">
             {isFiltered ? `${filteredItems.length} / ${items.length}` : `${items.length} spolu`}
           </span>
         </div>

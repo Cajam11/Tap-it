@@ -156,7 +156,7 @@ export default function BookingHistoryList({ items }: BookingHistoryListProps) {
           {items.length === 0 ? "Zatial nemate ziadne rezervacie." : "Žiadne rezervácie pre zvolený filter."}
         </p>
       ) : (
-        <div className="mt-5 flex-1 space-y-3 overflow-y-auto pr-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
+        <div className="mt-5 flex-1 space-y-3 overflow-y-auto pr-0 [-ms-overflow-style:none] [scrollbar-width:none] sm:pr-1 [&::-webkit-scrollbar]:hidden">
           {visibleItems.map((booking) => (
             <div
               key={booking.id}

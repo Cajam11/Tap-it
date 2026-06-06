@@ -48,7 +48,7 @@ export default function CookieConsent() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.25 }}
-            className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.08] bg-black/40 text-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-colors hover:text-white"
+            className="fixed bottom-5 right-4 z-50 flex h-11 w-11 max-w-[calc(100vw-2rem)] items-center justify-center rounded-full border border-white/[0.08] bg-black/40 text-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-colors hover:text-white sm:right-5"
           >
             <Cookie className="h-5 w-5" />
           </motion.button>
@@ -56,7 +56,7 @@ export default function CookieConsent() {
       </AnimatePresence>
 
       {/* Banner — bottom centered */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-end px-5">
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 sm:justify-end sm:px-5">
         <AnimatePresence>
           {showBanner && (
             <motion.div
@@ -64,7 +64,7 @@ export default function CookieConsent() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 24 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="pointer-events-auto w-full max-w-md rounded-2xl border border-white/[0.08] bg-black/40 p-8 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+              className="pointer-events-auto w-full max-w-md rounded-2xl border border-white/[0.08] bg-black/40 p-5 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:p-8"
             >
               <div className="mb-4 flex items-center gap-2.5">
               <Cookie className="h-6 w-6 text-primary" />

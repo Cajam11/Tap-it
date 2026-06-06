@@ -186,11 +186,11 @@ export default function NavBarAuth({
   })();
 
   return (
-    <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-6xl flex items-center justify-between h-14 px-4 sm:px-6 rounded-full bg-black/40 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.55)]">
+    <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-3 pointer-events-none sm:px-4">
+      <div className="pointer-events-auto flex h-14 w-full max-w-6xl min-w-0 items-center justify-between rounded-full border border-white/[0.08] bg-black/40 px-3 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:px-6">
         <Link
           href="/"
-          className="font-extrabold text-white text-lg tracking-tight focus-visible:ring-2 focus-visible:ring-red-500 rounded-full px-1 outline-none"
+          className="shrink-0 rounded-full px-1 text-base font-extrabold tracking-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-red-500 sm:text-lg"
         >
           Premium<span className="text-red-500">Gyms</span>
         </Link>
@@ -211,7 +211,7 @@ export default function NavBarAuth({
         </nav>
 
         {/* Right side – auth buttons or user profile */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           {user ? (
             <div className="relative" ref={menuRef}>
               <button
@@ -334,13 +334,13 @@ export default function NavBarAuth({
             <>
               <Link
                 href="/login"
-                className="text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/[0.08] transition-colors focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
+                className="hidden rounded-full px-3 py-1.5 text-sm text-white/60 outline-none transition-colors hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-red-500 min-[390px]:inline-flex"
               >
                 Prihlásiť sa
               </Link>
               <Link
                 href="/register"
-                className="text-sm bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-full transition-colors touch-manipulation focus-visible:ring-2 focus-visible:ring-white outline-none"
+                className="touch-manipulation rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white outline-none transition-colors hover:bg-red-500 active:bg-red-700 focus-visible:ring-2 focus-visible:ring-white sm:px-5 sm:text-sm"
               >
                 Registrácia
               </Link>

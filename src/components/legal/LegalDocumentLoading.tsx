@@ -33,7 +33,7 @@ export default function LegalDocumentLoading() {
             </div>
           </aside>
 
-          <div className="flex-1 overflow-y-auto pb-20 pt-2 pr-4">
+          <div className="min-w-0 flex-1 overflow-y-auto pb-20 pt-2 lg:pr-4">
             <div className="max-w-3xl space-y-12 animate-pulse">
               {Array.from({ length: 5 }).map((_, sectionIndex) => (
                 <section

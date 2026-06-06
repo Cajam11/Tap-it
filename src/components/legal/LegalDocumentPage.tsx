@@ -82,11 +82,11 @@ export default async function LegalDocumentPage({
         initialProfile={navProfile}
         isAdmin={isAdmin}
       />
-      <main className="relative min-h-[100dvh] md:h-[100dvh] flex flex-col md:overflow-hidden bg-[#080808] text-white">
+      <main className="relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#080808] text-white md:h-[100dvh] md:overflow-hidden">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-[600px] w-[600px] rounded-full bg-red-600/10 blur-[150px]" />
         <div className="pointer-events-none absolute right-[-10%] top-[40%] h-[500px] w-[500px] rounded-full bg-red-900/10 blur-[150px]" />
 
-        <div className="relative mx-auto w-full max-w-6xl flex-1 flex flex-col min-h-0 pt-28 px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pt-28 sm:px-6 lg:px-8">
           <header className="shrink-0 mb-8 border-b border-white/10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-500/90 mb-3">
@@ -107,8 +107,8 @@ export default async function LegalDocumentPage({
             </div>
           </header>
 
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 flex-1 min-h-0">
-            <aside className="w-full lg:w-72 shrink-0 md:overflow-y-auto pr-4 flex flex-col gap-8 pb-8 pt-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-12 lg:flex-row lg:gap-24">
+            <aside className="flex w-full shrink-0 flex-col gap-8 pb-8 pt-2 md:overflow-y-auto lg:w-72 lg:pr-4">
               <div className="space-y-5">
                 <p className="text-xs font-bold tracking-wider text-white/30 uppercase">
                   Obsah dokumentu
@@ -146,10 +146,10 @@ export default async function LegalDocumentPage({
 
             <div
               id="document-scroll-container"
-              className="flex-1 md:overflow-y-auto pr-4 pb-20 pt-2"
+              className="min-w-0 flex-1 pb-20 pt-2 md:overflow-y-auto lg:pr-4"
             >
               <div
-                className="max-w-3xl space-y-12 text-[1.05rem] leading-relaxed text-white/80 
+                className="max-w-3xl space-y-12 break-words text-[1.05rem] leading-relaxed text-white/80 
                 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-white [&_h2]:tracking-tight [&_h2]:mb-6 [&_h2]:mt-0 
                 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-white/90 [&_h3]:mt-8 [&_h3]:mb-4
                 [&_section]:scroll-mt-36 [&_section]:pb-10 [&_section]:border-b [&_section]:border-white/5 [&_section:last-child]:border-0

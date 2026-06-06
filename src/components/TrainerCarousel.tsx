@@ -59,8 +59,16 @@ export default function TrainerCarousel({
     const list = scrollRef.current;
     if (!list) return;
 
-    list.scrollBy({
-      left: direction === "left" ? -list.clientWidth * 0.85 : list.clientWidth * 0.85,
+    const firstCard = list.firstElementChild as HTMLElement | null;
+    if (!firstCard) return;
+
+    const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+    const stride = firstCard.getBoundingClientRect().width + gap;
+    const currentIndex = Math.round(list.scrollLeft / stride);
+    const targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
+
+    list.scrollTo({
+      left: targetIndex * stride,
       behavior: "smooth",
     });
   };

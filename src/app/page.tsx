@@ -761,7 +761,7 @@ export default async function LandingPage() {
               {pricing.map((p, i) => (
                 <FadeIn key={p.name} delay={i * 100}>
                   <div
-                    className={`rounded-3xl p-8 border h-full flex flex-col transition-transform duration-300 hover:-translate-y-2 ${
+                    className={`rounded-3xl p-8 border sm:h-full flex flex-col transition-transform duration-300 hover:-translate-y-2 ${
                       p.highlight
                         ? "border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.12)]"
                         : "border-white/[0.08]"

@@ -972,7 +972,7 @@ export default async function LandingPage() {
                 />
                 <a
                   href="mailto:info@premiumgyms.com"
-                  className="hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
+                  className="min-w-0 break-all hover:text-white transition-colors focus-visible:ring-1 focus-visible:ring-white rounded outline-none"
                 >
                   info@premiumgyms.com
                 </a>

@@ -184,18 +184,18 @@ export default function TrainerBookingClient({
       <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
         {!selectedDateStr ? (
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-white">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-center text-2xl font-bold text-white sm:text-left">
                 Vyberte si dátum
               </h2>
-              <div className="flex items-center gap-4">
+              <div className="grid w-full grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 sm:w-auto">
                 <button
                   onClick={prevMonth}
                   className="p-2 text-white/50 hover:text-white transition"
                 >
                   ←
                 </button>
-                <span className="text-lg font-medium text-white min-w-[120px] text-center">
+                <span className="min-w-0 text-center text-lg font-medium text-white">
                   {currentDate.toLocaleString("sk-SK", { month: "long" })}{" "}
                   {currentYear}
                 </span>
@@ -208,7 +208,7 @@ export default function TrainerBookingClient({
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 mb-4 text-center">
+            <div className="grid grid-cols-7 gap-1.5 mb-4 text-center sm:gap-2">
               {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((d) => (
                 <div
                   key={d}
@@ -219,9 +219,9 @@ export default function TrainerBookingClient({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2 sm:gap-3 flex-1 auto-rows-fr">
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
               {blanks.map((_, i) => (
-                <div key={`blank-${i}`} className="p-4" />
+                <div key={`blank-${i}`} className="h-11 sm:h-14" />
               ))}
 
               {days.map((day) => {
@@ -247,7 +247,7 @@ export default function TrainerBookingClient({
                       setSelectedDateStr(dateKey);
                       setSelectedScheduleId(null);
                     }}
-                    className={`relative flex items-center justify-center rounded-2xl text-lg transition-all ${
+                    className={`relative flex h-11 items-center justify-center rounded-xl text-base transition-all sm:h-14 sm:rounded-2xl sm:text-lg ${
                       hasSlots
                         ? "bg-white/5 text-white hover:bg-red-500/20 hover:text-red-300 border border-transparent hover:border-red-500/30 font-medium cursor-pointer"
                         : "text-white/20 cursor-not-allowed"
@@ -255,7 +255,7 @@ export default function TrainerBookingClient({
                   >
                     {day}
                     {hasSlots && (
-                      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500" />
+                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500" />
                     )}
                   </button>
                 );

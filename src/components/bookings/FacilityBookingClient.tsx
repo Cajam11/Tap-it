@@ -509,21 +509,21 @@ export default function FacilityBookingClient({
           </div>
         </div>
 
-        <div className="flex h-[42rem] max-h-[calc(100vh-8rem)] min-h-0 flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
+        <div className="flex h-[32rem] min-h-0 flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:h-[34rem] sm:p-8 lg:h-full">
           {!selectedDateStr ? (
             <div className="flex flex-col h-full">
-            <div className="mb-8 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-center text-2xl font-bold text-white sm:text-left">
                 Vyberte si datum
               </h2>
-              <div className="flex items-center gap-4">
+              <div className="grid w-full grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 sm:w-auto">
                 <button
                   onClick={prevMonth}
                   className="p-2 text-white/50 transition hover:text-white"
                 >
                   &larr;
                 </button>
-                <span className="min-w-[120px] text-center text-lg font-medium text-white">
+                <span className="min-w-0 text-center text-lg font-medium text-white">
                   {currentDate.toLocaleString("sk-SK", { month: "long" })}{" "}
                   {currentYear}
                 </span>
@@ -536,7 +536,7 @@ export default function FacilityBookingClient({
               </div>
             </div>
 
-            <div className="mb-4 grid grid-cols-7 gap-2 text-center">
+            <div className="mb-4 grid grid-cols-7 gap-1.5 text-center sm:gap-2">
               {["Po", "Ut", "St", "St", "Pi", "So", "Ne"].map((day, index) => (
                 <div
                   key={`${day}-${index}`}
@@ -547,9 +547,9 @@ export default function FacilityBookingClient({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2 sm:gap-3 flex-1 auto-rows-fr">
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
               {blanks.map((_, index) => (
-                <div key={`blank-${index}`} className="p-4" />
+                <div key={`blank-${index}`} className="h-11 sm:h-14" />
               ))}
               {days.map((day) => {
                 const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -560,7 +560,7 @@ export default function FacilityBookingClient({
                     key={day}
                     disabled={!hasSlots}
                     onClick={() => handleDateSelect(dateKey)}
-                    className={`relative rounded-2xl flex items-center justify-center text-lg transition-all ${
+                    className={`relative flex h-11 items-center justify-center rounded-xl text-base transition-all sm:h-14 sm:rounded-2xl sm:text-lg ${
                       hasSlots
                         ? "cursor-pointer border border-transparent bg-white/5 font-medium text-white hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300"
                         : "cursor-not-allowed text-white/20"
@@ -568,7 +568,7 @@ export default function FacilityBookingClient({
                   >
                     {day}
                     {hasSlots && (
-                      <span className="absolute bottom-2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
+                      <span className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
                     )}
                   </button>
                 );
@@ -645,8 +645,9 @@ export default function FacilityBookingClient({
                 </div>
               </div>
             ) : (
-              <div className="mb-8 grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
-                {HOURS.map((hour) => {
+              <div className="mb-8 min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-3 text-[15px] sm:grid-cols-4">
+                  {HOURS.map((hour) => {
                 const slotStart = getSlotDate(selectedDateStr, hour);
                 const bookingData = bookedHours.get(hour);
                 const isBooked = Boolean(bookingData);
@@ -689,6 +690,7 @@ export default function FacilityBookingClient({
                   </button>
                 );
               })}
+                </div>
               </div>
             )}
 

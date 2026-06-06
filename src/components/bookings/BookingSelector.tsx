@@ -289,9 +289,9 @@ export default function BookingSelector({
         <div className="flex h-full flex-col rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8">
           {!selectedDateStr ? (
             <div className="flex h-full flex-col">
-              <div className="mb-8 flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-white">Vyberte si dátum</h2>
-                <div className="flex items-center gap-4">
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-center text-2xl font-bold text-white sm:text-left">Vyberte si dátum</h2>
+                <div className="grid w-full grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 sm:w-auto">
                   <button
                     type="button"
                     onClick={prevMonth}
@@ -300,7 +300,7 @@ export default function BookingSelector({
                   >
                     ←
                   </button>
-                  <span className="min-w-[120px] text-center text-lg font-medium text-white">
+                  <span className="min-w-0 text-center text-lg font-medium text-white">
                     {currentDate.toLocaleString("sk-SK", { month: "long" })} {currentYear}
                   </span>
                   <button
@@ -319,7 +319,7 @@ export default function BookingSelector({
                 </div>
               )}
 
-              <div className="mb-4 grid grid-cols-7 gap-2 text-center">
+              <div className="mb-4 grid grid-cols-7 gap-1.5 text-center sm:gap-2">
                 {["Po", "Ut", "St", "Št", "Pi", "So", "Ne"].map((day) => (
                   <div key={day} className="py-2 text-xs font-semibold uppercase text-white/40">
                     {day}
@@ -327,9 +327,9 @@ export default function BookingSelector({
                 ))}
               </div>
 
-              <div className="grid flex-1 auto-rows-fr grid-cols-7 gap-2 sm:gap-3">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
                 {blanks.map((_, index) => (
-                  <div key={`blank-${index}`} className="p-4" />
+                  <div key={`blank-${index}`} className="h-11 sm:h-14" />
                 ))}
 
                 {days.map((day) => {
@@ -342,7 +342,7 @@ export default function BookingSelector({
                       type="button"
                       disabled={!hasSlots}
                       onClick={() => handleDateSelect(dateKey)}
-                      className={`relative flex items-center justify-center rounded-2xl text-lg transition-all ${
+                      className={`relative flex h-11 items-center justify-center rounded-xl text-base transition-all sm:h-14 sm:rounded-2xl sm:text-lg ${
                         hasSlots
                           ? "cursor-pointer border border-transparent bg-white/5 font-medium text-white hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300"
                           : "cursor-not-allowed text-white/20"
@@ -350,7 +350,7 @@ export default function BookingSelector({
                     >
                       {day}
                       {hasSlots && (
-                        <span className="absolute bottom-2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
+                        <span className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-500" />
                       )}
                     </button>
                   );

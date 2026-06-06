@@ -121,13 +121,13 @@ export default function BookingTimeline({
 
   return (
     <aside className="space-y-6">
-      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
+      <section className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl sm:p-6">
         <div className="flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xl font-semibold text-white">Najblizsie aktivity</h2>
             <p className="text-sm capitalize text-white/45">{formatDayTitle(timelineDate)}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setTimelineDate((current) => addDays(current, -1))}
@@ -155,7 +155,7 @@ export default function BookingTimeline({
         </div>
 
         <div className="mt-6 space-y-4">
-          <div className="relative h-16 rounded-lg border border-white/10 bg-black/25 px-3">
+          <div className="relative h-16 overflow-hidden rounded-lg border border-white/10 bg-black/25 px-3">
             <div className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-white/12" />
             {[6, 10, 14, 18, 22].map((hour) => (
               <div
@@ -163,7 +163,13 @@ export default function BookingTimeline({
                 className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-white/20"
                 style={{ left: `${((hour - TIMELINE_START_HOUR) / (TIMELINE_END_HOUR - TIMELINE_START_HOUR)) * 100}%` }}
               >
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[11px] text-white/35">
+                <span className={`absolute -bottom-7 text-[11px] text-white/35 ${
+                  hour === TIMELINE_START_HOUR
+                    ? "left-0"
+                    : hour === TIMELINE_END_HOUR
+                      ? "right-0"
+                      : "left-1/2 -translate-x-1/2"
+                }`}>
                   {hour}:00
                 </span>
               </div>
@@ -186,7 +192,7 @@ export default function BookingTimeline({
             <div className="space-y-3 pt-4">
               {timelineItems.map((activity) => (
                 <div key={activity.id} className={`rounded-lg border px-4 py-3 ${activity.color}`}>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">{activity.label}</div>
                       <div className="text-xs opacity-75">
@@ -195,7 +201,7 @@ export default function BookingTimeline({
                           : "Farba patri tejto aktivite"}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
                       <div className="text-sm font-semibold">
                         {formatTime(activity.start_time)} - {formatTime(activity.end_time)}
                       </div>
@@ -230,13 +236,13 @@ export default function BookingTimeline({
         {upcomingPreview.length === 0 ? (
           <p className="mt-4 text-sm text-white/45">Ziadne najblizsie rezervacie.</p>
         ) : (
-          <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-3">
             {upcomingPreview.map((booking) => (
-              <div key={booking.id} className="flex items-center justify-between gap-3 text-sm">
+              <div key={booking.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <span className="min-w-0 truncate text-white/75">
                   {booking.bookable_services?.name ?? "Rezervacia"}
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                   <span className="text-white/45">
                     {formatDateTime(booking.start_time)}
                   </span>

@@ -370,7 +370,7 @@ export default async function StatsPage() {
 
       <main className="relative min-h-screen overflow-x-hidden bg-[#080808] px-4 pb-8 pt-28 sm:px-6 sm:pb-10 lg:px-8 lg:pb-12">
         <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
-        <div className="pointer-events-none absolute bottom-[-15%] right-[-10%] h-[520px] w-[520px] rounded-full bg-red-900/10 blur-[150px]" />
+        <div className="pointer-events-none absolute bottom-0 right-[-10%] h-[520px] w-[520px] translate-y-1/2 rounded-full bg-red-900/10 blur-[150px]" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 pb-4">
           <div>

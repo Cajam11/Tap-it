@@ -13,11 +13,14 @@ export default function SettingsLoading() {
 
         <section className="rounded-2xl border border-white/10 bg-[#0f0f0f]/80 p-6 backdrop-blur-xl">
           <div className="mb-4 h-4 w-20 rounded bg-white/10" />
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className="h-24 w-24 rounded-full bg-white/10" />
-            <div className="space-y-3 w-full">
-              <div className="h-3 w-16 rounded bg-white/10" />
-              <div className="h-5 w-64 max-w-full rounded bg-white/10" />
+          <div className="flex flex-col items-center sm:flex-row gap-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-24 w-24 rounded-full bg-white/10" />
+              <div className="h-9 w-28 rounded-xl bg-white/10" />
+            </div>
+            <div className="flex-1 self-center space-y-2 text-center sm:text-left sm:-mt-8">
+              <div className="mx-auto h-9 w-48 max-w-full rounded bg-white/10 sm:mx-0" />
+              <div className="mx-auto h-5 w-56 max-w-full rounded bg-white/10 sm:mx-0" />
             </div>
           </div>
         </section>

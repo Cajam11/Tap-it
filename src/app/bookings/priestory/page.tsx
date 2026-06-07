@@ -5,12 +5,6 @@ import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
 import Breadcrumb from "@/components/bookings/Breadcrumb";
 
-const FACILITY_PLACEHOLDER_IMAGES = [
-  "https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://images.unsplash.com/photo-1571019613545-996a6eec7f8b?w=1200&q=80",
-  "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80",
-] as const;
-
 const PRIESTORY_FILES = [
   "bedminton.avif",
   "multifunkcna-hala.jpg",
@@ -44,10 +38,8 @@ function getImageForService(name: string, index: number) {
     return `/priestory/${match}`;
   }
 
-  // fallback to one of the remote placeholders
-  return FACILITY_PLACEHOLDER_IMAGES[
-    index % FACILITY_PLACEHOLDER_IMAGES.length
-  ];
+  // fallback to one of the local images
+  return `/priestory/${files[index % files.length]}`;
 }
 
 type Service = {

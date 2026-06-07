@@ -253,6 +253,23 @@ def get_headers() -> dict[str, str]:
     }
 
 
+def ensure_user_verified(user_id: str) -> None:
+    endpoint = f"{SUPABASE_URL}/rest/v1/profiles"
+    params = {
+        "select": "is_verified",
+        "id": f"eq.{user_id}",
+        "limit": "1",
+    }
+
+    response = requests.get(endpoint, headers=get_headers(), params=params, timeout=5)
+    if response.status_code >= 400:
+        raise ScannerError(f"Profile verification query failed: {response.text}")
+
+    rows = response.json()
+    if not rows or rows[0].get("is_verified") is not True:
+        raise ScannerError("User is not verified")
+
+
 def get_open_entry(user_id: str) -> dict[str, Any] | None:
     endpoint = f"{SUPABASE_URL}/rest/v1/entries"
     params = {
@@ -403,6 +420,7 @@ def main() -> None:
                     payload = verify_qr_token(value)
                     user_id = str(payload["sub"])
 
+                    ensure_user_verified(user_id)
                     open_entry = get_open_entry(user_id)
                     if not open_entry:
                         raise ScannerError("No open check-in found")

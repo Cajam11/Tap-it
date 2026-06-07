@@ -11,6 +11,15 @@ declare
   v_new_remaining integer;
   v_entry_id uuid;
 begin
+  if not exists (
+    select 1
+    from public.profiles p
+    where p.id = p_user_id
+      and p.is_verified is true
+  ) then
+    raise exception 'user_not_verified';
+  end if;
+
   select
     um.id,
     um.membership_id,

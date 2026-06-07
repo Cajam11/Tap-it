@@ -181,6 +181,23 @@ def get_active_membership(user_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def ensure_user_verified(user_id: str) -> None:
+    endpoint = f"{SUPABASE_URL}/rest/v1/profiles"
+    params = {
+        "select": "is_verified",
+        "id": f"eq.{user_id}",
+        "limit": "1",
+    }
+
+    response = requests.get(endpoint, headers=get_headers(), params=params, timeout=5)
+    if response.status_code >= 400:
+        raise ScannerError(f"Profile verification query failed: {response.text}")
+
+    rows = response.json()
+    if not rows or rows[0].get("is_verified") is not True:
+        raise ScannerError("User is not verified")
+
+
 def check_in_with_membership(user_id: str) -> dict[str, Any]:
     endpoint = f"{SUPABASE_URL}/rest/v1/rpc/check_in_with_membership"
     payload = {"p_user_id": user_id}
@@ -391,6 +408,7 @@ def main() -> None:
                     payload = verify_qr_token(value)
                     user_id = str(payload["sub"])
 
+                    ensure_user_verified(user_id)
                     expire_overdue_memberships(user_id)
                     active_membership = get_active_membership(user_id)
                     if not active_membership:
@@ -421,6 +439,7 @@ def main() -> None:
                     payload = verify_qr_token(value)
                     user_id = str(payload["sub"])
 
+                    ensure_user_verified(user_id)
                     open_entry = get_open_entry(user_id)
                     if not open_entry:
                         raise ScannerError("No open check-in found")

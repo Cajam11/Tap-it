@@ -108,7 +108,8 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       );
     });
 
-  const userProfile = (
+  // Desktop: full two-row footer with the "Exit Admin" label (name has room)
+  const userProfileDesktop = (
     <div className="p-4 border-t border-white/10 space-y-3">
       <div className="flex items-center gap-3 px-2">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-sm">
@@ -126,6 +127,31 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
         <LogOut className="w-4 h-4" />
         <span>Exit Admin</span>
       </Link>
+    </div>
+  );
+
+  // Mobile: compact single row, icon-only exit with hover tooltip
+  const userProfileMobile = (
+    <div className="p-4 border-t border-white/10">
+      <div className="flex items-center justify-between gap-3 px-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-sm">
+            {userName?.charAt(0).toUpperCase() || "A"}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">{userName || "Admin User"}</p>
+            <p className="text-xs text-white/60 capitalize">{userRole}</p>
+          </div>
+        </div>
+        <Link
+          href="https://tap-it.sk"
+          title="Exit Admin"
+          aria-label="Exit Admin"
+          className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+        </Link>
+      </div>
     </div>
   );
 
@@ -147,7 +173,7 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
         <nav className="flex-1 px-3 py-6 space-y-2">{renderNavItems()}</nav>
 
         {/* User Profile */}
-        {userProfile}
+        {userProfileDesktop}
       </aside>
 
       {/* Mobile hamburger button */}
@@ -197,7 +223,7 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
         <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-2">{renderNavItems({ glow: true })}</nav>
 
         {/* User Profile */}
-        {userProfile}
+        {userProfileMobile}
       </aside>
     </>
   );

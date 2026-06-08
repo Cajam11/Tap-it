@@ -36,8 +36,31 @@ export default function AdminUsersLoading() {
         <div className="h-5 w-48 rounded bg-white/10" />
       </div>
 
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-2">
+                <div className="h-4 w-32 rounded bg-white/10" />
+                <div className="h-3 w-40 rounded bg-white/10" />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="h-6 w-16 rounded-full bg-white/10" />
+                <div className="h-4 w-4 rounded bg-white/10" />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="h-6 w-20 rounded-full bg-white/10" />
+              <div className="h-6 w-24 rounded-full bg-white/10" />
+              <div className="h-4 w-24 rounded bg-white/10" />
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+      <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
             <tr>

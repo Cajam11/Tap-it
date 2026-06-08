@@ -1,74 +1,74 @@
 export default function AdminDashboardLoading() {
   return (
-    <section className="space-y-8 pb-20 animate-pulse">
-      {/* Back Link Skeleton */}
-      <div className="pt-2">
-        <div className="h-4 w-32 rounded bg-white/10" />
+    <div className="flex flex-col md:h-full gap-6 animate-pulse">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-40 rounded bg-white/10" />
+          <div className="h-4 w-64 rounded bg-white/10" />
+        </div>
+        <div className="flex gap-3">
+          <div className="h-9 w-32 rounded-lg bg-white/10" />
+          <div className="h-9 w-28 rounded-lg bg-white/10" />
+        </div>
       </div>
 
-      {/* Main Cards - Live Occupancy & Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <article className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="h-6 w-48 rounded bg-white/10" />
-            <div className="h-6 w-20 rounded-full bg-white/10" />
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 flex-shrink-0">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-white/10 bg-white/[0.05] p-6"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="h-4 w-28 rounded bg-white/10" />
+              <div className="h-5 w-16 rounded-full bg-white/10" />
+            </div>
+            <div className="h-10 w-20 rounded bg-white/10" />
           </div>
-          <div className="h-32 w-full rounded-2xl bg-white/10" />
-        </article>
-
-        <article className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <div className="h-6 w-40 rounded bg-white/10 mb-6" />
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="h-10 w-10 rounded-full bg-white/10" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 w-24 rounded bg-white/10" />
-                    <div className="h-3 w-32 rounded bg-white/10" />
-                  </div>
-                </div>
-                <div className="h-6 w-16 rounded-full bg-white/10" />
-              </div>
-            ))}
-          </div>
-        </article>
+        ))}
       </div>
 
-      {/* Check In / Logs View */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <article className="lg:col-span-2 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <div className="mb-6">
-            <div className="h-7 w-56 rounded bg-white/10 mb-2" />
-            <div className="h-4 w-96 rounded bg-white/10" />
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3 md:flex-1 md:min-h-0">
+        {/* Visit Trend */}
+        <div className="lg:col-span-2 flex h-[360px] flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:h-full">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-5 w-40 rounded bg-white/10" />
+              <div className="h-3 w-24 rounded bg-white/10" />
+            </div>
+            <div className="h-8 w-24 rounded bg-white/10" />
           </div>
+          <div className="flex-1 rounded-2xl bg-white/[0.04]" />
+        </div>
 
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="h-10 w-10 rounded-lg bg-white/10" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 w-32 rounded bg-white/10" />
-                    <div className="h-3 w-24 rounded bg-white/10" />
-                  </div>
-                </div>
-                <div className="h-6 w-20 rounded-full bg-white/10" />
-              </div>
-            ))}
+        {/* Logs */}
+        <div className="flex h-[440px] flex-col rounded-3xl border border-white/10 bg-white/[0.05] p-6 md:h-full">
+          <div className="mb-4 flex items-start justify-between">
+            <div className="space-y-2">
+              <div className="h-4 w-28 rounded bg-white/10" />
+              <div className="h-3 w-20 rounded bg-white/10" />
+            </div>
+            <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
           </div>
-        </article>
-
-        {/* Sidebar Widget */}
-        <aside className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <div className="h-6 w-32 rounded bg-white/10 mb-6" />
-          <div className="space-y-3">
+          <div className="flex-1 space-y-2 overflow-hidden">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 rounded-lg bg-white/10" />
+              <div
+                key={i}
+                className="flex items-center gap-2.5 rounded-2xl px-2 py-1.5"
+              >
+                <div className="h-10 w-10 shrink-0 rounded-full bg-white/10" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3 w-28 rounded bg-white/10" />
+                  <div className="h-2.5 w-20 rounded bg-white/10" />
+                </div>
+                <div className="h-3 w-10 rounded bg-white/10" />
+              </div>
             ))}
           </div>
-        </aside>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

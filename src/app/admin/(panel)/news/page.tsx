@@ -20,24 +20,73 @@ export default async function NewsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
         <h1 className="text-2xl font-bold">News & Announcements</h1>
-        <Link 
-          href="/admin/news/create" 
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
+        <Link
+          href="/admin/news/create"
+          className="inline-flex w-fit items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
         >
           <Plus size={18} />
           <span>Add News</span>
         </Link>
       </div>
 
-      <div className="bg-[#1a1a1a] rounded-lg border border-white/10 overflow-hidden">
-        {news.length === 0 ? (
-          <div className="p-8 text-center text-zinc-400">
-            No news entries found. Click <span className="text-white">Add News</span> to create one.
+      {news.length === 0 ? (
+        <div className="bg-[#1a1a1a] rounded-lg border border-white/10 p-8 text-center text-zinc-400">
+          No news entries found. Click <span className="text-white">Add News</span> to create one.
+        </div>
+      ) : (
+        <>
+          {/* Mobile card list */}
+          <div className="space-y-3 md:hidden">
+            {news.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-white/10 bg-[#1a1a1a] p-4"
+              >
+                <div className="flex items-start gap-3">
+                  {item.image_url ? (
+                    <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded">
+                      <Image src={item.image_url} alt={item.title} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded bg-white/5 text-xs text-zinc-500">
+                      None
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-white">{item.title}</p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {item.valid_from && item.valid_to ? (
+                        <>{format(new Date(item.valid_from), "MMM d")} - {format(new Date(item.valid_to), "MMM d")}</>
+                      ) : (
+                        <span className="text-zinc-500">Always</span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {format(new Date(item.created_at), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end gap-3">
+                  <Link
+                    href={`/admin/news/edit/${item.id}`}
+                    className="p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <Edit size={16} />
+                  </Link>
+                  <form action={handleDelete}>
+                    <input type="hidden" name="id" value={item.id} />
+                    <DeleteNewsButton />
+                  </form>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : (
-          <table className="w-full text-left">
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-[#1a1a1a] rounded-lg border border-white/10 overflow-hidden">
+            <table className="w-full text-left">
             <thead className="bg-black/50 text-zinc-400 text-sm border-b border-white/10">
               <tr>
                 <th className="px-6 py-4 font-medium">Cover</th>
@@ -90,8 +139,9 @@ export default async function NewsPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

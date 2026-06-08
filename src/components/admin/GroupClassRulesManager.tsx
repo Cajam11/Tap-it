@@ -326,10 +326,10 @@ export default function GroupClassRulesManager({
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold">{service.name}</span>
-                      {serviceRules.length > 0 && <Check className="h-4 w-4 text-green-300" />}
+                      <span className="min-w-0 truncate text-sm font-semibold">{service.name}</span>
+                      {serviceRules.length > 0 && <Check className="h-4 w-4 shrink-0 text-green-300" />}
                     </div>
-                    <div className="mt-1 text-xs text-white/45">
+                    <div className="mt-1 break-words text-xs text-white/45">
                       {formatRuleSummary(serviceRules, trainers)}
                     </div>
                   </button>
@@ -490,7 +490,7 @@ function ClassForm({
 
       <div className="h-px bg-white/10" />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <label className="space-y-2">
           <span className="text-sm text-white/60">Instruktor</span>
           <select
@@ -513,7 +513,7 @@ function ClassForm({
             type="time"
             value={form.startTime}
             onChange={(event) => onUpdate("startTime", event.target.value)}
-            className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none focus:border-red-500"
+            className="h-11 w-full min-w-0 appearance-none rounded-lg border border-white/15 bg-black px-3 text-left text-sm text-white outline-none focus:border-red-500 [&::-webkit-date-and-time-value]:text-left"
           />
         </label>
 
@@ -523,7 +523,7 @@ function ClassForm({
             type="time"
             value={form.endTime}
             onChange={(event) => onUpdate("endTime", event.target.value)}
-            className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none focus:border-red-500"
+            className="h-11 w-full min-w-0 appearance-none rounded-lg border border-white/15 bg-black px-3 text-left text-sm text-white outline-none focus:border-red-500 [&::-webkit-date-and-time-value]:text-left"
           />
         </label>
       </div>
@@ -552,7 +552,7 @@ function ClassForm({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 pt-5 md:justify-between">
         <button
           type="button"
           onClick={onSave}

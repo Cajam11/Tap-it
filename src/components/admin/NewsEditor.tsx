@@ -101,14 +101,14 @@ export default function NewsEditor({ initialData, onSubmit }: NewsEditorProps) {
         </div>
 
         {/* Dates */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-1">Valid From (Optional)</label>
             <input
               type="datetime-local"
               value={validFrom}
               onChange={(e) => setValidFrom(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-red-500 transition-colors [color-scheme:dark]"
+              className="w-full min-w-0 appearance-none bg-[#1a1a1a] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-red-500 transition-colors [color-scheme:dark]"
             />
           </div>
           <div>
@@ -117,7 +117,7 @@ export default function NewsEditor({ initialData, onSubmit }: NewsEditorProps) {
               type="datetime-local"
               value={validTo}
               onChange={(e) => setValidTo(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-red-500 transition-colors [color-scheme:dark]"
+              className="w-full min-w-0 appearance-none bg-[#1a1a1a] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-red-500 transition-colors [color-scheme:dark]"
             />
           </div>
         </div>
@@ -126,15 +126,15 @@ export default function NewsEditor({ initialData, onSubmit }: NewsEditorProps) {
         <div>
           <label className="block text-sm font-medium text-zinc-400 mb-1">Cover Image (Optional)</label>
           
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4">
             <label className="cursor-pointer bg-white/5 border border-white/10 border-dashed rounded-lg p-6 flex-1 flex flex-col items-center justify-center hover:bg-white/10 transition-colors h-40">
               <span className="text-zinc-400 mb-2">Click to upload image</span>
               <span className="text-xs text-zinc-600">JPEG, PNG, WEBP</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             </label>
-            
+
             {imagePreview && (
-              <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-white/10 shrink-0">
+              <div className="relative w-full sm:w-64 h-40 rounded-lg overflow-hidden border border-white/10 shrink-0">
                 <Image src={imagePreview} alt="Preview" fill className="object-cover" />
               </div>
             )}
@@ -146,7 +146,7 @@ export default function NewsEditor({ initialData, onSubmit }: NewsEditorProps) {
           <label className="block text-sm font-medium text-zinc-400 mb-1">Content</label>
           <div className="bg-[#1a1a1a] border border-white/10 rounded-lg overflow-hidden focus-within:border-red-500 transition-colors">
             {editor && (
-              <div className="bg-black/50 border-b border-white/10 p-2 flex gap-1 items-center">
+              <div className="bg-black/50 border-b border-white/10 p-2 flex flex-wrap gap-1 items-center">
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleBold().run()}

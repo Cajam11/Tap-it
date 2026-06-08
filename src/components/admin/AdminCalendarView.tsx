@@ -145,7 +145,7 @@ export default function AdminCalendarView({
                     setSelectedDay({ date: day, bookings: dayBookings });
                   }
                 }}
-                className={`h-[96px] overflow-hidden p-1.5 border-r border-b border-white/5 text-left transition-colors ${
+                className={`h-[68px] sm:h-[96px] overflow-hidden p-1 sm:p-1.5 border-r border-b border-white/5 text-left transition-colors ${
                   !isSelectedMonth
                     ? "bg-white/[0.01] text-white/30"
                     : "bg-[#1a1a1a] text-white/80"
@@ -156,9 +156,9 @@ export default function AdminCalendarView({
                     : undefined
                 }
               >
-                <div className="flex justify-between items-start mb-1">
+                <div className="flex justify-center items-start mb-1">
                   <span
-                    className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${
+                    className={`text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${
                       isToday(day) ? "bg-red-600 text-white" : ""
                     }`}
                   >
@@ -166,13 +166,18 @@ export default function AdminCalendarView({
                   </span>
                 </div>
 
-                <div className="max-h-[62px] overflow-hidden">
-                  {dayHasBookings && (
-                    <div className="inline-flex rounded-md border border-green-500/40 bg-green-500/15 px-2 py-1 text-[11px] font-semibold text-green-300">
+                {dayHasBookings && (
+                  <div className="flex justify-center overflow-hidden">
+                    {/* Mobile: compact count */}
+                    <span className="sm:hidden inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md border border-green-500/40 bg-green-500/15 px-1 text-[11px] font-semibold text-green-300">
+                      {dayBookings.length}
+                    </span>
+                    {/* Desktop: full label */}
+                    <span className="hidden sm:inline-flex rounded-md border border-green-500/40 bg-green-500/15 px-2 py-1 text-[11px] font-semibold text-green-300">
                       {formatReservationCount(dayBookings.length)}
-                    </div>
-                  )}
-                </div>
+                    </span>
+                  </div>
+                )}
               </button>
             );
           })}

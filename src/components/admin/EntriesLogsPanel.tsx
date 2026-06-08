@@ -218,7 +218,7 @@ export default function EntriesLogsPanel({
       className={
         isCard
           ? "flex h-full flex-col rounded-3xl border border-white/10 bg-white/[0.05] p-6"
-          : "h-full w-[380px] shrink-0 border-l border-white/5 bg-[#0b0b0c] p-3"
+          : "h-[440px] w-full shrink-0 border-t border-white/5 bg-[#0b0b0c] p-3 md:h-full md:w-[380px] md:border-l md:border-t-0"
       }
     >
       <div

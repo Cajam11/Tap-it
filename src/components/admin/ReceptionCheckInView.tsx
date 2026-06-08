@@ -142,19 +142,19 @@ export default function ReceptionCheckInView({ initialLatestEntry }: ReceptionCh
         <p className="text-xs text-white/40">{isRealtimeConnected ? "🟢 Realtime pripojené" : "🔄 Pripájam realtime..."}</p>
       </div>
 
-      <div className="mt-5 flex flex-1 items-start gap-8 lg:gap-10">
-        <div className="flex-shrink-0">
+      <div className="mt-5 flex flex-1 flex-col items-start gap-6 md:flex-row md:gap-8 lg:gap-10">
+        <div className="mx-auto flex-shrink-0 md:mx-0">
             {latestEntry.avatar_url ? (
               <Image
                 src={latestEntry.avatar_url}
                 alt={latestEntry.full_name || "User"}
                 width={512}
                 height={512}
-                className="h-[28rem] w-[28rem] rounded-[28px] border border-white/15 object-cover shadow-[0_20px_70px_rgba(0,0,0,0.45)]"
+                className="h-56 w-56 rounded-[28px] border border-white/15 object-cover shadow-[0_20px_70px_rgba(0,0,0,0.45)] sm:h-72 sm:w-72 md:h-[28rem] md:w-[28rem]"
               />
             ) : (
-              <div className="flex h-[28rem] w-[28rem] items-center justify-center rounded-[28px] border border-white/15 bg-gradient-to-br from-white/10 to-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
-                <span className="text-[10rem] font-bold text-white/90 leading-none">
+              <div className="flex h-56 w-56 items-center justify-center rounded-[28px] border border-white/15 bg-gradient-to-br from-white/10 to-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)] sm:h-72 sm:w-72 md:h-[28rem] md:w-[28rem]">
+                <span className="text-7xl font-bold text-white/90 leading-none sm:text-8xl md:text-[10rem]">
                   {latestEntry.full_name?.charAt(0).toUpperCase() || "?"}
                 </span>
               </div>

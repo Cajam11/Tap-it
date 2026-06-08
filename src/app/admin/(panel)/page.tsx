@@ -70,9 +70,9 @@ export default async function AdminDashboardPage() {
     }
 
     return (
-      <div className="flex h-full min-w-0 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden pr-2">
-          <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:h-full min-w-0 md:overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 md:overflow-hidden md:pr-2">
+          <div className="md:min-h-0 md:flex-1 md:overflow-hidden">
             <ReceptionCheckInView initialLatestEntry={null} />
           </div>
           <LiveOccupancyCard
@@ -154,9 +154,9 @@ export default async function AdminDashboardPage() {
   const weeklyVisitsTotal = dailyVisitSeries.reduce((sum, day) => sum + day.value, 0);
   const dailyVisitsAverage = Math.round((weeklyVisitsTotal / dailyVisitSeries.length) * 10) / 10;
     return (
-      <div className="flex flex-col h-full gap-6">
+      <div className="flex flex-col md:h-full gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
             <p className="text-white/60 mt-2">Real-time stats for Tap-it Gym activity.</p>
@@ -211,9 +211,9 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-3 flex-1 min-h-0 overflow-hidden">
+        <div className="grid gap-6 lg:grid-cols-3 md:flex-1 md:min-h-0 md:overflow-hidden">
           {/* Daily Visit Activity */}
-          <div className="lg:col-span-2 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.2)] flex flex-col h-full min-h-0">
+          <div className="lg:col-span-2 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.2)] flex flex-col h-[360px] md:h-full md:min-h-0">
             <div className="mb-5 flex items-start justify-between gap-4 flex-shrink-0">
               <div>
                 <h3 className="text-lg font-semibold text-white">7-Day Visit Trend</h3>
@@ -233,7 +233,7 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-col h-full min-h-0">
+          <div className="flex flex-col h-[440px] md:h-full md:min-h-0">
             <EntriesLogsPanel variant="card" />
           </div>
         </div>

@@ -176,7 +176,73 @@ export function VerificationQueueClient() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {loading && rows.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Loading users...
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Žiadni neoverení používatelia.
+          </div>
+        ) : (
+          rows.map((row) => (
+            <div
+              key={row.id}
+              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/users/${row.id}`}
+                    className="block truncate font-semibold text-white hover:underline underline-offset-4 transition-[text-decoration]"
+                  >
+                    {row.full_name ?? '-'}
+                  </Link>
+                  {row.email ? (
+                    <Link
+                      href={`mailto:${row.email}`}
+                      className="block truncate text-sm text-white/60 hover:underline underline-offset-4 transition-[text-decoration]"
+                    >
+                      {row.email}
+                    </Link>
+                  ) : (
+                    <p className="truncate text-sm text-white/60">-</p>
+                  )}
+                </div>
+                <span className="shrink-0 inline-flex rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70">
+                  {roleLabel(row.role)}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-1 font-medium ${row.onboarding_completed ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/40 bg-amber-500/10 text-amber-300'}`}
+                >
+                  {row.onboarding_completed ? 'Onboarding dokončený' : 'Onboarding nedokončený'}
+                </span>
+                <span className="text-white/45">{formatDate(row.created_at)}</span>
+              </div>
+
+              <form onSubmit={handleVerify} className="mt-auto">
+                <input type="hidden" name="userId" value={row.id} />
+                <input type="hidden" name="isVerified" value="true" />
+                <button
+                  type="submit"
+                  disabled={savingUserId === row.id}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {savingUserId === row.id ? 'Ukladám...' : 'Potvrdiť verifikáciu'}
+                </button>
+              </form>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
             <tr>

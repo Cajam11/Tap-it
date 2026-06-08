@@ -167,3 +167,55 @@ export interface GymNews {
   created_at: string;
   updated_at: string;
 }
+
+export type StaffShiftStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type StaffShiftSeriesStatus = "active" | "cancelled";
+
+export interface StaffShiftCoverageRule {
+  id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  required_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffShiftSeries {
+  id: string;
+  assignee_id: string;
+  created_by: string;
+  start_date: string;
+  end_date: string;
+  days_of_week: number[];
+  start_time: string;
+  end_time: string;
+  status: StaffShiftSeriesStatus;
+  cancelled_by: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+}
+
+export interface StaffShift {
+  id: string;
+  assignee_id: string;
+  series_id: string | null;
+  work_date: string;
+  start_time: string;
+  end_time: string;
+  status: StaffShiftStatus;
+  requested_by: string;
+  created_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  cancelled_by: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}

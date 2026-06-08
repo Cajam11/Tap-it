@@ -34,6 +34,20 @@ type RecurringRule = {
   active_until: string | null;
 };
 
+type BookingItem = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  bookable_services?: {
+    name: string;
+  };
+  profiles?: {
+    full_name: string | null;
+    email?: string | null;
+  };
+};
+
 export default async function AdminBookingsPage() {
   const supabase = await createClient();
   const adminContext = await getCurrentAdminContext(supabase);
@@ -94,7 +108,7 @@ export default async function AdminBookingsPage() {
 
   return (
     <AdminBookingsWorkspace
-      bookings={bookings || []}
+      bookings={(bookings ?? []) as unknown as BookingItem[]}
       services={typedGroupServices}
       trainers={typedTrainers}
       rules={typedRecurringRules}

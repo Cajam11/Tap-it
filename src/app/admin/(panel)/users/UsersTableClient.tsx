@@ -7,7 +7,7 @@ import {
   updateUserRoleWithFeedback,
   updateUserVerifiedWithFeedback,
 } from "./actions";
-import { Search, X } from "lucide-react";
+import { Search, X, ChevronRight } from "lucide-react";
 
 const ALLOWED_ROLES = [
   "user",
@@ -182,7 +182,7 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-5">
+    <section className="flex flex-col gap-5 md:h-full md:min-h-0">
       <div>
         <h2 className="text-2xl font-bold">Users</h2>
         <p className="mt-1 text-white/70">
@@ -307,7 +307,63 @@ export function UsersTableClient({ isOwner }: UsersTableClientProps) {
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {loading && rows.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Loading users...
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Zatial tu nie su ziadne profily.
+          </div>
+        ) : (
+          rows.map((row) => {
+            const safeRole = normalizeRole(row.role);
+            return (
+              <Link
+                key={row.id}
+                href={`/admin/users/${row.id}`}
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.05]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-white">
+                      {row.full_name ?? "-"}
+                    </p>
+                    <p className="truncate text-sm text-white/60">
+                      {row.email ?? "-"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${roleBadgeClass(safeRole)}`}
+                    >
+                      {safeRole}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 font-medium ${row.is_verified ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-300" : "border-amber-400/40 bg-amber-500/10 text-amber-300"}`}
+                  >
+                    {row.is_verified ? "Overený" : "Neoverený"}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 font-medium ${row.onboarding_completed ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-300" : "border-amber-400/40 bg-amber-500/10 text-amber-300"}`}
+                  >
+                    {row.onboarding_completed ? "Dokonceny" : "Nedokonceny"}
+                  </span>
+                  <span className="text-white/45">{formatDate(row.created_at)}</span>
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden md:block md:min-h-0 md:flex-1 md:overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
             <tr>

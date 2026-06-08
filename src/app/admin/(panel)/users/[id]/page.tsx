@@ -12,6 +12,22 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import { manualCheckOutUser } from "./actions";
+import { UserAdminControls } from "./UserAdminControls";
+
+const ALLOWED_ROLES = [
+  "user",
+  "recepcny",
+  "manager",
+  "owner",
+  "trainer",
+] as const;
+type AllowedRole = (typeof ALLOWED_ROLES)[number];
+
+function normalizeRole(role: string | null | undefined): AllowedRole {
+  return role && (ALLOWED_ROLES as readonly string[]).includes(role)
+    ? (role as AllowedRole)
+    : "user";
+}
 
 function splitStoredAddress(value: string | null | undefined) {
   const raw = (value ?? "").trim();
@@ -57,6 +73,8 @@ export default async function AdminUserProfilePage({
   if (!hasAccess) {
     redirect("/");
   }
+
+  const isOwner = await hasServerAdminAccess(supabase, "owner");
 
   const admin = createAdminClient();
 
@@ -408,6 +426,21 @@ export default async function AdminUserProfilePage({
           </div>
         </div>
       </article>
+
+      {/* Admin controls (owner only) */}
+      {isOwner && (
+        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+          <h3 className="text-lg font-bold text-white">Správa používateľa</h3>
+          <p className="mt-1 text-sm text-white/55">
+            Zmena roly a overenia účtu.
+          </p>
+          <UserAdminControls
+            userId={profile.id}
+            currentRole={normalizeRole(profile.role)}
+            isVerified={!!profile.is_verified}
+          />
+        </article>
+      )}
 
       {/* Feeds */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">

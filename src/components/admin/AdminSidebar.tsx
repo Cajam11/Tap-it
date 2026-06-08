@@ -21,6 +21,17 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
     setOpen(false);
   }, [pathname]);
 
+  // Lock background scroll while the drawer is open so the page behind it
+  // can't scroll/reveal underneath (and Android's address bar stays put)
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [open]);
+
   const navItems = [
     {
       label: "Dashboard",
@@ -148,14 +159,14 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       <div
         onClick={() => setOpen(false)}
         aria-hidden="true"
-        className={`md:hidden fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 ${
+        className={`md:hidden fixed inset-0 z-[55] bg-black/60 transition-opacity duration-300 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
 
       {/* Mobile drawer */}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 z-50 flex w-[82%] max-w-xs flex-col bg-[#0d0d0d] shadow-[0_0_60px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out ${
+        className={`md:hidden fixed inset-y-0 left-0 z-[60] flex w-[82%] max-w-xs flex-col bg-[#0d0d0d] shadow-[0_0_60px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

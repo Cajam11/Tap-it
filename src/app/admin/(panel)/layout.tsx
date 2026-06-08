@@ -25,8 +25,8 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   return (
     <div className="flex h-screen overflow-hidden bg-[#080808] text-white">
       <AdminSidebar userRole={context.role || "user"} userName={profile?.full_name} />
-      <main className="min-w-0 flex-1 overflow-y-auto md:overflow-hidden">
-        <div className="p-6 pt-20 md:pt-6 md:h-full md:overflow-hidden">{children}</div>
+      <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto md:overflow-hidden">
+        <div className="p-6 pt-20 md:pt-6 md:h-full md:overflow-x-hidden md:overflow-y-auto">{children}</div>
       </main>
     </div>
   );

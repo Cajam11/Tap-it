@@ -68,7 +68,7 @@ export default function AdminBookingsWorkspace({
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="mb-2 text-3xl font-bold text-white">Bookings & Calendar</h1>
@@ -76,7 +76,7 @@ export default function AdminBookingsWorkspace({
             Manage all bookings, classes, and schedules across the gym.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setPanelMode("calendar")}
@@ -114,7 +114,7 @@ export default function AdminBookingsWorkspace({
         </div>
       </div>
 
-      <div className="h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+      <div className="md:h-[calc(100vh-12rem)] md:overflow-y-auto md:pr-2">
         {panelMode === "calendar" ? (
           <AdminCalendarView initialBookings={bookings} />
         ) : (

@@ -272,7 +272,83 @@ export function MembershipsSearchClient() {
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {loading && profiles.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Loading memberships...
+          </div>
+        ) : profiles.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-6 text-center text-white/50">
+            Zatial tu nie su ziadne profily.
+          </div>
+        ) : (
+          profiles.map((profile) => {
+            const membership = membershipsByUserId.get(profile.id);
+            const hasCurrentMembership =
+              membership && !isExpiredMembership(membership);
+            const membershipRecord = hasCurrentMembership
+              ? getMembershipRecord(membership?.membership)
+              : null;
+            const currentMembershipPlan =
+              getMembershipPlanKey(membershipRecord);
+
+            return (
+              <div
+                key={profile.id}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/admin/users/${profile.id}`}
+                      className="block truncate font-semibold text-white hover:underline underline-offset-4 transition-[text-decoration]"
+                    >
+                      {profile.full_name ?? "-"}
+                    </Link>
+                    <Link
+                      href={`/admin/users/${profile.id}`}
+                      className="block truncate text-sm text-white/60 hover:underline underline-offset-4 transition-[text-decoration]"
+                    >
+                      {profile.email ?? "-"}
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleOpenModal(
+                        profile.id,
+                        profile.full_name || "",
+                        currentMembershipPlan,
+                      )
+                    }
+                    className="shrink-0 rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+                  >
+                    Change
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 font-medium ${hasCurrentMembership ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-300" : "border-white/20 bg-white/5 text-white/60"}`}
+                  >
+                    {membershipRecord?.name ?? "none"}
+                  </span>
+                  {hasCurrentMembership ? (
+                    <span className="text-white/45">
+                      {formatDate(membership!.start_date)}
+                      {membership!.end_date
+                        ? ` – ${formatDate(membership!.end_date)}`
+                        : ""}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden md:block min-h-0 flex-1 overflow-auto rounded-2xl border border-white/10 bg-white/[0.02] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/[0.03] text-white/70">
             <tr>

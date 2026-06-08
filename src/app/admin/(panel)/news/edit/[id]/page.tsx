@@ -24,7 +24,7 @@ export default async function EditNewsPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col md:h-screen">
       <div className="p-6 border-b border-white/10 flex-shrink-0">
         <Link 
           href="/admin/news" 
@@ -36,7 +36,7 @@ export default async function EditNewsPage({ params }: { params: Promise<{ id: s
         <h1 className="text-2xl font-bold">Edit Announcement</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 p-6 md:overflow-y-auto">
         <NewsEditor initialData={news} onSubmit={handleSubmit} />
       </div>
     </div>

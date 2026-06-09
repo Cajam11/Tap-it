@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck, CalendarHeart, MapPinned, Menu, X, CalendarClock } from "lucide-react";
+import { signOutAdmin } from "@/app/admin/actions";
 import { hasMinAdminRole } from "@/lib/admin-authz";
 import type { UserRole } from "@/lib/types";
 
@@ -119,13 +120,15 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
           <p className="text-xs text-white/60 capitalize">{userRole}</p>
         </div>
       </div>
-      <Link
-        href="https://tap-it.sk"
-        className="flex items-center gap-3 px-4 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors text-sm w-full"
-      >
-        <LogOut className="w-4 h-4" />
-        <span>Exit Admin</span>
-      </Link>
+      <form action={signOutAdmin}>
+        <button
+          type="submit"
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left text-sm text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Exit Admin</span>
+        </button>
+      </form>
     </div>
   );
 

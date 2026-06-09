@@ -33,3 +33,10 @@ export async function signInAdmin(_prev: AdminAuthState, formData: FormData): Pr
 
   redirect("/admin");
 }
+
+export async function signOutAdmin() {
+  const supabase = await createClient();
+
+  await supabase.auth.signOut();
+  redirect("/admin/login");
+}

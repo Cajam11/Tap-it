@@ -1325,8 +1325,8 @@ function ShiftVisualization({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[980px]">
+      <div className="overflow-hidden">
+        <div className="w-full">
           <div className="relative">
             {currentTimeLeft !== null && currentTimeLabelLeft !== null ? (
               <div className="pointer-events-none absolute bottom-0 left-48 right-0 top-0 z-20" aria-hidden="true">

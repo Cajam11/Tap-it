@@ -169,6 +169,7 @@ export default function AdminShiftsWorkspace({
   const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
   const [reasonText, setReasonText] = useState("");
   const [selfForm, setSelfForm] = useState({ startTime: "08:00", endTime: "14:00" });
+  const [selectedSlotRange, setSelectedSlotRange] = useState<{ start: number; end: number } | null>(null);
   const [assignForm, setAssignForm] = useState<ShiftFormState>({
     assigneeId: staff[0]?.id ?? "",
     startTime: "08:00",
@@ -411,15 +412,46 @@ export default function AdminShiftsWorkspace({
 
   const selectCalendarDay = (dateKey: string) => {
     setSelectedDateKey(dateKey);
+    setSelectedSlotRange(null);
     setDayDetailOpen(true);
   };
 
   const moveSelectedDate = (days: number) => {
     setSelectedDateKey((current) => addDays(current, days));
+    setSelectedSlotRange(null);
     setDayDetailOpen(true);
   };
 
+  const selectShiftSlot = (slotStart: number, slotEnd: number) => {
+    const currentIsSingleSlot = selectedSlotRange ? selectedSlotRange.end - selectedSlotRange.start === 30 : true;
+    const clickedInsideCurrentRange = selectedSlotRange
+      ? slotStart >= selectedSlotRange.start && slotEnd <= selectedSlotRange.end
+      : false;
+    const nextRange =
+      !selectedSlotRange || (clickedInsideCurrentRange && !currentIsSingleSlot)
+        ? { start: slotStart, end: slotEnd }
+        : {
+            start: Math.min(selectedSlotRange.start, slotStart),
+            end: Math.max(selectedSlotRange.end, slotEnd),
+          };
+    const slotTimes = {
+      startTime: timeLabel(nextRange.start),
+      endTime: timeLabel(nextRange.end),
+    };
+
+    setSelectedSlotRange(nextRange);
+
+    if (canManage) {
+      setAssignForm((current) => ({ ...current, ...slotTimes }));
+      return;
+    }
+
+    setSelfForm((current) => ({ ...current, ...slotTimes }));
+  };
+
   const selectedCoverage = getDayCoverage(selectedDateKey);
+  const selectedFormStartTime = canManage ? assignForm.startTime : selfForm.startTime;
+  const selectedFormEndTime = canManage ? assignForm.endTime : selfForm.endTime;
 
   return (
     <div className="flex min-h-full flex-col gap-6 p-8">
@@ -516,6 +548,11 @@ export default function AdminShiftsWorkspace({
                 selectedRules={selectedRules}
                 staffById={staffById}
                 canManage={canManage}
+                selectedStartTime={selectedFormStartTime}
+                selectedEndTime={selectedFormEndTime}
+                selectedSlotStart={selectedSlotRange?.start ?? null}
+                selectedSlotEnd={selectedSlotRange?.end ?? null}
+                onSelectSlot={selectShiftSlot}
               />
 
               <div className="space-y-4">
@@ -873,6 +910,11 @@ export default function AdminShiftsWorkspace({
                   selectedRules={selectedRules}
                   staffById={staffById}
                   canManage={canManage}
+                  selectedStartTime={selectedFormStartTime}
+                  selectedEndTime={selectedFormEndTime}
+                  selectedSlotStart={selectedSlotRange?.start ?? null}
+                  selectedSlotEnd={selectedSlotRange?.end ?? null}
+                  onSelectSlot={selectShiftSlot}
                 />
 
                 <DayShiftCards
@@ -1068,25 +1110,42 @@ function DayTimelinePanel({
   selectedRules,
   staffById,
   canManage,
+  selectedStartTime,
+  selectedEndTime,
+  selectedSlotStart,
+  selectedSlotEnd,
+  onSelectSlot,
 }: {
   activeShifts: StaffShift[];
   selectedRules: StaffShiftCoverageRule[];
   staffById: Map<string, StaffOption>;
   canManage: boolean;
+  selectedStartTime: string;
+  selectedEndTime: string;
+  selectedSlotStart: number | null;
+  selectedSlotEnd: number | null;
+  onSelectSlot: (slotStart: number, slotEnd: number) => void;
 }) {
+  const slots = Array.from({ length: 32 }, (_, index) => OPEN_MINUTES + index * 30);
+
   return (
-    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+    <section className="rounded-xl border border-white/10 bg-[#121212] p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Clock3 className="h-4 w-4 text-red-300" />
-          <h3 className="text-sm font-semibold text-white">Casy dna</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Casy dna</h3>
+            <p className="mt-1 text-xs text-white/40">Vybrany cas: {selectedStartTime} - {selectedEndTime}</p>
+          </div>
         </div>
         <span className="text-xs text-white/40">06:00 - 22:00</span>
       </div>
 
-      <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
-        {Array.from({ length: 32 }, (_, index) => OPEN_MINUTES + index * 30).map((slotStart) => {
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+        {slots.map((slotStart) => {
           const slotEnd = slotStart + 30;
+          const slotStartLabel = timeLabel(slotStart);
+          const slotEndLabel = timeLabel(slotEnd);
           const slotShifts = activeShifts.filter((shift) => overlapsSlot(shift, slotStart, slotEnd));
           const rule = selectedRules.find(
             (item) => minutesFromTime(item.start_time) <= slotStart && minutesFromTime(item.end_time) >= slotEnd,
@@ -1095,41 +1154,54 @@ function DayTimelinePanel({
           const pendingCount = slotShifts.filter((shift) => shift.status === "pending").length;
           const hasGap = Boolean(rule && approvedCount < rule.required_count);
           const hasPendingGap = hasGap && pendingCount > 0;
+          const isSelected =
+            selectedSlotStart !== null &&
+            selectedSlotEnd !== null &&
+            slotStart >= selectedSlotStart &&
+            slotEnd <= selectedSlotEnd;
+          const statusText =
+            canManage && hasGap ? (hasPendingGap ? "pending" : "diera") : slotShifts.length > 0 ? "obsadene" : "volne";
+          const tone = isSelected
+            ? "border-red-500/60 bg-red-500/20 text-white shadow-[0_10px_24px_rgba(239,68,68,0.18)]"
+            : canManage && hasGap
+              ? hasPendingGap
+                ? "border-amber-500/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
+                : "border-red-500/25 bg-red-500/10 text-red-100 hover:bg-red-500/15"
+              : slotShifts.length > 0
+                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/15"
+                : "border-white/10 bg-white/[0.04] text-white/70 hover:border-white/20 hover:bg-white/[0.08] hover:text-white";
 
           return (
-            <div
+            <button
               key={slotStart}
-              className={`rounded-lg border p-3 ${
-                canManage && hasGap
-                  ? hasPendingGap
-                    ? "border-amber-500/25 bg-amber-500/10"
-                    : "border-red-500/25 bg-red-500/10"
-                  : "border-white/10 bg-black/20"
-              }`}
+              type="button"
+              onClick={() => onSelectSlot(slotStart, slotEnd)}
+              aria-pressed={isSelected}
+              className={`min-h-[5.75rem] rounded-xl border p-3 text-left transition-all ${tone}`}
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold tabular-nums text-white">
-                  {timeLabel(slotStart)} - {timeLabel(slotEnd)}
-                </p>
-                {canManage && hasGap ? (
-                  <span className={`text-xs font-semibold ${hasPendingGap ? "text-amber-200" : "text-red-200"}`}>
-                    {hasPendingGap ? "pending" : "diera"}
-                  </span>
-                ) : (
-                  <span className="text-xs text-white/35">{slotShifts.length > 0 ? "obsadene" : "volne"}</span>
-                )}
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-bold tabular-nums">{slotStartLabel}</p>
+                <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80">
+                  {statusText}
+                </span>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <p className="mt-1 text-xs tabular-nums opacity-60">do {slotEndLabel}</p>
+
+              {slotShifts.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
                 {slotShifts.map((shift) => (
                   <span
                     key={shift.id}
-                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${statusTone(shift.status)}`}
+                    className={`max-w-full truncate rounded-md border px-2 py-1 text-[11px] font-semibold ${statusTone(shift.status)}`}
                   >
                     {formatStaffName(staffById.get(shift.assignee_id))}
                   </span>
                 ))}
-              </div>
-            </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs opacity-45">{rule ? `Potrebne: ${rule.required_count}` : "Bez pravidla"}</p>
+              )}
+            </button>
           );
         })}
       </div>

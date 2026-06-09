@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   addMonths,
@@ -1262,11 +1262,33 @@ function ShiftVisualization({
   onNextDay: () => void;
   onDateChange: (dateKey: string) => void;
 }) {
+  const [now, setNow] = useState<Date | null>(null);
   const activeShifts = selectedDayShifts.filter(
     (shift) => shift.status === "pending" || shift.status === "approved",
   );
   const hourMarks = Array.from({ length: 9 }, (_, index) => OPEN_MINUTES + index * 120);
   const totalMinutes = CLOSE_MINUTES - OPEN_MINUTES;
+  const currentMinutes = now ? now.getHours() * 60 + now.getMinutes() : null;
+  const currentTimeLabel = currentMinutes === null ? "" : timeLabel(currentMinutes);
+  const currentTimeLeft =
+    now !== null &&
+    currentMinutes !== null &&
+    selectedDateKey === toDateKey(now) &&
+    currentMinutes >= OPEN_MINUTES &&
+    currentMinutes <= CLOSE_MINUTES
+      ? ((currentMinutes - OPEN_MINUTES) / totalMinutes) * 100
+      : null;
+  const currentTimeLabelLeft = currentTimeLeft === null ? null : Math.min(98, Math.max(2, currentTimeLeft));
+
+  useEffect(() => {
+    setNow(new Date());
+
+    const interval = window.setInterval(() => {
+      setNow(new Date());
+    }, 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -1305,72 +1327,89 @@ function ShiftVisualization({
 
       <div className="overflow-x-auto">
         <div className="min-w-[980px]">
-          <div className="grid grid-cols-[12rem_minmax(0,1fr)] border-b border-white/10 pb-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-white/35">Admin</div>
-            <div className="relative h-8">
-              {hourMarks.map((minutes) => {
-                const left = ((minutes - OPEN_MINUTES) / totalMinutes) * 100;
+          <div className="relative">
+            {currentTimeLeft !== null && currentTimeLabelLeft !== null ? (
+              <div className="pointer-events-none absolute bottom-0 left-48 right-0 top-0 z-20" aria-hidden="true">
+                <span
+                  className="absolute bottom-0 top-0 w-px bg-red-500 shadow-[0_0_18px_rgba(239,68,68,0.75)]"
+                  style={{ left: `${currentTimeLeft}%` }}
+                />
+                <span
+                  className="absolute -translate-x-1/2 rounded-full border border-red-300/70 bg-red-600 px-2.5 py-1 text-xs font-bold tabular-nums text-white shadow-[0_8px_22px_rgba(239,68,68,0.55)]"
+                  style={{ left: `${currentTimeLabelLeft}%` }}
+                >
+                  {currentTimeLabel}
+                </span>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-[12rem_minmax(0,1fr)] border-b border-white/10 pb-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-white/35">Admin</div>
+              <div className="relative h-8">
+                {hourMarks.map((minutes) => {
+                  const left = ((minutes - OPEN_MINUTES) / totalMinutes) * 100;
+                  return (
+                    <span
+                      key={minutes}
+                      className="absolute top-0 -translate-x-1/2 text-xs font-semibold tabular-nums text-white/40"
+                      style={{ left: `${left}%` }}
+                    >
+                      {timeLabel(minutes)}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="divide-y divide-white/10">
+              {staff.map((staffMember) => {
+                const staffShifts = activeShifts.filter((shift) => shift.assignee_id === staffMember.id);
+
                 return (
-                  <span
-                    key={minutes}
-                    className="absolute top-0 -translate-x-1/2 text-xs font-semibold tabular-nums text-white/40"
-                    style={{ left: `${left}%` }}
-                  >
-                    {timeLabel(minutes)}
-                  </span>
+                  <div key={staffMember.id} className="grid grid-cols-[12rem_minmax(0,1fr)] py-3">
+                    <div className="min-w-0 pr-4">
+                      <p className="truncate text-sm font-semibold text-white">{formatStaffName(staffMember)}</p>
+                      <p className="mt-1 text-xs text-white/40">{staffMember.role}</p>
+                    </div>
+                    <div className="relative h-16 rounded-lg border border-white/10 bg-black/25">
+                      {hourMarks.map((minutes) => {
+                        const left = ((minutes - OPEN_MINUTES) / totalMinutes) * 100;
+                        return (
+                          <span
+                            key={minutes}
+                            className="absolute inset-y-0 w-px bg-white/[0.06]"
+                            style={{ left: `${left}%` }}
+                          />
+                        );
+                      })}
+                      {staffShifts.map((shift) => {
+                        const start = minutesFromTime(shift.start_time);
+                        const end = minutesFromTime(shift.end_time);
+                        const left = ((start - OPEN_MINUTES) / totalMinutes) * 100;
+                        const width = ((end - start) / totalMinutes) * 100;
+
+                        return (
+                          <div
+                            key={shift.id}
+                            className={`absolute top-2 h-12 overflow-hidden rounded-lg border px-3 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.28)] ${statusTone(shift.status)}`}
+                            style={{
+                              left: `${Math.max(0, left)}%`,
+                              width: `${Math.max(4, Math.min(100 - Math.max(0, left), width))}%`,
+                            }}
+                            title={`${formatStaffName(staffById.get(shift.assignee_id))} ${normalizeTime(shift.start_time)} - ${normalizeTime(shift.end_time)}`}
+                          >
+                            <p className="truncate text-xs font-semibold">
+                              {normalizeTime(shift.start_time)} - {normalizeTime(shift.end_time)}
+                            </p>
+                            <p className="truncate text-[11px] opacity-80">{statusLabel(shift.status)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
-          </div>
-
-          <div className="divide-y divide-white/10">
-            {staff.map((staffMember) => {
-              const staffShifts = activeShifts.filter((shift) => shift.assignee_id === staffMember.id);
-
-              return (
-                <div key={staffMember.id} className="grid grid-cols-[12rem_minmax(0,1fr)] py-3">
-                  <div className="min-w-0 pr-4">
-                    <p className="truncate text-sm font-semibold text-white">{formatStaffName(staffMember)}</p>
-                    <p className="mt-1 text-xs text-white/40">{staffMember.role}</p>
-                  </div>
-                  <div className="relative h-16 rounded-lg border border-white/10 bg-black/25">
-                    {hourMarks.map((minutes) => {
-                      const left = ((minutes - OPEN_MINUTES) / totalMinutes) * 100;
-                      return (
-                        <span
-                          key={minutes}
-                          className="absolute inset-y-0 w-px bg-white/[0.06]"
-                          style={{ left: `${left}%` }}
-                        />
-                      );
-                    })}
-                    {staffShifts.map((shift) => {
-                      const start = minutesFromTime(shift.start_time);
-                      const end = minutesFromTime(shift.end_time);
-                      const left = ((start - OPEN_MINUTES) / totalMinutes) * 100;
-                      const width = ((end - start) / totalMinutes) * 100;
-
-                      return (
-                        <div
-                          key={shift.id}
-                          className={`absolute top-2 h-12 overflow-hidden rounded-lg border px-3 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.28)] ${statusTone(shift.status)}`}
-                          style={{
-                            left: `${Math.max(0, left)}%`,
-                            width: `${Math.max(4, Math.min(100 - Math.max(0, left), width))}%`,
-                          }}
-                          title={`${formatStaffName(staffById.get(shift.assignee_id))} ${normalizeTime(shift.start_time)} - ${normalizeTime(shift.end_time)}`}
-                        >
-                          <p className="truncate text-xs font-semibold">
-                            {normalizeTime(shift.start_time)} - {normalizeTime(shift.end_time)}
-                          </p>
-                          <p className="truncate text-[11px] opacity-80">{statusLabel(shift.status)}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           {activeShifts.length === 0 ? (

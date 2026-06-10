@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAdminContext } from "@/lib/admin-access";
 import { hasMinAdminRole, type AdminRole } from "@/lib/admin-authz";
-import type { StaffShift, StaffShiftStatus } from "@/lib/types";
+import type { StaffShift, StaffShiftStatus, UserRole } from "@/lib/types";
 
 type ShiftTimeInput = {
   workDate: string;
@@ -34,8 +34,18 @@ type ActionResult = {
 };
 
 type ExistingShift = Pick<StaffShift, "id" | "work_date" | "start_time" | "end_time" | "status">;
+type RoleLimitedShift = ExistingShift & Pick<StaffShift, "assignee_id">;
+type LimitedShiftRole = "recepcny" | "manager";
+type AssignableAdmin = {
+  id: string;
+  role: UserRole;
+};
 
 const ACTIVE_SHIFT_STATUSES: StaffShiftStatus[] = ["pending", "approved"];
+const SHIFT_ROLE_LIMITS: Record<LimitedShiftRole, number> = {
+  recepcny: 2,
+  manager: 1,
+};
 const OPEN_MINUTES = 6 * 60;
 const CLOSE_MINUTES = 22 * 60;
 const MAX_RECURRING_DAYS = 366;
@@ -182,16 +192,16 @@ async function getAdminContext(requiredRole: AdminRole) {
   return context;
 }
 
-async function ensureAssignableAdmin(assigneeId: string) {
+async function fetchAssignableAdmin(assigneeId: string) {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select("id")
+    .select("id, role")
     .eq("id", assigneeId)
     .in("role", ["recepcny", "manager", "owner"])
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<AssignableAdmin>();
 
-  return Boolean(data);
+  return data ?? null;
 }
 
 async function fetchExistingActiveShifts(
@@ -219,6 +229,101 @@ async function hasOverlap(
 ) {
   const existing = await fetchExistingActiveShifts(assigneeId, workDate);
   return existing.some((shift) => overlaps(startTime, endTime, shift.start_time, shift.end_time));
+}
+
+function getShiftRoleLimit(role: UserRole | null | undefined) {
+  if (role === "recepcny" || role === "manager") {
+    return SHIFT_ROLE_LIMITS[role];
+  }
+
+  return null;
+}
+
+function roleLimitError(role: LimitedShiftRole) {
+  if (role === "recepcny") {
+    return "Nie je mozne booknut viac ako dvoch recepcnych v rovnakom case.";
+  }
+
+  return "Nie je mozne booknut viac ako jedneho managera v rovnakom case.";
+}
+
+function overlapsMinutes(shift: Pick<StaffShift, "start_time" | "end_time">, slotStart: number, slotEnd: number) {
+  const shiftStart = minutesFromTime(shift.start_time);
+  const shiftEnd = minutesFromTime(shift.end_time);
+
+  if (shiftStart === null || shiftEnd === null) {
+    return false;
+  }
+
+  return shiftStart < slotEnd && slotStart < shiftEnd;
+}
+
+function hasRoleLimitConflict(
+  shifts: RoleLimitedShift[],
+  startMinutes: number,
+  endMinutes: number,
+  limit: number,
+  excludeShiftId?: string,
+) {
+  for (let slotStart = startMinutes; slotStart < endMinutes; slotStart += 30) {
+    const slotEnd = Math.min(slotStart + 30, endMinutes);
+    const overlappingCount = shifts.filter(
+      (shift) => shift.id !== excludeShiftId && overlapsMinutes(shift, slotStart, slotEnd),
+    ).length;
+
+    if (overlappingCount >= limit) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function fetchExistingActiveShiftsForRole(
+  role: LimitedShiftRole,
+  startDate: string,
+  endDate = startDate,
+) {
+  const admin = createAdminClient();
+  const { data: roleProfiles } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("role", role);
+  const roleProfileIds = (roleProfiles ?? []).map((profile) => profile.id);
+
+  if (roleProfileIds.length === 0) {
+    return [];
+  }
+
+  const { data } = await admin
+    .from("staff_shifts")
+    .select("id, assignee_id, work_date, start_time, end_time, status")
+    .gte("work_date", startDate)
+    .lte("work_date", endDate)
+    .in("status", ACTIVE_SHIFT_STATUSES)
+    .in("assignee_id", roleProfileIds);
+
+  return (data ?? []) as RoleLimitedShift[];
+}
+
+async function getRoleLimitAvailabilityError(
+  role: UserRole | null | undefined,
+  workDate: string,
+  startMinutes: number,
+  endMinutes: number,
+  excludeShiftId?: string,
+) {
+  const limit = getShiftRoleLimit(role);
+
+  if (!limit || (role !== "recepcny" && role !== "manager")) {
+    return null;
+  }
+
+  const existing = await fetchExistingActiveShiftsForRole(role, workDate);
+
+  return hasRoleLimitConflict(existing, startMinutes, endMinutes, limit, excludeShiftId)
+    ? roleLimitError(role)
+    : null;
 }
 
 function dateFromKey(key: string) {
@@ -263,6 +368,17 @@ export async function requestOwnShift(input: ShiftTimeInput): Promise<ActionResu
       return { error: "V tomto case uz mate inu aktivnu alebo cakajucu smenu." };
     }
 
+    const roleLimitAvailabilityError = await getRoleLimitAvailabilityError(
+      context.role,
+      validated.workDate,
+      validated.startMinutes,
+      validated.endMinutes,
+    );
+
+    if (roleLimitAvailabilityError) {
+      return { error: roleLimitAvailabilityError };
+    }
+
     const admin = createAdminClient();
     const { error } = await admin.from("staff_shifts").insert({
       assignee_id: context.userId!,
@@ -298,7 +414,8 @@ export async function createShift(input: AssignShiftInput): Promise<ActionResult
       return { error: "Nie je mozne vytvorit smenu v minulosti." };
     }
 
-    if (!(await ensureAssignableAdmin(input.assigneeId))) {
+    const assignee = await fetchAssignableAdmin(input.assigneeId);
+    if (!assignee) {
       return { error: "Vybrany pouzivatel nema admin rolu." };
     }
 
@@ -311,6 +428,17 @@ export async function createShift(input: AssignShiftInput): Promise<ActionResult
       )
     ) {
       return { error: "Vybrany admin uz ma v tomto case aktivnu alebo cakajucu smenu." };
+    }
+
+    const roleLimitAvailabilityError = await getRoleLimitAvailabilityError(
+      assignee.role,
+      validated.workDate,
+      validated.startMinutes,
+      validated.endMinutes,
+    );
+
+    if (roleLimitAvailabilityError) {
+      return { error: roleLimitAvailabilityError };
     }
 
     const now = new Date().toISOString();
@@ -363,7 +491,8 @@ export async function createRecurringShifts(input: RecurringShiftInput): Promise
       return { error: "Opakovanie moze byt najviac na 366 dni dopredu." };
     }
 
-    if (!(await ensureAssignableAdmin(input.assigneeId))) {
+    const assignee = await fetchAssignableAdmin(input.assigneeId);
+    if (!assignee) {
       return { error: "Vybrany pouzivatel nema admin rolu." };
     }
 
@@ -373,6 +502,15 @@ export async function createRecurringShifts(input: RecurringShiftInput): Promise
       existingByDate.set(shift.work_date, [...(existingByDate.get(shift.work_date) ?? []), shift]);
     }
 
+    const roleLimit = getShiftRoleLimit(assignee.role);
+    const roleShiftsByDate = new Map<string, RoleLimitedShift[]>();
+    if (roleLimit && (assignee.role === "recepcny" || assignee.role === "manager")) {
+      const existingRoleShifts = await fetchExistingActiveShiftsForRole(assignee.role, startDate, endDate);
+      for (const shift of existingRoleShifts) {
+        roleShiftsByDate.set(shift.work_date, [...(roleShiftsByDate.get(shift.work_date) ?? []), shift]);
+      }
+    }
+
     const rows = allDates
       .filter((workDate) => daysOfWeek.includes(dateFromKey(workDate).getDay()))
       .filter((workDate) => !isPastSlot(workDate, validated.startMinutes))
@@ -380,6 +518,18 @@ export async function createRecurringShifts(input: RecurringShiftInput): Promise
         const dayShifts = existingByDate.get(workDate) ?? [];
         return !dayShifts.some((shift) =>
           overlaps(validated.startTime, validated.endTime, shift.start_time, shift.end_time),
+        );
+      })
+      .filter((workDate) => {
+        if (!roleLimit) {
+          return true;
+        }
+
+        return !hasRoleLimitConflict(
+          roleShiftsByDate.get(workDate) ?? [],
+          validated.startMinutes,
+          validated.endMinutes,
+          roleLimit,
         );
       });
 
@@ -456,6 +606,45 @@ export async function approveShift(shiftId: string): Promise<ActionResult> {
     const context = await getAdminContext("manager");
     const admin = createAdminClient();
     const now = new Date().toISOString();
+    const { data: pendingShift, error: shiftError } = await admin
+      .from("staff_shifts")
+      .select("id, assignee_id, work_date, start_time, end_time, status")
+      .eq("id", shiftId)
+      .eq("status", "pending")
+      .maybeSingle<RoleLimitedShift>();
+
+    if (shiftError) {
+      return { error: `Nepodarilo sa nacitat smenu: ${shiftError.message}` };
+    }
+
+    if (!pendingShift) {
+      return { error: "Smena uz nie je cakajuca." };
+    }
+
+    const assignee = await fetchAssignableAdmin(pendingShift.assignee_id);
+    if (!assignee) {
+      return { error: "Vybrany pouzivatel nema admin rolu." };
+    }
+
+    const startMinutes = minutesFromTime(pendingShift.start_time);
+    const endMinutes = minutesFromTime(pendingShift.end_time);
+
+    if (startMinutes === null || endMinutes === null) {
+      return { error: "Skontroluj datum a casy smeny." };
+    }
+
+    const roleLimitAvailabilityError = await getRoleLimitAvailabilityError(
+      assignee.role,
+      pendingShift.work_date,
+      startMinutes,
+      endMinutes,
+      pendingShift.id,
+    );
+
+    if (roleLimitAvailabilityError) {
+      return { error: roleLimitAvailabilityError };
+    }
+
     const { error } = await admin
       .from("staff_shifts")
       .update({

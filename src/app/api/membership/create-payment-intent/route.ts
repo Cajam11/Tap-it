@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient } from "@/lib/stripe/server";
@@ -27,6 +28,43 @@ function asString(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function getBearerToken(request: NextRequest) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  const [scheme, token] = authHeader.split(" ");
+  return scheme?.toLowerCase() === "bearer" && token ? token : null;
+}
+
+async function getRequestUser(request: NextRequest) {
+  const bearerToken = getBearerToken(request);
+
+  if (bearerToken) {
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser(bearerToken);
+
+    return { supabase, user };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return { supabase, user };
+}
+
 function isReusablePaymentIntentStatus(status: string) {
   return (
     status === "requires_payment_method" ||
@@ -45,11 +83,8 @@ function isCancelablePaymentIntentStatus(status: string) {
   );
 }
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function POST(request: NextRequest) {
+  const { supabase, user } = await getRequestUser(request);
 
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

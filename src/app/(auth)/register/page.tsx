@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signUp } from "../actions";
+import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
 import { createClient } from "@/lib/supabase/client";
 
 function GoogleIcon() {
@@ -52,6 +53,8 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full max-w-md">
+      <GoogleOneTap context="signup" onError={setGoogleError} />
+
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-white">Vytvor si účet</h1>
         <p className="text-white/50 mt-2">Začni trénovať s Tap-it</p>

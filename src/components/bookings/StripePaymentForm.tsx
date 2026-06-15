@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 
 type StripePaymentFormProps = {
   clientSecret: string;
@@ -14,17 +21,16 @@ function PaymentInnerForm() {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExpressSubmitting, setIsExpressSubmitting] = useState(false);
+  const [hasExpressCheckout, setHasExpressCheckout] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function confirmPayment() {
     if (!stripe || !elements) {
       return;
     }
 
-    setIsSubmitting(true);
     setErrorText(null);
 
     const result = await stripe.confirmPayment({
@@ -32,11 +38,10 @@ function PaymentInnerForm() {
       redirect: "if_required",
     });
 
-    setIsSubmitting(false);
-
     if (result.error) {
-      setErrorText(result.error.message ?? "Platbu sa nepodarilo dokončiť.");
-      return;
+      const message = result.error.message ?? "Platbu sa nepodarilo dokončiť.";
+      setErrorText(message);
+      return message;
     }
 
     if (
@@ -44,10 +49,30 @@ function PaymentInnerForm() {
       result.paymentIntent?.status === "processing"
     ) {
       setIsProcessingComplete(true);
-      return;
+      return null;
     }
 
-    setErrorText("Platba zatiaľ nebola potvrdená. Skús to znova o chvíľu.");
+    const message = "Platba zatiaľ nebola potvrdená. Skús to znova o chvíľu.";
+    setErrorText(message);
+    return message;
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setIsSubmitting(true);
+    await confirmPayment();
+    setIsSubmitting(false);
+  }
+
+  async function onExpressConfirm(event: StripeExpressCheckoutElementConfirmEvent) {
+    setIsExpressSubmitting(true);
+    const errorMessage = await confirmPayment();
+    setIsExpressSubmitting(false);
+
+    if (errorMessage) {
+      event.paymentFailed({ message: errorMessage });
+    }
   }
 
   if (isProcessingComplete) {
@@ -55,30 +80,59 @@ function PaymentInnerForm() {
       <div className="space-y-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
         <p className="font-semibold">Platba bola prijatá. Potvrdzujeme ju cez Stripe webhook.</p>
         <p>Rezervácia sa potvrdí do pár sekúnd.</p>
-          <Link
-            href="/bookings"
-            className="inline-flex rounded-full bg-emerald-500 px-4 py-2 font-semibold text-black transition hover:bg-emerald-400"
-          >
-            Prejsť na rezervácie
-          </Link>
+        <Link
+          href="/bookings"
+          className="inline-flex rounded-full bg-emerald-500 px-4 py-2 font-semibold text-black transition hover:bg-emerald-400"
+        >
+          Prejsť na rezervácie
+        </Link>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <PaymentElement options={{ layout: "tabs" }} />
+    <div className="space-y-4">
+      <ExpressCheckoutElement
+        onConfirm={onExpressConfirm}
+        onReady={(event) => {
+          setHasExpressCheckout(Boolean(event.availablePaymentMethods));
+        }}
+        options={{
+          buttonHeight: 48,
+          buttonTheme: { googlePay: "black", applePay: "black" },
+          buttonType: { googlePay: "pay", applePay: "plain" },
+          layout: { maxColumns: 1, maxRows: 2 },
+          paymentMethods: { googlePay: "auto", applePay: "auto", link: "auto" },
+        }}
+      />
 
-      {errorText ? <p className="text-sm text-red-300">{errorText}</p> : null}
+      {hasExpressCheckout ? (
+        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-white/35">
+          <span className="h-px flex-1 bg-white/10" />
+          <span>Alebo kartou</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+      ) : null}
 
-      <button
-        type="submit"
-        disabled={isSubmitting || !stripe || !elements}
-        className="w-full rounded-full bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-      >
-        {isSubmitting ? "Spracovávam platbu..." : "Zaplatiť rezerváciu"}
-      </button>
-    </form>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <PaymentElement
+          options={{
+            layout: "tabs",
+            wallets: { applePay: "never", googlePay: "never", link: "never" },
+          }}
+        />
+
+        {errorText ? <p className="text-sm text-red-300">{errorText}</p> : null}
+
+        <button
+          type="submit"
+          disabled={isSubmitting || isExpressSubmitting || !stripe || !elements}
+          className="w-full rounded-full bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {isSubmitting || isExpressSubmitting ? "Spracovávam platbu..." : "Zaplatiť rezerváciu"}
+        </button>
+      </form>
+    </div>
   );
 }
 

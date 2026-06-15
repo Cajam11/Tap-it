@@ -112,6 +112,7 @@ export async function createBookingIntent(
     const newIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalPrice * 100),
       currency: "eur",
+      automatic_payment_methods: { enabled: true },
       metadata: {
         user_id: userId,
         booking_id: earlyPendingBooking.id,
@@ -264,6 +265,7 @@ export async function createBookingIntent(
   const paymentIntent = await stripe.paymentIntents.create({
     amount: Math.round(totalPrice * 100), // convert to cents
     currency: "eur",
+    automatic_payment_methods: { enabled: true },
     metadata: {
       user_id: userId,
       booking_id: booking.id,

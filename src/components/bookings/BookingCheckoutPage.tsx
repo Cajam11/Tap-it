@@ -278,7 +278,7 @@ export default async function BookingCheckoutPage({
                     Dokoncenie rezervacie
                   </h2>
                   <p className="text-white/50 mt-1">
-                    Skontrolujte si udaje a zadajte platobnu kartu pre potvrdenie.
+                    Skontrolujte si udaje a vyberte platobnu metodu pre potvrdenie.
                   </p>
                 </div>
 

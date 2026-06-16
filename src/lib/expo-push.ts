@@ -24,7 +24,7 @@ function chunk<T>(items: T[], size: number) {
 }
 
 export async function sendGymNewsPushNotification(news: {
-  id: string;
+  id?: string | null;
   title: string;
 }) {
   const supabase = createAdminClient();
@@ -52,7 +52,7 @@ export async function sendGymNewsPushNotification(news: {
     body: news.title,
     data: {
       url: "/news",
-      newsId: news.id,
+      newsId: news.id ?? "",
     },
   }));
 

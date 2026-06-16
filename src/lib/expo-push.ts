@@ -31,7 +31,7 @@ export async function sendGymNewsPushNotification(news: {
   const { data, error } = await supabase.from("push_tokens").select("token");
 
   if (error) {
-    console.error("Failed to load push tokens", error);
+    console.error("Failed to load push tokens", error.message);
     return;
   }
 
@@ -68,9 +68,19 @@ export async function sendGymNewsPushNotification(news: {
         body: JSON.stringify(messagesChunk),
       });
 
+      const payload = await response.json().catch(() => null);
+
       if (!response.ok) {
-        console.error("Expo push send failed", await response.text());
+        console.error("Expo push send failed", payload);
+        return;
       }
+
+      const tickets = Array.isArray(payload?.data) ? payload.data : [];
+      tickets.forEach((ticket: { status?: string; message?: string }) => {
+        if (ticket.status === "error") {
+          console.error("Expo push ticket error", ticket.message);
+        }
+      });
     }),
   );
 }

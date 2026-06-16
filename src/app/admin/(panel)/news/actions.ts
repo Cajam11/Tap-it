@@ -72,7 +72,9 @@ export async function createNews(formData: FormData) {
   revalidatePath("/admin/news");
   revalidatePath("/");
   if (createdNews) {
-    await sendGymNewsPushNotification(createdNews);
+    await sendGymNewsPushNotification(createdNews).catch((pushError) => {
+      console.error("Failed to send gym news push notification", pushError);
+    });
   }
   return { success: true };
 }

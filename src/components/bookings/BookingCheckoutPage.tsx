@@ -38,6 +38,21 @@ function isValidFacilityStart(date: Date, isMinuteRate: boolean) {
   );
 }
 
+function getMetadataNumber(metadata: Record<string, unknown> | null, key: string) {
+  const value = metadata?.[key];
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : null;
+  }
+
+  return null;
+}
+
 export default async function BookingCheckoutPage({
   serviceId,
   searchParams,
@@ -147,12 +162,12 @@ export default async function BookingCheckoutPage({
       redirect(detailHref);
     }
 
-    const firstHour = Number(typedService.metadata?.first_hour_price);
-    const nextHour = Number(typedService.metadata?.next_hour_price);
+    const firstHour = getMetadataNumber(typedService.metadata, "first_hour_price");
+    const nextHour = getMetadataNumber(typedService.metadata, "next_hour_price");
 
     if (isMinuteRate) {
       totalPrice = typedService.base_price * durationMinutes;
-    } else if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
+    } else if (firstHour !== null && nextHour !== null) {
       totalPrice = firstHour + Math.max(0, duration - 1) * nextHour;
     } else {
       totalPrice = typedService.base_price * duration;

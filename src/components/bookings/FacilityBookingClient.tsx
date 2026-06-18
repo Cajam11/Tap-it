@@ -62,6 +62,21 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
 }
 
+function getMetadataNumber(metadata: Record<string, unknown> | null, key: string) {
+  const value = metadata?.[key];
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : null;
+  }
+
+  return null;
+}
+
 function isSameDate(date: Date, dateKey: string) {
   return toDateKey(date) === dateKey;
 }
@@ -71,10 +86,10 @@ function formatPrice(service: BookableService, durationHours: number, durationMi
     return service.base_price * (durationMinutes ?? durationHours * 60);
   }
 
-  const firstHour = Number(service.metadata?.first_hour_price);
-  const nextHour = Number(service.metadata?.next_hour_price);
+  const firstHour = getMetadataNumber(service.metadata, "first_hour_price");
+  const nextHour = getMetadataNumber(service.metadata, "next_hour_price");
 
-  if (Number.isFinite(firstHour) && Number.isFinite(nextHour)) {
+  if (firstHour !== null && nextHour !== null) {
     return firstHour + Math.max(0, durationHours - 1) * nextHour;
   }
 

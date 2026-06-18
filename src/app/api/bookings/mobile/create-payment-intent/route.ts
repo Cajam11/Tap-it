@@ -47,8 +47,18 @@ function isValidFacilityStart(date: Date, isMinuteRate: boolean) {
 }
 
 function getMetadataNumber(metadata: Record<string, unknown> | null, key: string) {
-  const value = Number(metadata?.[key]);
-  return Number.isFinite(value) ? value : null;
+  const value = metadata?.[key];
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : null;
+  }
+
+  return null;
 }
 
 function calculateFacilityPrice(

@@ -23,9 +23,38 @@ function chunk<T>(items: T[], size: number) {
   return chunks;
 }
 
+function stripHtml(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+
+  const shortened = value.slice(0, maxLength - 1).trimEnd();
+  const lastSpaceIndex = shortened.lastIndexOf(" ");
+  const preview =
+    lastSpaceIndex > Math.floor(maxLength * 0.6)
+      ? shortened.slice(0, lastSpaceIndex)
+      : shortened;
+
+  return `${preview}...`;
+}
+
 export async function sendGymNewsPushNotification(news: {
   id?: string | null;
   title: string;
+  contentHtml: string;
 }) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("push_tokens").select("token");
@@ -45,11 +74,16 @@ export async function sendGymNewsPushNotification(news: {
 
   if (tokens.length === 0) return;
 
+  const title = news.title.trim() || "Novy oznam";
+  const body =
+    truncateText(stripHtml(news.contentHtml), 140) ||
+    "Pozri si najnovsie aktuality z gymu.";
+
   const messages: ExpoPushMessage[] = tokens.map((token) => ({
     to: token,
     sound: "default",
-    title: "Novy oznam",
-    body: news.title,
+    title,
+    body,
     data: {
       url: "/news",
       newsId: news.id ?? "",

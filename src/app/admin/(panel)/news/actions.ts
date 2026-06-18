@@ -52,13 +52,13 @@ export async function createNews(formData: FormData) {
     image_url = publicUrlData.publicUrl;
   }
 
-  const { error } = await supabase.from("gym_news").insert({
+  const { data: createdNews, error } = await supabase.from("gym_news").insert({
     title,
     content_html,
     image_url,
     valid_from: valid_from || null,
     valid_to: valid_to || null,
-  });
+  }).select("id").single();
 
   if (error) {
     console.error(error);
@@ -67,7 +67,11 @@ export async function createNews(formData: FormData) {
 
   revalidatePath("/admin/news");
   revalidatePath("/");
-  await sendGymNewsPushNotification({ title }).catch((pushError) => {
+  await sendGymNewsPushNotification({
+    id: createdNews?.id,
+    title,
+    contentHtml: content_html,
+  }).catch((pushError) => {
     console.error("Failed to send gym news push notification", pushError);
   });
   return { success: true };

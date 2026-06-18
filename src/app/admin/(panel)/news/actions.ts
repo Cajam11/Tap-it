@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasServerAdminAccess } from "@/lib/admin-access";
 import { revalidatePath } from "next/cache";
 import { sendGymNewsPushNotification } from "@/lib/expo-push";
+import { randomUUID } from "crypto";
 
 export async function getGymNews() {
   const supabase = await createClient();
@@ -52,13 +53,16 @@ export async function createNews(formData: FormData) {
     image_url = publicUrlData.publicUrl;
   }
 
-  const { data: createdNews, error } = await supabase.from("gym_news").insert({
+  const newsId = randomUUID();
+
+  const { error } = await supabase.from("gym_news").insert({
+    id: newsId,
     title,
     content_html,
     image_url,
     valid_from: valid_from || null,
     valid_to: valid_to || null,
-  }).select("id").single();
+  });
 
   if (error) {
     console.error(error);
@@ -68,7 +72,7 @@ export async function createNews(formData: FormData) {
   revalidatePath("/admin/news");
   revalidatePath("/");
   await sendGymNewsPushNotification({
-    id: createdNews?.id,
+    id: newsId,
     title,
     contentHtml: content_html,
   }).catch((pushError) => {

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const SLOT_MINUTES = 60;
 
@@ -27,23 +28,95 @@ function addMinutes(value: Date, minutes: number) {
   return next;
 }
 
+export async function detachBookedTrainerSchedules(
+  trainerId: string,
+  serviceId?: string,
+  from?: string,
+  until?: string
+) {
+  const admin = createAdminClient();
+
+  let schedulesQuery = admin
+    .from("service_schedules")
+    .select("id")
+    .eq("trainer_id", trainerId);
+
+  if (serviceId) schedulesQuery = schedulesQuery.eq("service_id", serviceId);
+
+  if (from) schedulesQuery = schedulesQuery.gte("start_time", from);
+  if (until) schedulesQuery = schedulesQuery.lt("end_time", until);
+
+  const { data: schedules, error: schedulesError } = await schedulesQuery;
+  if (schedulesError) {
+    throw new Error(`Nepodarilo sa nacitat terminy: ${schedulesError.message}`);
+  }
+
+  const scheduleIds = (schedules || []).map((schedule) => schedule.id);
+  if (scheduleIds.length === 0) return new Set<string>();
+
+  const { data: bookings, error: bookingsError } = await admin
+    .from("bookings")
+    .select("schedule_id")
+    .in("schedule_id", scheduleIds)
+    .in("status", ["pending", "paid"]);
+
+  if (bookingsError) {
+    throw new Error(`Nepodarilo sa nacitat rezervacie terminov: ${bookingsError.message}`);
+  }
+
+  const bookedScheduleIds = new Set(
+    (bookings || []).flatMap((booking) => (booking.schedule_id ? [booking.schedule_id] : []))
+  );
+
+  if (bookedScheduleIds.size > 0) {
+    const { error: detachError } = await admin
+      .from("service_schedules")
+      .update({ recurring_rule_id: null })
+      .in("id", [...bookedScheduleIds]);
+
+    if (detachError) {
+      throw new Error(`Nepodarilo sa zachovat rezervovane terminy: ${detachError.message}`);
+    }
+  }
+
+  return bookedScheduleIds;
+}
+
 export async function cleanupExpiredTrainerSchedules(trainerId: string, serviceId?: string) {
   const supabase = await createClient();
   const now = new Date().toISOString();
 
-  let schedulesQuery = supabase
+  const bookedScheduleIds = await detachBookedTrainerSchedules(trainerId, serviceId, undefined, now);
+
+  let expiredSchedulesQuery = supabase
     .from("service_schedules")
-    .delete()
+    .select("id")
     .eq("trainer_id", trainerId)
     .lt("end_time", now);
 
   if (serviceId) {
-    schedulesQuery = schedulesQuery.eq("service_id", serviceId);
+    expiredSchedulesQuery = expiredSchedulesQuery.eq("service_id", serviceId);
   }
 
-  const { error: schedulesError } = await schedulesQuery;
-  if (schedulesError) {
-    throw new Error(`Nepodarilo sa upratat stare terminy: ${schedulesError.message}`);
+  const { data: expiredSchedules, error: expiredSchedulesError } = await expiredSchedulesQuery;
+  if (expiredSchedulesError) {
+    throw new Error(`Nepodarilo sa nacitat stare terminy: ${expiredSchedulesError.message}`);
+  }
+
+  const expiredScheduleIds = (expiredSchedules || [])
+    .map((schedule) => schedule.id)
+    .filter((scheduleId) => !bookedScheduleIds.has(scheduleId));
+
+  const schedulesQuery = supabase
+    .from("service_schedules")
+    .delete()
+    .in("id", expiredScheduleIds);
+
+  if (expiredScheduleIds.length > 0) {
+    const { error: schedulesError } = await schedulesQuery;
+    if (schedulesError) {
+      throw new Error(`Nepodarilo sa upratat stare terminy: ${schedulesError.message}`);
+    }
   }
 
   let rulesQuery = supabase
@@ -121,6 +194,12 @@ export async function generateSchedulesForTrainer(trainerId: string, serviceId: 
         `${schedule.recurring_rule_id ?? "legacy"}|${new Date(schedule.start_time).toISOString()}|${new Date(schedule.end_time).toISOString()}`
     )
   );
+  const existingTimes = new Set(
+    (existingSchedules || []).map(
+      (schedule) =>
+        `${new Date(schedule.start_time).toISOString()}|${new Date(schedule.end_time).toISOString()}`
+    )
+  );
 
   const newSchedules = [];
   const now = new Date();
@@ -150,7 +229,9 @@ export async function generateSchedulesForTrainer(trainerId: string, serviceId: 
         if (currentSlotStart > now) {
           const key = `${rule.id}|${currentSlotStart.toISOString()}|${currentSlotEnd.toISOString()}`;
 
-          if (!existingSet.has(key)) {
+          const timeKey = `${currentSlotStart.toISOString()}|${currentSlotEnd.toISOString()}`;
+
+          if (!existingSet.has(key) && !existingTimes.has(timeKey)) {
             newSchedules.push({
               service_id: serviceId,
               trainer_id: trainerId,

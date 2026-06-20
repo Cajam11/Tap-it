@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   cleanupExpiredTrainerSchedules,
+  detachBookedTrainerSchedules,
   generateSchedulesForTrainer,
 } from "@/lib/schedules.server";
 
@@ -74,12 +75,36 @@ export async function saveAvailabilityRules(trainerId: string, serviceId: string
 
   const now = new Date().toISOString();
 
-  const { error: deleteSchedulesError } = await supabase
+  let bookedScheduleIds: Set<string>;
+  try {
+    bookedScheduleIds = await detachBookedTrainerSchedules(trainerId, serviceId, now);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Nepodarilo sa zachovat rezervovane terminy.",
+    };
+  }
+
+  const { data: futureSchedules, error: futureSchedulesError } = await supabase
     .from("service_schedules")
-    .delete()
+    .select("id")
     .eq("trainer_id", trainerId)
     .eq("service_id", serviceId)
     .gte("start_time", now);
+
+  if (futureSchedulesError) {
+    return { error: "Nepodarilo sa nacitat povodne buduce terminy." };
+  }
+
+  const deletableScheduleIds = (futureSchedules || [])
+    .map((schedule) => schedule.id)
+    .filter((scheduleId) => !bookedScheduleIds.has(scheduleId));
+
+  const { error: deleteSchedulesError } = deletableScheduleIds.length > 0
+    ? await supabase
+        .from("service_schedules")
+        .delete()
+        .in("id", deletableScheduleIds)
+    : { error: null };
 
   if (deleteSchedulesError) {
     return { error: "Nepodarilo sa zmazat povodne buduce terminy." };

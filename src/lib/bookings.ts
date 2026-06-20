@@ -44,7 +44,9 @@ function isBookingConflictError(error: unknown) {
     details.code === "23P01" ||
     details.code === "23505" ||
     details.message?.includes("bookings_facility_no_overlap") ||
-    details.details?.includes("bookings_facility_no_overlap")
+    details.details?.includes("bookings_facility_no_overlap") ||
+    details.message?.includes("bookings_user_no_overlap") ||
+    details.details?.includes("bookings_user_no_overlap")
   );
 }
 
@@ -76,7 +78,9 @@ export async function createBookingIntent(
   serviceName: string
 ) {
   const admin = createAdminClient();
-  await expireStalePendingBookings(serviceId);
+  // A pending checkout blocks a time slot for 15 minutes regardless of service.
+  // Expire holds globally before checking the user's calendar.
+  await expireStalePendingBookings();
 
   // 1. Check if user already holds a fresh pending booking for this exact request
   let query = admin
@@ -190,32 +194,18 @@ export async function createBookingIntent(
     }
   }
 
-  if (serviceRow.type === "trainer") {
-    const { data: activeBookings } = await admin
-      .from("bookings")
-      .select("id, service_id, start_time, end_time")
-      .eq("user_id", userId)
-      .in("status", ["pending", "paid"])
-      .lt("start_time", endTime.toISOString())
-      .gt("end_time", startTime.toISOString());
+  const { data: overlappingUserBooking } = await admin
+    .from("bookings")
+    .select("id")
+    .eq("user_id", userId)
+    .in("status", ["pending", "paid"])
+    .lt("start_time", endTime.toISOString())
+    .gt("end_time", startTime.toISOString())
+    .limit(1)
+    .maybeSingle<{ id: string }>();
 
-    const activeBookingsArr = (activeBookings ?? []) as Array<{ service_id?: string | null }>;
-
-    const activeServiceIds = Array.from(
-      new Set(activeBookingsArr.map((booking) => booking.service_id).filter(Boolean))
-    );
-
-    const { data: activeTrainerServices } = activeServiceIds.length
-      ? await admin
-          .from("bookable_services")
-          .select("id")
-          .in("id", activeServiceIds)
-          .eq("type", "trainer")
-      : { data: [] as { id: string }[] };
-
-    if ((activeTrainerServices ?? []).length > 0) {
-      throw new Error("Tento termín sa prekrýva s inou rezerváciou trénera.");
-    }
+  if (overlappingUserBooking) {
+    throw new Error("Tento termín sa prekrýva s vašou inou aktívnou rezerváciou.");
   }
 
   if (serviceRow.type === "facility") {
@@ -254,8 +244,8 @@ export async function createBookingIntent(
     .single<{ id: string }>();
 
   if (bookingError || !booking) {
-    if (serviceRow.type === "facility" && isBookingConflictError(bookingError)) {
-      throw new Error("Tento cas je uz obsadeny.");
+    if (isBookingConflictError(bookingError)) {
+      throw new Error("Tento termín sa prekrýva s vašou inou aktívnou rezerváciou alebo je už obsadený.");
     }
     throw new Error("Could not create local booking record.");
   }

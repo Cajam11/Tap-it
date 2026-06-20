@@ -91,6 +91,42 @@ alter table public.bookings
   )
   where (schedule_id is null and status in ('pending', 'paid'));
 
+create or replace function public.prevent_user_booking_overlap()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.status not in ('pending', 'paid') then
+    return new;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(new.user_id::text, 0));
+
+  if exists (
+    select 1
+    from public.bookings existing
+    where existing.id <> new.id
+      and existing.user_id = new.user_id
+      and existing.status in ('pending', 'paid')
+      and tstzrange(existing.start_time, existing.end_time, '[)')
+        && tstzrange(new.start_time, new.end_time, '[)')
+  ) then
+    raise exception using
+      errcode = '23P01',
+      constraint = 'bookings_user_no_overlap',
+      message = 'This booking overlaps another active booking for this user.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger bookings_user_no_overlap
+before insert or update of user_id, start_time, end_time, status
+on public.bookings
+for each row
+execute function public.prevent_user_booking_overlap();
+
 -- 6. Prepojenie transakcií (existing table) na novú tabuľku bookings
 alter table public.transactions
   add column if not exists booking_id uuid null references public.bookings(id) on delete set null;

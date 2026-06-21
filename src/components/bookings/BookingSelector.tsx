@@ -163,7 +163,16 @@ export default function BookingSelector({
   const isCurrentMonthLoading = loadingMonthKey === currentMonthKey;
 
   const handleContinue = () => {
-    if (isScheduled && !selectedScheduleId) return;
+    const isSelectedScheduleLocked = Boolean(
+      selectedSchedule &&
+        (selectedSchedule.booking_status === "paid" ||
+          (selectedSchedule.current_capacity !== null &&
+            selectedSchedule.current_capacity <= 0 &&
+            !(selectedSchedule.booking_status === "pending" &&
+              selectedSchedule.booking_user_id === currentUserId))),
+    );
+
+    if (isScheduled && (!selectedScheduleId || isSelectedScheduleLocked)) return;
 
     setLoading(true);
     const params = new URLSearchParams();
@@ -389,10 +398,12 @@ export default function BookingSelector({
                     const end = new Date(schedule.end_time);
                     const isSelected = schedule.id === selectedScheduleId;
                     const isPending = schedule.booking_status === "pending";
+                    const isCurrentUserPaid =
+                      schedule.booking_status === "paid" && schedule.booking_user_id === currentUserId;
                     const isCurrentUserPending =
                       isPending && schedule.booking_user_id === currentUserId;
                     const isFull = schedule.current_capacity !== null && schedule.current_capacity <= 0;
-                    const disabled = isFull && !isCurrentUserPending;
+                    const disabled = isCurrentUserPaid || (isFull && !isCurrentUserPending);
 
                     return (
                       <button
@@ -418,9 +429,11 @@ export default function BookingSelector({
                         <span className="mt-1 block text-[11px] no-underline text-white/45">
                           {end.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" })}
                         </span>
-                        {(schedule.current_capacity !== null || isCurrentUserPending) && (
+                        {(schedule.current_capacity !== null || isCurrentUserPending || isCurrentUserPaid) && (
                           <span className="mt-1 block text-[11px] no-underline">
-                            {isCurrentUserPending
+                            {isCurrentUserPaid
+                              ? "uz rezervovane"
+                              : isCurrentUserPending
                               ? "tvoje drzane"
                               : isPending && isFull
                                 ? "drzane"

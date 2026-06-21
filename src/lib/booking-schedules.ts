@@ -67,30 +67,37 @@ export async function fetchServiceSchedulesForMonth(
   }
 
   const scheduleIds = schedules.map((schedule) => schedule.id);
-  const { data: pendingBookings } = await admin
+  const { data: activeBookings } = await admin
     .from("bookings")
-    .select("schedule_id, user_id")
+    .select("schedule_id, status, user_id")
     .eq("service_id", serviceId)
-    .eq("status", "pending")
+    .in("status", ["pending", "paid"])
     .in("schedule_id", scheduleIds);
 
-  const pendingBookingsArr = (pendingBookings ?? []) as Array<{
+  const activeBookingsArr = (activeBookings ?? []) as Array<{
     schedule_id: string | null;
     user_id: string | null;
+    status: "pending" | "paid";
   }>;
   const pendingCounts = new Map<string, number>();
-  const currentUserPending = new Set<string>();
+  const currentUserBookingStatus = new Map<string, "pending" | "paid">();
 
-  for (const booking of pendingBookingsArr) {
-    if (booking.schedule_id) {
+  for (const booking of activeBookingsArr) {
+    if (!booking.schedule_id) continue;
+
+    if (booking.status === "pending") {
       pendingCounts.set(
         booking.schedule_id,
         (pendingCounts.get(booking.schedule_id) || 0) + 1,
       );
+    }
 
-      if (booking.user_id === currentUserId) {
-        currentUserPending.add(booking.schedule_id);
-      }
+    if (booking.user_id === currentUserId) {
+      const previousStatus = currentUserBookingStatus.get(booking.schedule_id);
+      currentUserBookingStatus.set(
+        booking.schedule_id,
+        booking.status === "paid" || previousStatus !== "paid" ? booking.status : previousStatus,
+      );
     }
   }
 
@@ -100,18 +107,18 @@ export async function fetchServiceSchedulesForMonth(
       schedule.current_capacity !== null
         ? Math.max(0, schedule.current_capacity - pending)
         : null;
-    const hasCurrentUserPending = currentUserPending.has(schedule.id);
+    const currentUserStatus = currentUserBookingStatus.get(schedule.id);
 
     return {
       ...schedule,
-      booking_status: hasCurrentUserPending
-        ? "pending"
+      booking_status: currentUserStatus
+        ? currentUserStatus
         : adjustedCapacity === 0
           ? pending > 0
             ? "pending"
             : "paid"
           : null,
-      booking_user_id: hasCurrentUserPending ? currentUserId : null,
+      booking_user_id: currentUserStatus ? currentUserId : null,
       current_capacity: adjustedCapacity,
     };
   });

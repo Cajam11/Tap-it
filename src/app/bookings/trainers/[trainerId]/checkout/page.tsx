@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import BookingCheckoutPage from "@/components/bookings/BookingCheckoutPage";
 
 type TrainerCheckoutSearchParams = {
-  scheduleId?: string;
+  bookingId?: string;
   serviceId?: string;
 };
 

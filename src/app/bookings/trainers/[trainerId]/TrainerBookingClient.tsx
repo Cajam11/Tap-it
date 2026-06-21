@@ -42,6 +42,7 @@ export default function TrainerBookingClient({
     null,
   );
   const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -96,12 +97,40 @@ export default function TrainerBookingClient({
     : [];
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
 
-  const handleContinue = () => {
-    if (!selectedScheduleId) return;
+  const handleContinue = async () => {
+    if (!selectedSchedule) return;
+
     setLoading(true);
-    router.push(
-      `${getServiceCheckoutHref(service.type, service.id, trainerProfile.id)}?scheduleId=${selectedScheduleId}&serviceId=${service.id}`,
-    );
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch("/api/bookings/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: service.id,
+          scheduleId: selectedSchedule.id,
+          startTime: selectedSchedule.start_time,
+          endTime: selectedSchedule.end_time,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        bookingId?: string;
+        details?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !payload?.bookingId) {
+        throw new Error(payload?.details || payload?.error || "Checkout sa nepodarilo vytvoriť.");
+      }
+
+      router.push(
+        `${getServiceCheckoutHref(service.type, service.id, trainerProfile.id)}?bookingId=${encodeURIComponent(payload.bookingId)}&serviceId=${encodeURIComponent(service.id)}`,
+      );
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout sa nepodarilo vytvoriť.");
+      setLoading(false);
+    }
   };
 
   const displayName = trainerProfile.full_name ?? "Tréner";
@@ -345,6 +374,7 @@ export default function TrainerBookingClient({
             </div>
 
             <div className="mt-auto flex justify-end pt-4 border-t border-white/10">
+              {checkoutError ? <p className="mr-auto text-sm text-red-300">{checkoutError}</p> : null}
               <button
                 disabled={!selectedScheduleId || loading}
                 onClick={handleContinue}

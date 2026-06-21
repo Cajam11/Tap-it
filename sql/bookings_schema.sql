@@ -73,6 +73,7 @@ create table if not exists public.bookings (
   status text not null check (status in ('pending', 'paid', 'cancelled', 'refunded')),
   stripe_pi_id text null, -- Pre naviazanie s platbou
   stripe_refund_id text null, -- Pre storná
+  expires_at timestamptz null default (now() + interval '15 minutes'), -- Pending checkout je platný najviac 15 minút
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -82,6 +83,10 @@ create extension if not exists btree_gist;
 alter table public.bookings
   add constraint bookings_valid_time_range_check
   check (end_time > start_time);
+
+alter table public.bookings
+  add constraint bookings_pending_requires_expiry
+  check (status <> 'pending' or expires_at is not null);
 
 alter table public.bookings
   add constraint bookings_facility_no_overlap

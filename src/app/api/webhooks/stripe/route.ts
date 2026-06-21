@@ -54,6 +54,65 @@ function asString(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+async function refundExpiredBookingPayment(
+  paymentIntent: Stripe.PaymentIntent,
+  bookingId: string,
+  userId: string,
+  paymentAmount: number,
+) {
+  const admin = createAdminClient();
+  const { data: booking } = await admin
+    .from("bookings")
+    .select("stripe_refund_id")
+    .eq("id", bookingId)
+    .maybeSingle<{ stripe_refund_id: string | null }>();
+
+  if (booking?.stripe_refund_id) return;
+
+  try {
+    const stripe = getStripeServerClient();
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: paymentIntent.id,
+        reason: "requested_by_customer",
+      },
+      { idempotencyKey: `expired-booking-refund-${bookingId}` },
+    );
+
+    await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+      .update({
+        status: "refunded",
+        stripe_pi_id: paymentIntent.id,
+        stripe_refund_id: refund.id,
+      })
+      .eq("id", bookingId);
+
+    const { data: existingRefund } = await admin
+      .from("transactions")
+      .select("id")
+      .contains("metadata", { stripe_refund_id: refund.id })
+      .maybeSingle<{ id: string }>();
+
+    if (!existingRefund) {
+      await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+        user_id: userId,
+        booking_id: bookingId,
+        amount: paymentAmount,
+        currency: "EUR",
+        type: "refund",
+        status: "completed",
+        metadata: {
+          stripe_payment_intent_id: paymentIntent.id,
+          stripe_refund_id: refund.id,
+          reason: "expired_booking_hold",
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Webhook refund expired booking error:", error);
+  }
+}
+
 async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
   const userId = asString(paymentIntent.metadata.user_id);
   const membershipId = asString(paymentIntent.metadata.membership_id);
@@ -258,47 +317,29 @@ async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentInt
 
   const { data: bookingRow } = await admin
     .from("bookings")
-    .select("schedule_id, status, stripe_refund_id")
+    .select("schedule_id, status, expires_at, stripe_refund_id")
     .eq("id", bookingId)
-    .maybeSingle<{ schedule_id: string | null; status: string; stripe_refund_id: string | null }>();
+    .maybeSingle<{
+      schedule_id: string | null;
+      status: string;
+      expires_at: string | null;
+      stripe_refund_id: string | null;
+    }>();
 
   if (!bookingRow) return;
 
-  if (bookingRow.status === "cancelled" || bookingRow.status === "refunded") {
-    if (!bookingRow.stripe_refund_id) {
-      const stripe = getStripeServerClient();
-      try {
-        const refund = await stripe.refunds.create({
-          payment_intent: paymentIntent.id,
-          reason: "requested_by_customer",
-        });
+  const isExpiredPendingBooking =
+    bookingRow.status === "pending" &&
+    (!bookingRow.expires_at || new Date(bookingRow.expires_at).getTime() <= Date.now());
 
-        await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-          .update({
-            status: "refunded",
-            stripe_pi_id: paymentIntent.id,
-            stripe_refund_id: refund.id,
-          })
-          .eq("id", bookingId);
+  if (isExpiredPendingBooking) {
+    await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+      .update({ status: "cancelled" })
+      .eq("id", bookingId);
+  }
 
-        await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
-          user_id: userId,
-          booking_id: bookingId,
-          amount: paymentAmount,
-          currency: "EUR",
-          type: "refund",
-          status: "completed",
-          metadata: {
-            stripe_payment_intent_id: paymentIntent.id,
-            stripe_refund_id: refund.id,
-            reason: "expired_booking_hold",
-          },
-        });
-      } catch (error) {
-        console.error("Webhook refund expired booking error:", error);
-      }
-    }
-
+  if (isExpiredPendingBooking || bookingRow.status === "cancelled" || bookingRow.status === "refunded") {
+    await refundExpiredBookingPayment(paymentIntent, bookingId, userId, paymentAmount);
     return;
   }
 
@@ -306,23 +347,23 @@ async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentInt
     const { error: updateBookingErr } = await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
       .update({ status: "paid", stripe_pi_id: paymentIntent.id })
       .eq("id", bookingId);
-    if (updateBookingErr) console.error("Webhook update booking error:", updateBookingErr);
-  }
+    if (updateBookingErr) {
+      console.error("Webhook update booking error:", updateBookingErr);
+      await refundExpiredBookingPayment(paymentIntent, bookingId, userId, paymentAmount);
+      return;
+    }
 
-  if (bookingRow.schedule_id && bookingRow.status !== "paid") {
-    const { data: scheduleRow } = await admin
-      .from("service_schedules")
-      .select("id, current_capacity")
-      .eq("id", bookingRow.schedule_id)
-      .maybeSingle<{ id: string; current_capacity: number | null }>();
+    const { data: finalizedBooking } = await admin
+      .from("bookings")
+      .select("status")
+      .eq("id", bookingId)
+      .maybeSingle<{ status: string }>();
 
-    if (scheduleRow && scheduleRow.current_capacity !== null && scheduleRow.current_capacity > 0) {
-      const { error: updateScheduleErr } = await (admin.from("service_schedules") as unknown as UpdatableSchedulesQuery)
-        .update({ current_capacity: scheduleRow.current_capacity - 1 })
-        .eq("id", scheduleRow.id);
-      if (updateScheduleErr) console.error("Webhook update schedule error:", updateScheduleErr);
+    if (finalizedBooking?.status !== "paid") {
+      await refundExpiredBookingPayment(paymentIntent, bookingId, userId, paymentAmount);
     }
   }
+
 }
 
 async function markBookingPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {

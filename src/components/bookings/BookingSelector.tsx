@@ -43,6 +43,7 @@ export default function BookingSelector({
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [duration, setDuration] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const initialMonthKey = toMonthKey(new Date().getFullYear(), new Date().getMonth());
   const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, ServiceSchedule[]>>({
     [initialMonthKey]: schedules,
@@ -162,7 +163,7 @@ export default function BookingSelector({
   const selectedSchedule = allSchedules.find((schedule) => schedule.id === selectedScheduleId) ?? null;
   const isCurrentMonthLoading = loadingMonthKey === currentMonthKey;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const isSelectedScheduleLocked = Boolean(
       selectedSchedule &&
         (selectedSchedule.booking_status === "paid" ||
@@ -174,18 +175,44 @@ export default function BookingSelector({
 
     if (isScheduled && (!selectedScheduleId || isSelectedScheduleLocked)) return;
 
-    setLoading(true);
-    const params = new URLSearchParams();
-
-    if (selectedScheduleId) {
-      params.set("scheduleId", selectedScheduleId);
-    }
+    const startTime = selectedSchedule ? new Date(selectedSchedule.start_time) : new Date();
+    const endTime = selectedSchedule ? new Date(selectedSchedule.end_time) : new Date(startTime);
 
     if (!isScheduled) {
-      params.set("duration", duration.toString());
+      endTime.setHours(endTime.getHours() + duration);
     }
 
-    router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
+    setLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch("/api/bookings/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: service.id,
+          scheduleId: selectedScheduleId,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        bookingId?: string;
+        details?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !payload?.bookingId) {
+        throw new Error(payload?.details || payload?.error || "Checkout sa nepodarilo vytvoriť.");
+      }
+
+      router.push(
+        `${getServiceCheckoutHref(service.type, service.id)}?bookingId=${encodeURIComponent(payload.bookingId)}`,
+      );
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout sa nepodarilo vytvoriť.");
+      setLoading(false);
+    }
   };
 
   const nextMonth = () => {
@@ -453,6 +480,7 @@ export default function BookingSelector({
               </div>
 
               <div className="mt-auto flex items-center justify-end border-t border-white/10 pt-4">
+                {checkoutError ? <p className="mr-auto text-sm text-red-300">{checkoutError}</p> : null}
                 <button
                   type="button"
                   disabled={!selectedScheduleId || loading}

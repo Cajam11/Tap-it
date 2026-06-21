@@ -91,6 +91,7 @@ export interface Booking {
   status: BookingStatus;
   stripe_pi_id: string | null;
   stripe_refund_id: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 }

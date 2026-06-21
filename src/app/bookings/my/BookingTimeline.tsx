@@ -208,12 +208,7 @@ export default function BookingTimeline({
                       {activity.status === "pending" && (
                         <Link
                           href={
-                            activity.schedule_id
-                              ? `${getServiceCheckoutHref(activity.bookable_services?.type, activity.service_id, activity.trainerId)}?scheduleId=${activity.schedule_id}${activity.bookable_services?.type === "trainer" ? `&serviceId=${activity.service_id}` : ""}`
-                              : `${getServiceCheckoutHref(activity.bookable_services?.type, activity.service_id, activity.trainerId)}?start=${activity.start_time}&duration=${Math.round(
-                                  (new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) /
-                                    (1000 * 60 * 60)
-                                )}`
+                            `${getServiceCheckoutHref(activity.bookable_services?.type, activity.service_id, activity.trainerId)}?bookingId=${encodeURIComponent(activity.id)}${activity.bookable_services?.type === "trainer" ? `&serviceId=${encodeURIComponent(activity.service_id)}` : ""}`
                           }
                           className="rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-red-500"
                         >
@@ -249,12 +244,7 @@ export default function BookingTimeline({
                   {booking.status === "pending" && (
                     <Link
                       href={
-                        booking.schedule_id
-                          ? `${getServiceCheckoutHref(booking.bookable_services?.type, booking.service_id, booking.trainerId)}?scheduleId=${booking.schedule_id}${booking.bookable_services?.type === "trainer" ? `&serviceId=${booking.service_id}` : ""}`
-                          : `${getServiceCheckoutHref(booking.bookable_services?.type, booking.service_id, booking.trainerId)}?start=${booking.start_time}&duration=${Math.round(
-                              (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
-                                (1000 * 60 * 60)
-                            )}`
+                        `${getServiceCheckoutHref(booking.bookable_services?.type, booking.service_id, booking.trainerId)}?bookingId=${encodeURIComponent(booking.id)}${booking.bookable_services?.type === "trainer" ? `&serviceId=${encodeURIComponent(booking.service_id)}` : ""}`
                       }
                       className="rounded bg-red-600/20 px-2 py-0.5 text-[10px] font-medium text-red-100 transition hover:bg-red-500/30"
                     >

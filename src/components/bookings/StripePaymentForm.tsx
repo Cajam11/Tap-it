@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 import {
@@ -15,9 +15,10 @@ import {
 type StripePaymentFormProps = {
   clientSecret: string;
   publishableKey: string;
+  expiresAt?: string | null;
 };
 
-function PaymentInnerForm() {
+function PaymentInnerForm({ expiresAt }: { expiresAt?: string | null }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,9 +26,25 @@ function PaymentInnerForm() {
   const [hasExpressCheckout, setHasExpressCheckout] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
+  const [isExpired, setIsExpired] = useState(() =>
+    Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now()),
+  );
+
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const millisecondsUntilExpiry = new Date(expiresAt).getTime() - Date.now();
+    if (millisecondsUntilExpiry <= 0) {
+      setIsExpired(true);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setIsExpired(true), millisecondsUntilExpiry);
+    return () => window.clearTimeout(timeout);
+  }, [expiresAt]);
 
   async function confirmPayment() {
-    if (!stripe || !elements) {
+    if (!stripe || !elements || isExpired) {
       return;
     }
 
@@ -90,6 +107,14 @@ function PaymentInnerForm() {
     );
   }
 
+  if (isExpired) {
+    return (
+      <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        Čas na dokončenie platby vypršal. Vyber si termín a vytvor nový checkout.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <ExpressCheckoutElement
@@ -136,7 +161,11 @@ function PaymentInnerForm() {
   );
 }
 
-export default function StripePaymentForm({ clientSecret, publishableKey }: StripePaymentFormProps) {
+export default function StripePaymentForm({
+  clientSecret,
+  publishableKey,
+  expiresAt,
+}: StripePaymentFormProps) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   if (!stripePromise) {
@@ -147,7 +176,7 @@ export default function StripePaymentForm({ clientSecret, publishableKey }: Stri
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <PaymentInnerForm />
+      <PaymentInnerForm expiresAt={expiresAt} />
     </Elements>
   );
 }

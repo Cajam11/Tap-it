@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import NavBarAuth from "@/components/NavBarAuth";
 import { createClient } from "@/lib/supabase/server";
+import { expireStalePendingBookings } from "@/lib/bookings";
 import { getServiceCheckoutHref } from "@/lib/bookings/routes";
 import BookingTimeline from "./BookingTimeline";
 import BookingHistoryList, { type BookingHistoryItem } from "./BookingHistoryList";
@@ -57,6 +58,8 @@ export default async function MyBookingsPage() {
   if (!user) {
     redirect("/login");
   }
+
+  await expireStalePendingBookings();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -127,20 +130,11 @@ export default async function MyBookingsPage() {
     const isTrainer = booking.bookable_services?.type === "trainer";
 
     const paymentHref = booking.status === "pending"
-      ? booking.schedule_id
-        ? `${getServiceCheckoutHref(
-            booking.bookable_services?.type,
-            booking.service_id,
-            trainerId,
-          )}?scheduleId=${booking.schedule_id}${isTrainer ? `&serviceId=${booking.service_id}` : ""}`
-        : `${getServiceCheckoutHref(
-            booking.bookable_services?.type,
-            booking.service_id,
-            trainerId,
-          )}?start=${booking.start_time}&duration=${Math.round(
-            (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) /
-              (1000 * 60 * 60),
-          )}`
+      ? `${getServiceCheckoutHref(
+          booking.bookable_services?.type,
+          booking.service_id,
+          trainerId,
+        )}?bookingId=${encodeURIComponent(booking.id)}${isTrainer ? `&serviceId=${encodeURIComponent(booking.service_id)}` : ""}`
       : null;
 
     return {

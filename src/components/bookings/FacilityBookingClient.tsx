@@ -142,6 +142,7 @@ export default function FacilityBookingClient({
   const [selectedHours, setSelectedHours] = useState<number[]>([]);
   const [selectedMinuteSlots, setSelectedMinuteSlots] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -425,34 +426,56 @@ export default function FacilityBookingClient({
     setSelectedMinuteSlots(isContiguous && isAvailableRange ? next : [minute]);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selectedDateStr) return;
+
+    let start: Date;
+    let end: Date;
 
     if (isMinuteRate) {
       if (sortedSelectedMinuteSlots.length === 0) return;
 
-      setLoading(true);
-      const start = getMinuteSlotDate(selectedDateStr, sortedSelectedMinuteSlots[0]);
-      const params = new URLSearchParams({
-        start: start.toISOString(),
-        durationMinutes: selectedDurationMinutes.toString(),
-      });
+      start = getMinuteSlotDate(selectedDateStr, sortedSelectedMinuteSlots[0]);
+      end = new Date(start.getTime() + selectedDurationMinutes * 60_000);
+    } else {
+      if (duration === 0) return;
 
-      router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
-      return;
+      const startHour = sortedSelectedHours[0];
+      start = getSlotDate(selectedDateStr, startHour);
+      end = new Date(start);
+      end.setHours(end.getHours() + duration);
     }
 
-    if (duration === 0) return;
-
     setLoading(true);
-    const startHour = sortedSelectedHours[0];
-    const start = getSlotDate(selectedDateStr, startHour);
-    const params = new URLSearchParams({
-      start: start.toISOString(),
-      duration: duration.toString(),
-    });
+    setCheckoutError(null);
 
-    router.push(`${getServiceCheckoutHref(service.type, service.id)}?${params.toString()}`);
+    try {
+      const response = await fetch("/api/bookings/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: service.id,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        bookingId?: string;
+        details?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !payload?.bookingId) {
+        throw new Error(payload?.details || payload?.error || "Checkout sa nepodarilo vytvoriť.");
+      }
+
+      router.push(
+        `${getServiceCheckoutHref(service.type, service.id)}?bookingId=${encodeURIComponent(payload.bookingId)}`,
+      );
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout sa nepodarilo vytvoriť.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -719,6 +742,7 @@ export default function FacilityBookingClient({
                     ? `${duration} hod. vybrane`
                     : "Vyber aspon jednu hodinu"}
               </div>
+              {checkoutError ? <p className="text-sm text-red-300">{checkoutError}</p> : null}
               <button
                 disabled={(isMinuteRate ? selectedDurationMinutes === 0 : duration === 0) || loading}
                 onClick={handleContinue}

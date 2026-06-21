@@ -151,6 +151,7 @@ CREATE TABLE public.bookings (
   status text NOT NULL CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'cancelled'::text, 'refunded'::text])),
   stripe_pi_id text,
   stripe_refund_id text,
+  expires_at timestamp with time zone DEFAULT (now() + '00:15:00'::interval),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT bookings_pkey PRIMARY KEY (id),

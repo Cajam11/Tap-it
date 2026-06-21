@@ -3,12 +3,6 @@ import { getStripeServerClient } from "@/lib/stripe/server";
 
 export const PENDING_BOOKING_HOLD_MINUTES = 15;
 
-type InsertableBookingsQuery = {
-  insert(values: Record<string, unknown>): InsertableBookingsQuery;
-  select(columns?: string): InsertableBookingsQuery;
-  single<T>(): Promise<{ data: T | null; error: unknown }>;
-};
-
 type SelectableBookingsQuery = {
   select(columns: string): SelectableBookingsQuery;
   eq(column: string, value: string): SelectableBookingsQuery;
@@ -20,52 +14,211 @@ type UpdatableBookingsQuery = {
   eq(column: string, value: string): Promise<{ error: unknown }>;
 };
 
-type DeleteableBookingsQuery = {
-  delete(): DeleteableBookingsQuery;
-  eq(column: string, value: string): Promise<{ error: unknown }>;
+type BookingCheckout = {
+  id: string;
+  user_id: string;
+  service_id: string;
+  schedule_id: string | null;
+  start_time: string;
+  end_time: string;
+  total_price: number;
+  status: "pending" | "paid" | "cancelled" | "refunded";
+  expires_at: string | null;
+  stripe_pi_id: string | null;
 };
 
-type ExpirableBookingsQuery = {
-  update(values: Record<string, unknown>): ExpirableBookingsQuery;
-  eq(column: string, value: string): ExpirableBookingsQuery;
-  lt(column: string, value: string): Promise<{ error: unknown }>;
+type BookingCheckoutRpc = {
+  rpc(
+    name: "reserve_booking_checkout",
+    args: {
+      p_user_id: string;
+      p_service_id: string;
+      p_schedule_id: string | null;
+      p_start_time: string;
+      p_end_time: string;
+      p_total_price: number;
+    },
+  ): Promise<{
+    data: Array<{ booking_id: string; booking_expires_at: string }> | null;
+    error: { message?: string } | null;
+  }>;
 };
 
-type UpdatableSchedulesQuery = {
-  update(values: Record<string, unknown>): UpdatableSchedulesQuery;
-  eq(column: string, value: string): Promise<{ error: unknown }>;
-};
-
-function isBookingConflictError(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-
-  const details = error as { code?: string; message?: string; details?: string };
-  return (
-    details.code === "23P01" ||
-    details.code === "23505" ||
-    details.message?.includes("bookings_facility_no_overlap") ||
-    details.details?.includes("bookings_facility_no_overlap") ||
-    details.message?.includes("bookings_user_no_overlap") ||
-    details.details?.includes("bookings_user_no_overlap")
-  );
-}
-
-export async function expireStalePendingBookings(serviceId?: string) {
+export async function expireStalePendingBookings(
+  serviceId?: string,
+  cancelPaymentIntents = false,
+) {
   const admin = createAdminClient();
-  const cutoff = new Date(Date.now() - PENDING_BOOKING_HOLD_MINUTES * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
 
-  let query = (admin.from("bookings") as unknown as ExpirableBookingsQuery)
-    .update({ status: "cancelled", updated_at: new Date().toISOString() })
-    .eq("status", "pending");
+  if (!cancelPaymentIntents) {
+    let expiryQuery = admin
+      .from("bookings")
+      .update({ status: "cancelled", updated_at: now })
+      .eq("status", "pending");
+
+    if (serviceId) {
+      expiryQuery = expiryQuery.eq("service_id", serviceId);
+    }
+
+    const { error } = await expiryQuery.lt("expires_at", now);
+    if (error) console.error("Failed to expire stale pending bookings:", error);
+    return 0;
+  }
+
+  let query = admin
+    .from("bookings")
+    .select("id, stripe_pi_id")
+    .eq("status", "pending")
+    .limit(100);
 
   if (serviceId) {
     query = query.eq("service_id", serviceId);
   }
 
-  const { error } = await query.lt("created_at", cutoff);
-  if (error) {
-    console.error("Failed to expire stale pending bookings:", error);
+  const { data: staleBookings, error } = await query.lt("expires_at", now);
+  if (error || !staleBookings?.length) {
+    if (error) console.error("Failed to find stale pending bookings:", error);
+    return 0;
   }
+
+  const stripe = getStripeServerClient();
+  let expiredCount = 0;
+
+  for (const staleBooking of staleBookings as Array<{ id: string; stripe_pi_id: string | null }>) {
+    const { data: cancelledBooking, error: cancelError } = await admin
+      .from("bookings")
+      .update({ status: "cancelled", updated_at: now })
+      .eq("id", staleBooking.id)
+      .eq("status", "pending")
+      .lt("expires_at", now)
+      .select("id, stripe_pi_id")
+      .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
+
+    if (cancelError || !cancelledBooking) {
+      if (cancelError) console.error("Failed to expire stale pending booking:", cancelError);
+      continue;
+    }
+
+    expiredCount += 1;
+
+    if (cancelledBooking.stripe_pi_id) {
+      try {
+        await stripe.paymentIntents.cancel(cancelledBooking.stripe_pi_id);
+      } catch {
+        // A payment may have completed exactly while the hold expired. The
+        // webhook is still the final authority and refunds it in that case.
+      }
+    }
+  }
+
+  return expiredCount;
+}
+
+export async function createBookingCheckout(
+  userId: string,
+  serviceId: string,
+  scheduleId: string | null,
+  startTime: Date,
+  endTime: Date,
+  totalPrice: number,
+) {
+  await expireStalePendingBookings();
+
+  const admin = createAdminClient();
+  const { data, error } = await (admin as unknown as BookingCheckoutRpc).rpc(
+    "reserve_booking_checkout",
+    {
+      p_user_id: userId,
+      p_service_id: serviceId,
+      p_schedule_id: scheduleId,
+      p_start_time: startTime.toISOString(),
+      p_end_time: endTime.toISOString(),
+      p_total_price: totalPrice,
+    },
+  );
+
+  const checkout = data?.[0];
+  if (error || !checkout) {
+    throw new Error(error?.message || "Rezerváciu sa nepodarilo vytvoriť.");
+  }
+
+  return {
+    bookingId: checkout.booking_id,
+    expiresAt: checkout.booking_expires_at,
+  };
+}
+
+export async function getBookingCheckout(bookingId: string, userId: string) {
+  await expireStalePendingBookings();
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("bookings")
+    .select("id, user_id, service_id, schedule_id, start_time, end_time, total_price, status, expires_at, stripe_pi_id")
+    .eq("id", bookingId)
+    .eq("user_id", userId)
+    .maybeSingle<BookingCheckout>();
+
+  if (!data) {
+    throw new Error("Checkout nebol nájdený.");
+  }
+
+  if (data.status !== "pending" || !data.expires_at || new Date(data.expires_at) <= new Date()) {
+    throw new Error("Tento checkout už vypršal. Vyberte si termín znova.");
+  }
+
+  return data;
+}
+
+export async function createBookingPaymentIntentForCheckout(
+  bookingId: string,
+  userId: string,
+  serviceName: string,
+) {
+  const booking = await getBookingCheckout(bookingId, userId);
+  const stripe = getStripeServerClient();
+
+  if (booking.stripe_pi_id) {
+    const existingIntent = await stripe.paymentIntents.retrieve(booking.stripe_pi_id);
+
+    if (
+      existingIntent.client_secret &&
+      existingIntent.status !== "canceled" &&
+      existingIntent.status !== "succeeded"
+    ) {
+      return {
+        clientSecret: existingIntent.client_secret,
+        bookingId: booking.id,
+      };
+    }
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(Number(booking.total_price) * 100),
+    currency: "eur",
+    automatic_payment_methods: { enabled: true },
+    metadata: {
+      user_id: userId,
+      booking_id: booking.id,
+      service_name: serviceName,
+      booking_expires_at: booking.expires_at,
+    },
+  });
+
+  if (!paymentIntent.client_secret) {
+    throw new Error("Platbu sa nepodarilo pripraviť.");
+  }
+
+  const admin = createAdminClient();
+  await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
+    .update({ stripe_pi_id: paymentIntent.id })
+    .eq("id", booking.id);
+
+  return {
+    clientSecret: paymentIntent.client_secret,
+    bookingId: booking.id,
+  };
 }
 
 export async function createBookingIntent(
@@ -77,204 +230,16 @@ export async function createBookingIntent(
   totalPrice: number,
   serviceName: string
 ) {
-  const admin = createAdminClient();
-  // A pending checkout blocks a time slot for 15 minutes regardless of service.
-  // Expire holds globally before checking the user's calendar.
-  await expireStalePendingBookings();
+  const checkout = await createBookingCheckout(
+    userId,
+    serviceId,
+    scheduleId,
+    startTime,
+    endTime,
+    totalPrice,
+  );
 
-  // 1. Check if user already holds a fresh pending booking for this exact request
-  let query = admin
-    .from("bookings")
-    .select("id, stripe_pi_id")
-    .eq("user_id", userId)
-    .eq("service_id", serviceId)
-    .eq("status", "pending")
-    .eq("start_time", startTime.toISOString())
-    .eq("end_time", endTime.toISOString());
-
-  if (scheduleId) {
-    query = query.eq("schedule_id", scheduleId);
-  } else {
-    query = query.is("schedule_id", null);
-  }
-
-  const { data: earlyPendingBooking } = await query.maybeSingle<{ id: string; stripe_pi_id: string | null }>();
-
-  if (earlyPendingBooking?.id) {
-    const stripe = getStripeServerClient();
-
-    if (earlyPendingBooking.stripe_pi_id) {
-      const existingIntent = await stripe.paymentIntents.retrieve(earlyPendingBooking.stripe_pi_id);
-      if (existingIntent.client_secret) {
-        return {
-          clientSecret: existingIntent.client_secret,
-          bookingId: earlyPendingBooking.id,
-        };
-      }
-    }
-
-    const newIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalPrice * 100),
-      currency: "eur",
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        user_id: userId,
-        booking_id: earlyPendingBooking.id,
-        service_name: serviceName,
-      },
-    });
-
-    if (!newIntent.client_secret) {
-      throw new Error("Could not create Stripe payment intent.");
-    }
-
-    await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-      .update({ stripe_pi_id: newIntent.id })
-      .eq("id", earlyPendingBooking.id);
-
-    return {
-      clientSecret: newIntent.client_secret,
-      bookingId: earlyPendingBooking.id,
-    };
-  }
-
-  // 2. Perform regular validation for new booking
-  const { data: serviceRow } = await admin
-    .from("bookable_services")
-    .select("id, type")
-    .eq("id", serviceId)
-    .maybeSingle<{ id: string; type: string }>();
-
-  if (!serviceRow) {
-    throw new Error("Service not found.");
-  }
-
-  if (scheduleId) {
-    const { data: scheduleRow } = await admin
-      .from("service_schedules")
-      .select("id, current_capacity, trainer_id")
-      .eq("id", scheduleId)
-      .maybeSingle<{ id: string; current_capacity: number | null; trainer_id: string | null }>();
-
-    if (!scheduleRow) {
-      throw new Error("Termín nebol nájdený.");
-    }
-
-    if (scheduleRow.trainer_id && scheduleRow.trainer_id === userId) {
-      throw new Error("Nemôžete si rezervovať sám seba ako trénera.");
-    }
-
-    if (scheduleRow.current_capacity !== null) {
-      if (scheduleRow.current_capacity <= 0) {
-        throw new Error("Tento termín je už obsadený.");
-      }
-
-      const { count: pendingOthersCount } = await admin
-        .from("bookings")
-        .select("*", { count: "exact", head: true })
-        .eq("schedule_id", scheduleId)
-        .eq("status", "pending")
-        .neq("user_id", userId);
-
-      if (scheduleRow.current_capacity - (pendingOthersCount ?? 0) <= 0) {
-        throw new Error("Tento termín je práve rezervovaný iným používateľom.");
-      }
-    }
-
-    const { data: existingScheduleBooking } = await admin
-      .from("bookings")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("schedule_id", scheduleId)
-      .eq("status", "paid")
-      .maybeSingle<{ id: string }>();
-
-    if (existingScheduleBooking?.id) {
-      throw new Error("Tento termín už máte rezervovaný.");
-    }
-  }
-
-  const { data: overlappingUserBooking } = await admin
-    .from("bookings")
-    .select("id")
-    .eq("user_id", userId)
-    .in("status", ["pending", "paid"])
-    .lt("start_time", endTime.toISOString())
-    .gt("end_time", startTime.toISOString())
-    .limit(1)
-    .maybeSingle<{ id: string }>();
-
-  if (overlappingUserBooking) {
-    throw new Error("Tento termín sa prekrýva s vašou inou aktívnou rezerváciou.");
-  }
-
-  if (serviceRow.type === "facility") {
-    const { data: overlappingBooking } = await admin
-      .from("bookings")
-      .select("id, user_id, status")
-      .eq("service_id", serviceId)
-      .in("status", ["pending", "paid"])
-      .lt("start_time", endTime.toISOString())
-      .gt("end_time", startTime.toISOString())
-      .maybeSingle<{ id: string; user_id: string; status: string }>();
-
-    if (overlappingBooking) {
-      if (overlappingBooking.user_id === userId && overlappingBooking.status === "pending") {
-        await (admin.from("bookings") as unknown as DeleteableBookingsQuery)
-          .delete()
-          .eq("id", overlappingBooking.id);
-      } else {
-        throw new Error("Tento cas je uz obsadeny.");
-      }
-    }
-  }
-
-  // Create booking record as "pending"
-  const { data: booking, error: bookingError } = await (admin.from("bookings") as unknown as InsertableBookingsQuery)
-    .insert({
-      user_id: userId,
-      service_id: serviceId,
-      schedule_id: scheduleId,
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString(),
-      total_price: totalPrice,
-      status: "pending",
-    })
-    .select()
-    .single<{ id: string }>();
-
-  if (bookingError || !booking) {
-    if (isBookingConflictError(bookingError)) {
-      throw new Error("Tento termín sa prekrýva s vašou inou aktívnou rezerváciou alebo je už obsadený.");
-    }
-    throw new Error("Could not create local booking record.");
-  }
-
-  // Create Stripe intent
-  const stripe = getStripeServerClient();
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(totalPrice * 100), // convert to cents
-    currency: "eur",
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      user_id: userId,
-      booking_id: booking.id,
-      service_name: serviceName,
-    },
-  });
-
-  if (!paymentIntent.client_secret) {
-    throw new Error("Could not create Stripe payment intent.");
-  }
-
-  await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-    .update({ stripe_pi_id: paymentIntent.id })
-    .eq("id", booking.id);
-
-  return {
-    clientSecret: paymentIntent.client_secret,
-    bookingId: booking.id,
-  };
+  return createBookingPaymentIntentForCheckout(checkout.bookingId, userId, serviceName);
 }
 
 export async function cancelBookingAndRefund(bookingId: string, userId: string) {
@@ -337,20 +302,6 @@ export async function cancelBookingAndRefund(bookingId: string, userId: string) 
       stripe_refund_id: stripeRefundId,
     })
     .eq("id", bookingId);
-
-  if (booking.schedule_id) {
-    const { data: scheduleRow } = await admin
-      .from("service_schedules")
-      .select("id, current_capacity")
-      .eq("id", booking.schedule_id)
-      .maybeSingle<{ id: string; current_capacity: number | null }>();
-
-    if (scheduleRow && scheduleRow.current_capacity !== null) {
-      await (admin.from("service_schedules") as unknown as UpdatableSchedulesQuery)
-        .update({ current_capacity: scheduleRow.current_capacity + 1 })
-        .eq("id", scheduleRow.id);
-    }
-  }
 
   // If it was refunded, record the transaction type
   if (stripeRefundId) {

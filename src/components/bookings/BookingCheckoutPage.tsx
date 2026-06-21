@@ -5,53 +5,16 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import NavBarAuth from "@/components/NavBarAuth";
 import StripePaymentForm from "@/components/bookings/StripePaymentForm";
-import { createBookingIntent } from "@/lib/bookings";
+import {
+  createBookingPaymentIntentForCheckout,
+  getBookingCheckout,
+} from "@/lib/bookings";
 import { getServiceDetailHref } from "@/lib/bookings/routes";
-import { BookableService, ServiceSchedule } from "@/lib/types";
-
-const FACILITY_OPEN_HOUR = 6;
-const FACILITY_CLOSE_HOUR = 21;
-const FACILITY_MINUTE_STEP = 5;
+import { BookableService } from "@/lib/types";
 
 export type CheckoutSearchParams = {
-  scheduleId?: string;
-  duration?: string;
-  durationMinutes?: string;
-  start?: string;
-  trainerId?: string;
-  serviceId?: string;
+  bookingId?: string;
 };
-
-function getFacilityCloseDate(date: Date) {
-  const close = new Date(date);
-  close.setHours(FACILITY_CLOSE_HOUR, 0, 0, 0);
-  return close;
-}
-
-function isValidFacilityStart(date: Date, isMinuteRate: boolean) {
-  return (
-    !Number.isNaN(date.getTime()) &&
-    (isMinuteRate ? date.getMinutes() % FACILITY_MINUTE_STEP === 0 : date.getMinutes() === 0) &&
-    date.getSeconds() === 0 &&
-    date.getHours() >= FACILITY_OPEN_HOUR &&
-    date.getHours() < FACILITY_CLOSE_HOUR
-  );
-}
-
-function getMetadataNumber(metadata: Record<string, unknown> | null, key: string) {
-  const value = metadata?.[key];
-
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    const numberValue = Number(value);
-    return Number.isFinite(numberValue) ? numberValue : null;
-  }
-
-  return null;
-}
 
 export default async function BookingCheckoutPage({
   serviceId,
@@ -62,14 +25,8 @@ export default async function BookingCheckoutPage({
   searchParams: Promise<CheckoutSearchParams>;
   routeTrainerId?: string | null;
 }) {
-  const {
-    scheduleId,
-    duration: durationParam,
-    durationMinutes: durationMinutesParam,
-    start: startParam,
-    trainerId: queryTrainerId,
-  } = await searchParams;
-  let trainerId = routeTrainerId ?? queryTrainerId ?? null;
+  const { bookingId } = await searchParams;
+  let trainerId = routeTrainerId ?? null;
 
   const supabase = await createClient();
   const {
@@ -104,95 +61,61 @@ export default async function BookingCheckoutPage({
 
   if (error || !service) redirect("/bookings");
   const typedService = service as BookableService;
-  const detailHref = getServiceDetailHref(typedService.type, serviceId, trainerId);
 
-  let schedule: ServiceSchedule | null = null;
   let totalPrice = typedService.base_price;
   let startTime = new Date();
   let endTime = new Date();
+  let checkoutExpiresAt: string | null = null;
+  let errorMsg: string | null = null;
 
-  if (typedService.type === "group" || typedService.type === "trainer") {
-    if (!scheduleId) redirect(detailHref);
-
-    const { data: sched } = await supabase
-      .from("service_schedules")
-      .select("*, profiles:trainer_id(full_name, avatar_url, bio)")
-      .eq("id", scheduleId)
-      .single();
-
-    if (!sched) redirect(detailHref);
-    schedule = sched as ServiceSchedule;
-    if (!trainerId && schedule.trainer_id) {
-      trainerId = schedule.trainer_id;
-    }
-
-    startTime = new Date(schedule.start_time);
-    endTime = new Date(schedule.end_time);
-    totalPrice = typedService.base_price;
+  if (!bookingId) {
+    errorMsg = "Tento checkout nie je platný. Vyberte si termín znova.";
   } else {
-    if (!startParam) redirect(detailHref);
+    try {
+      const checkout = await getBookingCheckout(bookingId, user.id);
 
-    const safeStartParam = startParam.replace(" ", "+");
-    const isMinuteRate = typedService.price_unit === "minute";
-    const duration = Math.max(1, Math.min(16, parseInt(durationParam || "1", 10)));
-    const durationMinutes = Math.max(
-      FACILITY_MINUTE_STEP,
-      Math.min(30, parseInt(durationMinutesParam || "10", 10)),
-    );
-    startTime = new Date(safeStartParam);
-    endTime = new Date(startTime);
+      if (checkout.service_id !== serviceId) {
+        throw new Error("Tento checkout nepatrí k zvolenej službe.");
+      }
 
-    if (isMinuteRate) {
-      endTime = new Date(startTime.getTime() + durationMinutes * 60_000);
-    } else {
-      endTime.setHours(endTime.getHours() + duration);
-    }
+      startTime = new Date(checkout.start_time);
+      endTime = new Date(checkout.end_time);
+      totalPrice = Number(checkout.total_price);
+      checkoutExpiresAt = checkout.expires_at;
 
-    const now = new Date();
-    const minValidStart = new Date(now.getTime() - 20 * 60 * 1000);
-    const closeTime = getFacilityCloseDate(startTime);
+      if (checkout.schedule_id) {
+        const { data: sched } = await supabase
+          .from("service_schedules")
+          .select("*, profiles:trainer_id(full_name, avatar_url, bio)")
+          .eq("id", checkout.schedule_id)
+          .single();
 
-    if (
-      !isValidFacilityStart(startTime, isMinuteRate) ||
-      (isMinuteRate && durationMinutes % FACILITY_MINUTE_STEP !== 0) ||
-      endTime <= startTime ||
-      endTime > closeTime ||
-      startTime < minValidStart
-    ) {
-      redirect(detailHref);
-    }
-
-    const firstHour = getMetadataNumber(typedService.metadata, "first_hour_price");
-    const nextHour = getMetadataNumber(typedService.metadata, "next_hour_price");
-
-    if (isMinuteRate) {
-      totalPrice = typedService.base_price * durationMinutes;
-    } else if (firstHour !== null && nextHour !== null) {
-      totalPrice = firstHour + Math.max(0, duration - 1) * nextHour;
-    } else {
-      totalPrice = typedService.base_price * duration;
+        if (!sched) throw new Error("Termín už nie je dostupný.");
+        const schedule = sched as { trainer_id: string | null };
+        if (!trainerId && schedule.trainer_id) trainerId = schedule.trainer_id;
+      }
+    } catch (error) {
+      errorMsg = error instanceof Error ? error.message : "Checkout sa nepodarilo načítať.";
     }
   }
 
   let clientSecret: string | null = null;
-  let errorMsg: string | null = null;
 
-  try {
-    const intent = await createBookingIntent(
-      user.id,
-      serviceId,
-      schedule?.id || null,
-      startTime,
-      endTime,
-      totalPrice,
-      typedService.name
-    );
-    clientSecret = intent.clientSecret;
-  } catch (err: unknown) {
-    errorMsg = err instanceof Error ? err.message : "Failed to create payment.";
+  if (!errorMsg && bookingId) {
+    try {
+      const intent = await createBookingPaymentIntentForCheckout(
+        bookingId,
+        user.id,
+        typedService.name,
+      );
+      clientSecret = intent.clientSecret;
+    } catch (error) {
+      errorMsg = error instanceof Error ? error.message : "Platbu sa nepodarilo pripraviť.";
+    }
   }
 
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+  const detailHref = getServiceDetailHref(typedService.type, serviceId, trainerId);
 
   let trainerProfile: { full_name: string | null; avatar_url: string | null; bio: string | null } | null = null;
   if (trainerId) {
@@ -304,7 +227,11 @@ export default async function BookingCheckoutPage({
                 )}
 
                 {clientSecret && stripeKey ? (
-                  <StripePaymentForm clientSecret={clientSecret} publishableKey={stripeKey} />
+                  <StripePaymentForm
+                    clientSecret={clientSecret}
+                    publishableKey={stripeKey}
+                    expiresAt={checkoutExpiresAt}
+                  />
                 ) : (
                   !errorMsg && (
                     <div className="text-white/50 animate-pulse text-sm">

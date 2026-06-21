@@ -150,6 +150,7 @@ CREATE TABLE public.bookings (
   total_price numeric NOT NULL,
   status text NOT NULL CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'cancelled'::text, 'refunded'::text])),
   stripe_pi_id text,
+  stripe_pi_cancelled_at timestamp with time zone,
   stripe_refund_id text,
   expires_at timestamp with time zone DEFAULT (now() + '00:15:00'::interval),
   created_at timestamp with time zone NOT NULL DEFAULT now(),

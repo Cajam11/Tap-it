@@ -20,3 +20,6 @@ Endpoint zruší expired bookingy aj ich zrušiteľné Stripe Payment Intenty (s
 aby neblokoval ďalšie požiadavky). Ochrana je zároveň vynútená pri otvorení checkoutu, pri
 vytvorení payment intentu a v Stripe webhooku, takže správnosť rezervácie nezávisí iba od
 scheduleru.
+
+Ak lazy cleanup zruší booking medzi dvoma cron tickmi, jeho Stripe Payment Intent nezostane
+zabudnutý: zrušený booking ostáva v retry fronte, kým Stripe nepotvrdí jeho cancel.

@@ -46,69 +46,90 @@ type BookingCheckoutRpc = {
 
 export async function expireStalePendingBookings(
   serviceId?: string,
-  cancelPaymentIntents = false,
 ) {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  if (!cancelPaymentIntents) {
-    let expiryQuery = admin
-      .from("bookings")
-      .update({ status: "cancelled", updated_at: now })
-      .eq("status", "pending");
-
-    if (serviceId) {
-      expiryQuery = expiryQuery.eq("service_id", serviceId);
-    }
-
-    const { error } = await expiryQuery.lt("expires_at", now);
-    if (error) console.error("Failed to expire stale pending bookings:", error);
-    return 0;
-  }
-
-  let query = admin
+  let expiredQuery = admin
     .from("bookings")
-    .select("id, stripe_pi_id")
+    .select("id")
     .eq("status", "pending")
+    .order("expires_at", { ascending: true })
     .limit(100);
 
   if (serviceId) {
-    query = query.eq("service_id", serviceId);
+    expiredQuery = expiredQuery.eq("service_id", serviceId);
   }
 
-  const { data: staleBookings, error } = await query.lt("expires_at", now);
-  if (error || !staleBookings?.length) {
-    if (error) console.error("Failed to find stale pending bookings:", error);
-    return 0;
+  const { data: staleBookings, error: staleBookingsError } = await expiredQuery.lt("expires_at", now);
+  if (staleBookingsError) {
+    console.error("Failed to find stale pending bookings:", staleBookingsError);
   }
 
-  const stripe = getStripeServerClient();
   let expiredCount = 0;
 
-  for (const staleBooking of staleBookings as Array<{ id: string; stripe_pi_id: string | null }>) {
-    const { data: cancelledBooking, error: cancelError } = await admin
+  for (const staleBooking of (staleBookings ?? []) as Array<{ id: string }>) {
+    const { data: cancelledBooking, error: expireError } = await admin
       .from("bookings")
       .update({ status: "cancelled", updated_at: now })
       .eq("id", staleBooking.id)
       .eq("status", "pending")
       .lt("expires_at", now)
-      .select("id, stripe_pi_id")
-      .maybeSingle<{ id: string; stripe_pi_id: string | null }>();
+      .select("id")
+      .maybeSingle<{ id: string }>();
 
-    if (cancelError || !cancelledBooking) {
-      if (cancelError) console.error("Failed to expire stale pending booking:", cancelError);
+    if (expireError || !cancelledBooking) {
+      if (expireError) console.error("Failed to expire stale pending booking:", expireError);
       continue;
     }
 
     expiredCount += 1;
+  }
 
-    if (cancelledBooking.stripe_pi_id) {
-      try {
-        await stripe.paymentIntents.cancel(cancelledBooking.stripe_pi_id);
-      } catch {
-        // A payment may have completed exactly while the hold expired. The
-        // webhook is still the final authority and refunds it in that case.
+  // A lazy cleanup can cancel a booking between cron ticks. Keep every
+  // unconfirmed Stripe cancellation in this retry queue until it succeeds.
+  let intentRetryQuery = admin
+    .from("bookings")
+    .select("id, stripe_pi_id")
+    .eq("status", "cancelled")
+    .not("stripe_pi_id", "is", null)
+    .is("stripe_pi_cancelled_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
+  if (serviceId) {
+    intentRetryQuery = intentRetryQuery.eq("service_id", serviceId);
+  }
+
+  const { data: intentsToCancel, error: intentsToCancelError } = await intentRetryQuery;
+  if (intentsToCancelError) {
+    console.error("Failed to load Stripe cancellation retry queue:", intentsToCancelError);
+    return expiredCount;
+  }
+
+  const stripe = getStripeServerClient();
+
+  for (const booking of (intentsToCancel ?? []) as Array<{ id: string; stripe_pi_id: string }>) {
+    try {
+      await stripe.paymentIntents.cancel(booking.stripe_pi_id);
+
+      const { error: markCancelledError } = await admin
+        .from("bookings")
+        .update({ stripe_pi_cancelled_at: new Date().toISOString() })
+        .eq("id", booking.id)
+        .eq("status", "cancelled");
+
+      if (markCancelledError) {
+        console.error("Failed to mark Stripe payment intent as cancelled:", markCancelledError);
       }
+    } catch (error) {
+      // Keep the row in the retry queue. A concurrent successful payment is
+      // still handled by the webhook and refunded because the booking is cancelled.
+      console.error("Failed to cancel expired Stripe payment intent:", {
+        bookingId: booking.id,
+        paymentIntentId: booking.stripe_pi_id,
+        error,
+      });
     }
   }
 
@@ -212,7 +233,7 @@ export async function createBookingPaymentIntentForCheckout(
 
   const admin = createAdminClient();
   await (admin.from("bookings") as unknown as UpdatableBookingsQuery)
-    .update({ stripe_pi_id: paymentIntent.id })
+    .update({ stripe_pi_id: paymentIntent.id, stripe_pi_cancelled_at: null })
     .eq("id", booking.id);
 
   return {

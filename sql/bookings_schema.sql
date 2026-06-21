@@ -72,6 +72,7 @@ create table if not exists public.bookings (
   total_price numeric(10,2) not null,
   status text not null check (status in ('pending', 'paid', 'cancelled', 'refunded')),
   stripe_pi_id text null, -- Pre naviazanie s platbou
+  stripe_pi_cancelled_at timestamptz null, -- Potvrdené zrušenie Stripe Payment Intenta
   stripe_refund_id text null, -- Pre storná
   expires_at timestamptz null default (now() + interval '15 minutes'), -- Pending checkout je platný najviac 15 minút
   created_at timestamptz not null default now(),

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const expired = await expireStalePendingBookings(undefined, true);
+    const expired = await expireStalePendingBookings();
     return NextResponse.json({ ok: true, expired });
   } catch (error) {
     console.error("Booking checkout expiry cron failed", error);

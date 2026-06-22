@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient, getStripeWebhookSecret } from "@/lib/stripe/server";
+import {
+  completeMembershipPaymentAttempt,
+  findMembershipPaymentAttemptByPaymentIntent,
+  markMembershipPaymentAttempt,
+  type MembershipPaymentAttempt,
+} from "@/lib/membership-payments";
 
 type MembershipRow = {
   id: string;
@@ -113,7 +119,7 @@ async function refundExpiredBookingPayment(
   }
 }
 
-async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
+async function finalizeLegacyMembershipFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
   const userId = asString(paymentIntent.metadata.user_id);
   const membershipId = asString(paymentIntent.metadata.membership_id);
 
@@ -225,7 +231,7 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
   });
 }
 
-async function markPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
+async function markLegacyMembershipPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
   const userId = asString(paymentIntent.metadata.user_id);
   const membershipId = asString(paymentIntent.metadata.membership_id);
 
@@ -271,6 +277,268 @@ async function markPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
     status: "failed",
     metadata: nextMetadata,
   });
+}
+
+function membershipAttemptIdFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
+  return asString(paymentIntent.metadata.membership_payment_attempt_id);
+}
+
+function isAttemptOwnedByPaymentIntent(
+  attempt: MembershipPaymentAttempt,
+  paymentIntent: Stripe.PaymentIntent,
+) {
+  const userId = asString(paymentIntent.metadata.user_id);
+  const membershipId = asString(paymentIntent.metadata.membership_id);
+
+  return (
+    userId === attempt.user_id &&
+    membershipId === attempt.membership_id &&
+    (!attempt.stripe_payment_intent_id || attempt.stripe_payment_intent_id === paymentIntent.id)
+  );
+}
+
+async function recordCompletedMembershipTransaction(
+  paymentIntent: Stripe.PaymentIntent,
+  attempt: MembershipPaymentAttempt,
+) {
+  const admin = createAdminClient();
+  const { data: existingTx } = await admin
+    .from("transactions")
+    .select("id, status, metadata")
+    .contains("metadata", { stripe_payment_intent_id: paymentIntent.id })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<TransactionRow>();
+
+  const amount = Number(paymentIntent.amount_received || paymentIntent.amount) / 100;
+  const metadata = {
+    ...(existingTx?.metadata ?? {}),
+    membership_payment_attempt_id: attempt.id,
+    plan_name: attempt.membership_name,
+    billing_cycle: attempt.billing_cycle,
+    stripe_payment_intent_id: paymentIntent.id,
+    stripe_charge_id:
+      typeof paymentIntent.latest_charge === "string" ? paymentIntent.latest_charge : null,
+  } as Record<string, unknown>;
+
+  if (existingTx?.id) {
+    const { error } = await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+      .update({ status: "completed", amount, metadata })
+      .eq("id", existingTx.id);
+    if (error) throw new Error("membership_transaction_completion_update_failed");
+    return;
+  }
+
+  const { error } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+    user_id: attempt.user_id,
+    membership_id: attempt.membership_id,
+    amount,
+    currency: attempt.currency,
+    type: "purchase",
+    status: "completed",
+    metadata,
+  });
+  if (error) throw new Error("membership_transaction_completion_insert_failed");
+}
+
+async function recordFailedMembershipTransaction(
+  paymentIntent: Stripe.PaymentIntent,
+  attempt: MembershipPaymentAttempt,
+  reason: string,
+) {
+  const admin = createAdminClient();
+  const { data: existingTx } = await admin
+    .from("transactions")
+    .select("id, status, metadata")
+    .contains("metadata", { stripe_payment_intent_id: paymentIntent.id })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<TransactionRow>();
+
+  // A completed charge must never be rewritten as a failed payment because a
+  // late canceled/failed event was delivered out of order.
+  if (existingTx?.status === "completed") return;
+
+  const metadata = {
+    ...(existingTx?.metadata ?? {}),
+    membership_payment_attempt_id: attempt.id,
+    plan_name: attempt.membership_name,
+    billing_cycle: attempt.billing_cycle,
+    stripe_payment_intent_id: paymentIntent.id,
+    failure_reason: reason,
+    stripe_last_payment_error: paymentIntent.last_payment_error?.message ?? null,
+  } as Record<string, unknown>;
+
+  if (existingTx?.id) {
+    const { error } = await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+      .update({ status: "failed", metadata })
+      .eq("id", existingTx.id);
+    if (error) throw new Error("membership_transaction_failure_update_failed");
+    return;
+  }
+
+  const { error } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+    user_id: attempt.user_id,
+    membership_id: attempt.membership_id,
+    amount: Number(paymentIntent.amount || 0) / 100,
+    currency: attempt.currency,
+    type: "purchase",
+    status: "failed",
+    metadata,
+  });
+  if (error) throw new Error("membership_transaction_failure_insert_failed");
+}
+
+async function refundInvalidMembershipPayment(
+  paymentIntent: Stripe.PaymentIntent,
+  attempt: MembershipPaymentAttempt,
+  reason: string,
+) {
+  const admin = createAdminClient();
+
+  // Keep the money ledger complete even when a charge wins a race with expiry.
+  await recordCompletedMembershipTransaction(paymentIntent, attempt);
+
+  let refundId = attempt.stripe_refund_id;
+  if (!refundId) {
+    const stripe = getStripeServerClient();
+    const refund = await stripe.refunds.create(
+      { payment_intent: paymentIntent.id, reason: "requested_by_customer" },
+      { idempotencyKey: `invalid-membership-payment-refund:${attempt.id}` },
+    );
+    refundId = refund.id;
+
+    const { error } = await admin
+      .from("membership_payment_attempts")
+      .update({
+        status: "refunded",
+        stripe_refund_id: refundId,
+        failure_reason: reason,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", attempt.id);
+    if (error) throw new Error("membership_attempt_refund_update_failed");
+  }
+
+  const { data: existingRefund } = await admin
+    .from("transactions")
+    .select("id")
+    .contains("metadata", { stripe_refund_id: refundId })
+    .maybeSingle<{ id: string }>();
+
+  if (existingRefund) return;
+
+  const { error } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+    user_id: attempt.user_id,
+    membership_id: attempt.membership_id,
+    amount: Number(paymentIntent.amount_received || paymentIntent.amount) / 100,
+    currency: attempt.currency,
+    type: "refund",
+    status: "completed",
+    metadata: {
+      membership_payment_attempt_id: attempt.id,
+      stripe_payment_intent_id: paymentIntent.id,
+      stripe_refund_id: refundId,
+      reason,
+    },
+  });
+  if (error) throw new Error("membership_refund_transaction_insert_failed");
+}
+
+async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
+  const attempt = await findMembershipPaymentAttemptByPaymentIntent(
+    paymentIntent.id,
+    membershipAttemptIdFromPaymentIntent(paymentIntent),
+  );
+
+  // PaymentIntents created before this rollout continue through the legacy
+  // handler. Every new payment has an attempt id in both DB and Stripe metadata.
+  if (!attempt) {
+    await finalizeLegacyMembershipFromPaymentIntent(paymentIntent);
+    return;
+  }
+
+  if (!isAttemptOwnedByPaymentIntent(attempt, paymentIntent)) {
+    throw new Error("membership_payment_attempt_metadata_mismatch");
+  }
+
+  const completion = await completeMembershipPaymentAttempt(attempt.id);
+  if (completion.activated) {
+    await recordCompletedMembershipTransaction(paymentIntent, attempt);
+    return;
+  }
+
+  // A checkout that expired, was replaced, or raced another successful plan
+  // must never activate a second membership. Since Stripe already collected
+  // money, refund it deterministically instead of silently losing the payment.
+  await refundInvalidMembershipPayment(paymentIntent, attempt, completion.result);
+}
+
+async function markMembershipPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
+  const attempt = await findMembershipPaymentAttemptByPaymentIntent(
+    paymentIntent.id,
+    membershipAttemptIdFromPaymentIntent(paymentIntent),
+  );
+
+  if (!attempt) {
+    await markLegacyMembershipPaymentAsFailed(paymentIntent);
+    return;
+  }
+
+  if (!isAttemptOwnedByPaymentIntent(attempt, paymentIntent)) {
+    throw new Error("membership_payment_attempt_metadata_mismatch");
+  }
+
+  if (attempt.status === "pending") {
+    // A failed card attempt normally leaves Stripe in requires_payment_method.
+    // Keep the checkout open until its normal expiry so the same PaymentElement
+    // can accept a corrected card instead of manufacturing another intent.
+    const { error } = await createAdminClient()
+      .from("membership_payment_attempts")
+      .update({
+        failure_reason: paymentIntent.last_payment_error?.code ?? "stripe_payment_failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", attempt.id)
+      .eq("status", "pending");
+    if (error) throw new Error("membership_attempt_failure_note_failed");
+  }
+  await recordFailedMembershipTransaction(
+    paymentIntent,
+    attempt,
+    paymentIntent.last_payment_error?.code ?? "stripe_payment_failed",
+  );
+}
+
+async function markMembershipPaymentAsCancelled(paymentIntent: Stripe.PaymentIntent) {
+  const attempt = await findMembershipPaymentAttemptByPaymentIntent(
+    paymentIntent.id,
+    membershipAttemptIdFromPaymentIntent(paymentIntent),
+  );
+
+  if (!attempt) {
+    await markLegacyMembershipPaymentAsFailed(paymentIntent);
+    return;
+  }
+
+  if (!isAttemptOwnedByPaymentIntent(attempt, paymentIntent)) {
+    throw new Error("membership_payment_attempt_metadata_mismatch");
+  }
+
+  if (attempt.status === "pending") {
+    await markMembershipPaymentAttempt(attempt.id, "cancelled", "stripe_payment_intent_cancelled");
+  }
+
+  const { error } = await createAdminClient()
+    .from("membership_payment_attempts")
+    .update({
+      stripe_pi_cancelled_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", attempt.id);
+  if (error) throw new Error("membership_attempt_cancel_marker_failed");
+
+  await recordFailedMembershipTransaction(paymentIntent, attempt, "stripe_payment_intent_cancelled");
 }
 
 async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
@@ -444,7 +712,14 @@ export async function POST(request: Request) {
       if (intent.metadata.booking_id) {
         await markBookingPaymentAsFailed(intent);
       } else if (intent.metadata.membership_id) {
-        await markPaymentAsFailed(intent);
+        await markMembershipPaymentAsFailed(intent);
+      }
+    }
+
+    if (event.type === "payment_intent.canceled") {
+      const intent = event.data.object as Stripe.PaymentIntent;
+      if (intent.metadata.membership_id) {
+        await markMembershipPaymentAsCancelled(intent);
       }
     }
   } catch {

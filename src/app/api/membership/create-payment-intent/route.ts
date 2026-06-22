@@ -1,32 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient } from "@/lib/stripe/server";
-import type { Membership } from "@/lib/types";
+import {
+  bindPaymentIntentToMembershipAttempt,
+  expireStaleMembershipPaymentAttempts,
+  markMembershipPaymentAttempt,
+  MembershipPaymentAttemptError,
+  reserveMembershipPaymentAttempt,
+} from "@/lib/membership-payments";
 
-type DbMembership = Pick<
-  Membership,
-  "id" | "name" | "billing_cycle" | "entry_count" | "duration_days" | "price"
->;
-
-const TX_INSERT_TIMEOUT_MS = 2500;
-
-type PendingTransactionRow = {
-  id: string;
-  membership_id: string | null;
-  amount: number;
-  metadata: Record<string, unknown> | null;
-};
-
-type UpdatableTransactionsQuery = {
-  update(values: Record<string, unknown>): UpdatableTransactionsQuery;
-  eq(column: string, value: string): Promise<{ error: unknown }>;
-};
-
-function asString(value: unknown) {
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
+type DbMembership = { id: string; name: string };
 
 function getBearerToken(request: NextRequest) {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -41,19 +25,11 @@ async function getRequestUser(request: NextRequest) {
     const supabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${bearerToken}`,
-          },
-        },
-      }
+      { global: { headers: { Authorization: `Bearer ${bearerToken}` } } },
     );
-
     const {
       data: { user },
     } = await supabase.auth.getUser(bearerToken);
-
     return { supabase, user };
   }
 
@@ -61,7 +37,6 @@ async function getRequestUser(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   return { supabase, user };
 }
 
@@ -73,30 +48,16 @@ function isReusablePaymentIntentStatus(status: string) {
   );
 }
 
-function isCancelablePaymentIntentStatus(status: string) {
-  return (
-    status === "requires_payment_method" ||
-    status === "requires_confirmation" ||
-    status === "requires_action" ||
-    status === "requires_capture" ||
-    status === "processing"
-  );
-}
-
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getRequestUser(request);
-
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   let planName = "";
-
   try {
     const body = await request.json();
-    if (typeof body?.planName === "string") {
-      planName = body.planName;
-    }
+    if (typeof body?.planName === "string") planName = body.planName;
   } catch {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
@@ -105,166 +66,118 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "missing_plan" }, { status: 400 });
   }
 
-  const { data: membershipRow, error: membershipError } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from("memberships")
-    .select("id, name, billing_cycle, entry_count, duration_days, price")
+    .select("id, name")
     .eq("name", planName)
     .maybeSingle<DbMembership>();
 
-  if (membershipError || !membershipRow) {
+  if (membershipError || !membership) {
     return NextResponse.json({ error: "unknown_plan" }, { status: 400 });
   }
 
-  const { data: activeMembership } = await supabase
-    .from("user_memberships")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  if (activeMembership) {
-    return NextResponse.json({ error: "membership_already_active" }, { status: 409 });
-  }
-
-  const amountInEuros = Number(membershipRow.price);
-  const amountInCents = Math.round(amountInEuros * 100);
-
-  if (!Number.isFinite(amountInEuros) || amountInCents <= 0) {
-    return NextResponse.json({ error: "invalid_price" }, { status: 500 });
-  }
-
   try {
+    // The SQL function locks per user, snapshots the current plan and either
+    // returns the same open attempt or atomically creates a new 30-minute one.
+    let attempt = await reserveMembershipPaymentAttempt(user.id, membership.id);
+
+    // A plan switch marks the old attempt cancelled in the same SQL transaction.
+    // Cancel it now when possible; the periodic cron remains the reliable retry.
+    await expireStaleMembershipPaymentAttempts({ userId: user.id, limit: 20 });
+
     const stripe = getStripeServerClient();
-    const admin = createAdminClient();
+    if (attempt.payment_intent_id) {
+      const existingIntent = await stripe.paymentIntents.retrieve(attempt.payment_intent_id);
 
-    const { data: pendingTransactions } = await admin
-      .from("transactions")
-      .select("id, membership_id, amount, metadata")
-      .eq("user_id", user.id)
-      .eq("type", "purchase")
-      .eq("status", "pending")
-      .not("membership_id", "is", null)
-      .order("created_at", { ascending: false });
-
-    for (const transaction of (pendingTransactions ?? []) as PendingTransactionRow[]) {
-      const paymentIntentId = asString(transaction.metadata?.stripe_payment_intent_id);
-      const sameMembership = transaction.membership_id === membershipRow.id;
-      const sameAmount = Math.round(Number(transaction.amount) * 100) === amountInCents;
-
-      if (sameMembership && sameAmount && paymentIntentId) {
-        try {
-          const existingIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-          if (existingIntent.client_secret && isReusablePaymentIntentStatus(existingIntent.status)) {
-            return NextResponse.json({
-              clientSecret: existingIntent.client_secret,
-              paymentIntentId: existingIntent.id,
-              amount: amountInEuros,
-              currency: "EUR",
-              reused: true,
-            });
-          }
-        } catch {
-          // If Stripe no longer knows this intent, mark the local pending transaction as failed below.
-        }
+      if (existingIntent.client_secret && isReusablePaymentIntentStatus(existingIntent.status)) {
+        return NextResponse.json({
+          clientSecret: existingIntent.client_secret,
+          paymentIntentId: existingIntent.id,
+          amount: Number(attempt.attempt_amount),
+          currency: attempt.attempt_currency,
+          expiresAt: attempt.attempt_expires_at,
+          reused: true,
+        });
       }
 
-      if (paymentIntentId) {
-        try {
-          const staleIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-          if (isCancelablePaymentIntentStatus(staleIntent.status)) {
-            await stripe.paymentIntents.cancel(paymentIntentId, {
-              cancellation_reason: "abandoned",
-            });
-          }
-        } catch {
-          // Best effort cleanup only. The local transaction is still closed as failed.
-        }
-      }
-
-      await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
-        .update({
-          status: "failed",
-          metadata: {
-            ...(transaction.metadata ?? {}),
-            failed_reason:
-              sameMembership && !sameAmount
-                ? "membership_price_changed"
-                : "replaced_by_new_membership_payment",
-            replaced_at: new Date().toISOString(),
+      if (existingIntent.status === "succeeded" || existingIntent.status === "processing") {
+        return NextResponse.json(
+          {
+            error:
+              "Platba sa už spracúva. Členstvo sa po potvrdení automaticky aktivuje.",
           },
-        })
-        .eq("id", transaction.id);
+          { status: 409 },
+        );
+      }
+
+      // The old intent is terminal. Closing its local attempt releases the
+      // unique pending-attempt guard before reserving a fresh checkout.
+      await markMembershipPaymentAttempt(
+        attempt.attempt_id,
+        existingIntent.status === "canceled" ? "cancelled" : "failed",
+        `stripe_intent_${existingIntent.status}`,
+      );
+      attempt = await reserveMembershipPaymentAttempt(user.id, membership.id);
     }
 
+    const amountInCents = Math.round(Number(attempt.attempt_amount) * 100);
+    if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
+      throw new Error("invalid_membership_attempt_amount");
+    }
+
+    // This is deliberately stable per DB attempt. If the API response gets
+    // lost after Stripe creates the intent, the next request receives this
+    // exact same PaymentIntent instead of creating a second charge candidate.
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: amountInCents,
-        currency: "eur",
+        currency: attempt.attempt_currency.toLowerCase(),
         automatic_payment_methods: { enabled: true },
         metadata: {
           user_id: user.id,
-          membership_id: membershipRow.id,
-          plan_name: membershipRow.name,
-          billing_cycle: membershipRow.billing_cycle,
+          membership_id: membership.id,
+          membership_payment_attempt_id: attempt.attempt_id,
+          plan_name: attempt.attempt_membership_name,
+          billing_cycle: attempt.attempt_billing_cycle,
+          checkout_expires_at: attempt.attempt_expires_at,
         },
       },
-      {
-        idempotencyKey: `${user.id}:${membershipRow.id}:${Date.now()}`,
-      }
+      { idempotencyKey: `membership-payment-attempt:${attempt.attempt_id}` },
     );
 
-    const insertPromise = admin.from("transactions").insert({
-      user_id: user.id,
-      membership_id: membershipRow.id,
-      amount: amountInEuros,
-      currency: "EUR",
-      type: "purchase",
-      status: "pending",
-      metadata: {
-        plan_name: membershipRow.name,
-        billing_cycle: membershipRow.billing_cycle,
-        stripe_payment_intent_id: paymentIntent.id,
-      },
-    });
-
-    const insertResult = await Promise.race([
-      insertPromise,
-      new Promise<{ error: { message: string } }>((resolve) => {
-        setTimeout(() => {
-          resolve({ error: { message: "transaction_insert_timeout" } });
-        }, TX_INSERT_TIMEOUT_MS);
-      }),
-    ]);
-
-    if (insertResult?.error) {
-      console.warn(
-        "[create-payment-intent] pending transaction insert skipped",
-        insertResult.error.message
-      );
-    }
-
     if (!paymentIntent.client_secret) {
-      return NextResponse.json({ error: "missing_client_secret" }, { status: 500 });
+      throw new Error("missing_client_secret");
     }
+
+    await bindPaymentIntentToMembershipAttempt(attempt.attempt_id, paymentIntent.id);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
-      amount: amountInEuros,
-      currency: "EUR",
+      amount: Number(attempt.attempt_amount),
+      currency: attempt.attempt_currency,
+      expiresAt: attempt.attempt_expires_at,
     });
   } catch (error) {
-    const details = error instanceof Error ? error.message : "unknown_error";
-    console.error("[create-payment-intent] failed", details);
+    if (error instanceof MembershipPaymentAttemptError) {
+      if (error.code === "membership_already_active") {
+        return NextResponse.json({ error: "membership_already_active" }, { status: 409 });
+      }
+      console.error("[create-membership-payment-intent] reservation failed", error.message);
+    } else {
+      const details = error instanceof Error ? error.message : "unknown_error";
+      console.error("[create-membership-payment-intent] failed", details);
+    }
 
     return NextResponse.json(
       {
         error: "stripe_create_failed",
-        details: process.env.NODE_ENV === "development" ? details : undefined,
+        details:
+          process.env.NODE_ENV === "development" && error instanceof Error
+            ? error.message
+            : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -123,8 +123,38 @@ export async function expireStalePendingBookings(
         console.error("Failed to mark Stripe payment intent as cancelled:", markCancelledError);
       }
     } catch (error) {
-      // Keep the row in the retry queue. A concurrent successful payment is
-      // still handled by the webhook and refunded because the booking is cancelled.
+      // Stripe returns payment_intent_unexpected_state when another process
+      // already cancelled or completed the intent. Those states are terminal;
+      // retrying cancel every minute would only create an API-error loop.
+      try {
+        const latestIntent = await stripe.paymentIntents.retrieve(booking.stripe_pi_id);
+        if (
+          latestIntent.status === "canceled" ||
+          latestIntent.status === "succeeded" ||
+          latestIntent.status === "processing"
+        ) {
+          const { error: markTerminalError } = await admin
+            .from("bookings")
+            .update({ stripe_pi_cancelled_at: new Date().toISOString() })
+            .eq("id", booking.id)
+            .eq("status", "cancelled");
+
+          if (markTerminalError) {
+            console.error("Failed to mark terminal Stripe payment intent:", markTerminalError);
+          }
+          continue;
+        }
+      } catch (retrieveError) {
+        console.error("Failed to inspect Stripe payment intent after cancellation error:", {
+          bookingId: booking.id,
+          paymentIntentId: booking.stripe_pi_id,
+          error: retrieveError,
+        });
+      }
+
+      // Keep genuinely retryable errors in the queue. A concurrent successful
+      // payment is still handled by the webhook and refunded because the
+      // booking is already cancelled.
       console.error("Failed to cancel expired Stripe payment intent:", {
         bookingId: booking.id,
         paymentIntentId: booking.stripe_pi_id,

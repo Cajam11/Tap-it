@@ -297,6 +297,30 @@ function isAttemptOwnedByPaymentIntent(
   );
 }
 
+async function annotateStripeMembershipPaymentFailure(paymentIntent: Stripe.PaymentIntent) {
+  const failure = paymentIntent.last_payment_error;
+  const reason = failure?.decline_code ?? failure?.code ?? "stripe_payment_failed";
+  const message = failure?.message?.slice(0, 500) ?? "Payment failed";
+
+  try {
+    await getStripeServerClient().paymentIntents.update(paymentIntent.id, {
+      metadata: {
+        ...paymentIntent.metadata,
+        tap_it_failure_reason: reason,
+        tap_it_failure_message: message,
+        tap_it_failure_recorded_at: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    // Stripe's own failure state is already authoritative. Metadata is useful
+    // for dashboard diagnostics but must not prevent DB reconciliation.
+    console.error("Failed to annotate Stripe membership payment failure", {
+      paymentIntentId: paymentIntent.id,
+      error,
+    });
+  }
+}
+
 async function recordCompletedMembershipTransaction(
   paymentIntent: Stripe.PaymentIntent,
   attempt: MembershipPaymentAttempt,
@@ -475,6 +499,8 @@ async function finalizeMembershipFromPaymentIntent(paymentIntent: Stripe.Payment
 }
 
 async function markMembershipPaymentAsFailed(paymentIntent: Stripe.PaymentIntent) {
+  await annotateStripeMembershipPaymentFailure(paymentIntent);
+
   const attempt = await findMembershipPaymentAttemptByPaymentIntent(
     paymentIntent.id,
     membershipAttemptIdFromPaymentIntent(paymentIntent),

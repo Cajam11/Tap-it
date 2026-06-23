@@ -190,6 +190,7 @@ async function finalizeLegacyMembershipFromPaymentIntent(paymentIntent: Stripe.P
       entries_remaining: entriesRemaining,
       status: "active",
       activated_by_admin: false,
+      stripe_payment_intent_id: paymentIntent.id,
     });
 
     if (membershipInsertError) {
@@ -350,19 +351,28 @@ async function recordCompletedMembershipTransaction(
       .update({ status: "completed", amount, metadata })
       .eq("id", existingTx.id);
     if (error) throw new Error("membership_transaction_completion_update_failed");
-    return;
+  } else {
+    const { error } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
+      user_id: attempt.user_id,
+      membership_id: attempt.membership_id,
+      amount,
+      currency: attempt.currency,
+      type: "purchase",
+      status: "completed",
+      metadata,
+    });
+    if (error) throw new Error("membership_transaction_completion_insert_failed");
   }
 
-  const { error } = await (admin.from("transactions") as unknown as InsertableTransactionsQuery).insert({
-    user_id: attempt.user_id,
-    membership_id: attempt.membership_id,
-    amount,
-    currency: attempt.currency,
-    type: "purchase",
-    status: "completed",
-    metadata,
-  });
-  if (error) throw new Error("membership_transaction_completion_insert_failed");
+  // Persist the exact charge that created this membership. It is later used by
+  // the cancellation endpoint, instead of guessing from a plan's old history.
+  const { error: linkError } = await admin
+    .from("user_memberships")
+    .update({ stripe_payment_intent_id: paymentIntent.id })
+    .eq("user_id", attempt.user_id)
+    .eq("membership_id", attempt.membership_id)
+    .eq("status", "active");
+  if (linkError) throw new Error("membership_payment_source_link_failed");
 }
 
 async function recordFailedMembershipTransaction(
@@ -567,6 +577,38 @@ async function markMembershipPaymentAsCancelled(paymentIntent: Stripe.PaymentInt
   await recordFailedMembershipTransaction(paymentIntent, attempt, "stripe_payment_intent_cancelled");
 }
 
+function refundTransactionStatus(refund: Stripe.Refund) {
+  if (refund.status === "succeeded") return "completed";
+  if (refund.status === "failed" || refund.status === "canceled") return "failed";
+  return "pending";
+}
+
+async function syncMembershipRefund(refund: Stripe.Refund) {
+  const membershipRowId = asString(refund.metadata?.tap_it_user_membership_id);
+  if (!membershipRowId) return;
+
+  const admin = createAdminClient();
+  const { data: transaction } = await admin
+    .from("transactions")
+    .select("id, metadata")
+    .contains("metadata", { stripe_refund_id: refund.id })
+    .maybeSingle<{ id: string; metadata: Record<string, unknown> | null }>();
+
+  if (!transaction) return;
+
+  const metadata = {
+    ...(transaction.metadata ?? {}),
+    stripe_refund_id: refund.id,
+    stripe_refund_status: refund.status ?? "pending",
+    stripe_refund_failure_reason: refund.failure_reason ?? null,
+  } as Record<string, unknown>;
+
+  const { error } = await (admin.from("transactions") as unknown as UpdatableTransactionsQuery)
+    .update({ status: refundTransactionStatus(refund), metadata })
+    .eq("id", transaction.id);
+  if (error) throw new Error("membership_refund_transaction_sync_failed");
+}
+
 async function finalizeBookingFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
   const userId = asString(paymentIntent.metadata.user_id);
   const bookingId = asString(paymentIntent.metadata.booking_id);
@@ -747,6 +789,14 @@ export async function POST(request: Request) {
       if (intent.metadata.membership_id) {
         await markMembershipPaymentAsCancelled(intent);
       }
+    }
+
+    if (
+      event.type === "refund.created" ||
+      event.type === "refund.updated" ||
+      event.type === "refund.failed"
+    ) {
+      await syncMembershipRefund(event.data.object as Stripe.Refund);
     }
   } catch {
     return NextResponse.json({ error: "webhook_processing_failed" }, { status: 500 });

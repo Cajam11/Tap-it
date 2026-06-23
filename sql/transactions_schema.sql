@@ -29,13 +29,6 @@ create policy transactions_select_own
   to authenticated
   using (auth.uid() = user_id);
 
-drop policy if exists transactions_insert_own on public.transactions;
-create policy transactions_insert_own
-  on public.transactions
-  for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
 drop policy if exists transactions_insert_admin on public.transactions;
 create policy transactions_insert_admin
   on public.transactions

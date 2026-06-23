@@ -31,7 +31,8 @@ The same production `CRON_SECRET` can be used for booking and membership jobs.
    in the Supabase SQL Editor.
 5. Confirm the Stripe webhook endpoint subscribes to:
    `payment_intent.succeeded`, `payment_intent.payment_failed`, and
-   `payment_intent.canceled`.
+   `payment_intent.canceled`, `refund.created`, `refund.updated`, and
+   `refund.failed`.
 
 Every minute the job expires at most 100 stale attempts and cancels their
 Stripe PaymentIntents. A cancelled intent remains in a small retry queue until

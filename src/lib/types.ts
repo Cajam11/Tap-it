@@ -47,6 +47,8 @@ export interface UserMembership {
   entries_remaining: number | null;
   status: "active" | "expired" | "cancelled" | "suspended";
   activated_by_admin: boolean;
+  stripe_payment_intent_id: string | null;
+  stripe_refund_id: string | null;
   created_at: string;
   membership?: Membership;
 }

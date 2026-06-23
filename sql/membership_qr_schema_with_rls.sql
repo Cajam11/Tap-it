@@ -32,6 +32,8 @@ create table if not exists public.user_memberships (
   entries_remaining integer null check (entries_remaining is null or entries_remaining >= 0),
   status text not null check (status in ('active', 'expired', 'cancelled', 'suspended')),
   activated_by_admin boolean not null default false,
+  stripe_payment_intent_id text null,
+  stripe_refund_id text null,
   created_at timestamptz not null default now()
 );
 
@@ -113,27 +115,22 @@ create policy user_memberships_select_own
   to authenticated
   using (auth.uid() = user_id);
 
-drop policy if exists user_memberships_insert_own on public.user_memberships;
-create policy user_memberships_insert_own
-  on public.user_memberships
-  for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
 drop policy if exists user_memberships_update_own on public.user_memberships;
-create policy user_memberships_update_own
+drop policy if exists user_memberships_delete_own on public.user_memberships;
+drop policy if exists user_memberships_expire_own on public.user_memberships;
+create policy user_memberships_expire_own
   on public.user_memberships
   for update
   to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists user_memberships_delete_own on public.user_memberships;
-create policy user_memberships_delete_own
-  on public.user_memberships
-  for delete
-  to authenticated
-  using (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and status = 'active'
+    and (
+      (end_date is not null and end_date <= now())
+      or (entries_remaining is not null and entries_remaining <= 0)
+    )
+  )
+  with check (auth.uid() = user_id and status = 'expired');
 
 -- =========================
 -- QR_TOKENS POLICIES

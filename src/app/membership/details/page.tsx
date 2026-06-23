@@ -8,6 +8,10 @@ import { getCurrentActiveMembership } from "@/lib/membership-access";
 import FlashMessageBanner from "@/components/FlashMessageBanner";
 import { parseFlashCookieValue } from "@/lib/flash";
 import { setFlashMessage } from "@/lib/flash.server";
+import {
+  cancelMembershipAndRefund,
+  MembershipRefundError,
+} from "@/lib/membership-refunds";
 import { ChevronLeft } from "lucide-react";
 import { cookies } from "next/headers";
 
@@ -102,73 +106,26 @@ export default async function MembershipDetailsPage() {
       redirect("/login");
     }
 
-    const { data: currentMembership } = await getCurrentActiveMembership<{
-      id: string;
-      membership_id: string;
-      membership: { name: string; price: number } | null;
-    }>(
-      actionSupabase,
-      actionUser.id,
-      "id, membership_id, membership:memberships(name, price)",
-    );
-
-    if (!currentMembership) {
+    try {
+      const result = await cancelMembershipAndRefund(actionUser.id);
+      await setFlashMessage({
+        kind: "success",
+        text:
+          result.refundStatus === "succeeded"
+            ? "Členstvo bolo zrušené a peniaze boli odoslané späť na pôvodnú platobnú kartu."
+            : "Členstvo bolo zrušené. Refund bol vytvorený a Stripe ho ešte spracúva.",
+      });
+    } catch (error) {
       await setFlashMessage({
         kind: "error",
-        text: "Zrušenie členstva zlyhalo. Skús to znova.",
+        text:
+          error instanceof MembershipRefundError
+            ? error.message
+            : "Zrušenie členstva a refund zlyhali. Skús to znova.",
       });
       redirect("/membership/details");
     }
 
-    const { error: transactionError } = await actionSupabase
-      .from("transactions")
-      .insert({
-        user_id: actionUser.id,
-        membership_id: currentMembership.membership_id,
-        amount:
-          currentMembership.membership &&
-          typeof currentMembership.membership.price === "number"
-            ? currentMembership.membership.price
-            : 0,
-        currency: "EUR",
-        type: "refund",
-        status: "completed",
-        metadata: {
-          source_membership_row_id: currentMembership.id,
-          membership_name:
-            currentMembership.membership &&
-            typeof currentMembership.membership.name === "string"
-              ? currentMembership.membership.name
-              : null,
-        },
-      });
-
-    if (transactionError) {
-      await setFlashMessage({
-        kind: "error",
-        text: "Zrušenie členstva zlyhalo. Skús to znova.",
-      });
-      redirect("/membership/details");
-    }
-
-    const { error: deleteError } = await actionSupabase
-      .from("user_memberships")
-      .delete()
-      .eq("id", currentMembership.id)
-      .eq("user_id", actionUser.id);
-
-    if (deleteError) {
-      await setFlashMessage({
-        kind: "error",
-        text: "Zrušenie členstva zlyhalo. Skús to znova.",
-      });
-      redirect("/membership/details");
-    }
-
-    await setFlashMessage({
-      kind: "success",
-      text: "Členstvo bolo zrušené a refund bol zaevidovaný.",
-    });
     redirect("/membership");
   }
 
@@ -313,8 +270,8 @@ export default async function MembershipDetailsPage() {
           <section className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 sm:p-8">
             <h2 className="text-xl font-bold text-red-300">Zrušiť členstvo</h2>
             <p className="mt-2 text-sm text-white/60">
-              Kliknutím na tlačidlo nižšie zrušíš svoje členstvo. Túto akciu nie
-              je možné vrátiť.
+              Kliknutím na tlačidlo zrušíš svoje členstvo a pošleme plnú refundáciu
+              na pôvodnú platobnú kartu. Túto akciu nie je možné vrátiť.
             </p>
 
             <form action={cancelMembership}>

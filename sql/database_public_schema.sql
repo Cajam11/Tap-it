@@ -57,6 +57,8 @@ CREATE TABLE public.user_memberships (
   entries_remaining integer CHECK (entries_remaining IS NULL OR entries_remaining >= 0),
   status text NOT NULL CHECK (status = ANY (ARRAY['active'::text, 'expired'::text, 'cancelled'::text, 'suspended'::text])),
   activated_by_admin boolean NOT NULL DEFAULT false,
+  stripe_payment_intent_id text,
+  stripe_refund_id text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT user_memberships_pkey PRIMARY KEY (id),
   CONSTRAINT user_memberships_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),

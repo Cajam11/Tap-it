@@ -130,6 +130,8 @@ type AdminDatabase = {
           entries_remaining: number | null;
           status: string | null;
           activated_by_admin: boolean | null;
+          stripe_payment_intent_id: string | null;
+          stripe_refund_id: string | null;
         };
         Insert: {
           id?: string;
@@ -140,6 +142,8 @@ type AdminDatabase = {
           entries_remaining?: number | null;
           status?: string | null;
           activated_by_admin?: boolean | null;
+          stripe_payment_intent_id?: string | null;
+          stripe_refund_id?: string | null;
         };
         Update: {
           user_id?: string;
@@ -149,6 +153,8 @@ type AdminDatabase = {
           entries_remaining?: number | null;
           status?: string | null;
           activated_by_admin?: boolean | null;
+          stripe_payment_intent_id?: string | null;
+          stripe_refund_id?: string | null;
         };
         Relationships: [];
       };

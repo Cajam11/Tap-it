@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFeaturesByMembershipName } from "@/lib/memberships";
 import { getCurrentActiveMembership } from "@/lib/membership-access";
 import FlashMessageBanner from "@/components/FlashMessageBanner";
+import MembershipCancelSubmitButton from "@/components/membership/MembershipCancelSubmitButton";
 import { parseFlashCookieValue } from "@/lib/flash";
 import { setFlashMessage } from "@/lib/flash.server";
 import {
@@ -275,12 +276,7 @@ export default async function MembershipDetailsPage() {
             </p>
 
             <form action={cancelMembership}>
-              <button
-                type="submit"
-                className="mt-4 rounded-full border border-red-500/50 bg-red-500/20 px-6 py-2.5 text-sm font-semibold text-red-300 transition hover:border-red-500 hover:bg-red-500/30"
-              >
-                Zrušiť členstvo
-              </button>
+              <MembershipCancelSubmitButton />
             </form>
           </section>
         </div>

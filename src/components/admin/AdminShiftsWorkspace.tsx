@@ -454,10 +454,10 @@ export default function AdminShiftsWorkspace({
   const selectedFormEndTime = canManage ? assignForm.endTime : selfForm.endTime;
 
   return (
-    <div className="flex min-h-full flex-col gap-6 p-8">
+    <div className="flex min-h-full flex-col gap-6 p-4 sm:p-6 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Smeny</h1>
+          <h1 className="text-2xl font-bold text-white sm:text-3xl">Smeny</h1>
           <p className="mt-2 text-sm text-white/55">
             Planovanie pokrytia recepcie a admin sluzieb od 06:00 do 22:00.
           </p>
@@ -489,7 +489,7 @@ export default function AdminShiftsWorkspace({
               Casova os
             </button>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/65">
+          <div className="hidden items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/65 sm:flex">
             <Clock3 className="h-4 w-4 text-red-300" />
             30 minutove kroky
           </div>
@@ -645,7 +645,7 @@ export default function AdminShiftsWorkspace({
                           </option>
                         ))}
                       </SelectField>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <TextField
                           label="Od datumu"
                           type="date"
@@ -756,13 +756,13 @@ export default function AdminShiftsWorkspace({
                     key={dateKey}
                     type="button"
                     onClick={() => selectCalendarDay(dateKey)}
-                    className={`h-28 border-b border-r border-white/5 p-2 text-left transition ${
+                    className={`h-[68px] border-b border-r border-white/5 p-1 text-left transition sm:h-28 sm:p-2 ${
                       isSameMonth(day, currentMonth) ? "bg-[#141414] text-white" : "bg-black/20 text-white/30"
                     } ${selected ? "outline outline-1 outline-red-500/70" : "hover:bg-white/[0.04]"}`}
                   >
                     <div className="flex items-start justify-between">
                       <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold sm:h-7 sm:w-7 sm:text-sm ${
                           isToday(day) ? "bg-red-600 text-white" : selected ? "bg-white/10 text-white" : ""
                         }`}
                       >
@@ -773,7 +773,23 @@ export default function AdminShiftsWorkspace({
                       ) : null}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1 sm:hidden">
+                      {ownShift ? (
+                        <span className="h-2 w-2 rounded-full bg-red-400" />
+                      ) : null}
+                      {approvedCount > 0 ? (
+                        <span className="rounded border border-emerald-400/30 bg-emerald-500/10 px-1 text-[10px] font-semibold leading-4 text-emerald-200">
+                          {approvedCount}
+                        </span>
+                      ) : null}
+                      {pendingCount > 0 ? (
+                        <span className="rounded border border-amber-400/30 bg-amber-500/10 px-1 text-[10px] font-semibold leading-4 text-amber-200">
+                          {pendingCount}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2 hidden flex-wrap gap-1 sm:flex">
                       {ownShift ? (
                         <span className="rounded border border-red-400/30 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-200">
                           Moje
@@ -946,7 +962,7 @@ export default function AdminShiftsWorkspace({
                           </option>
                         ))}
                       </SelectField>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <TextField
                           label="Od datumu"
                           type="date"
@@ -1177,11 +1193,11 @@ function DayTimelinePanel({
               type="button"
               onClick={() => onSelectSlot(slotStart, slotEnd)}
               aria-pressed={isSelected}
-              className={`min-h-[5.75rem] rounded-xl border p-3 text-left transition-all ${tone}`}
+              className={`min-h-[5.75rem] rounded-xl border p-2.5 text-left transition-all sm:p-3 ${tone}`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-1.5">
                 <p className="text-sm font-bold tabular-nums">{slotStartLabel}</p>
-                <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80">
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] opacity-80 sm:px-2 sm:tracking-[0.08em]">
                   {statusText}
                 </span>
               </div>
@@ -1397,9 +1413,9 @@ function ShiftVisualization({
         </div>
       </div>
 
-      <div className="overflow-hidden">
+      <div className="overflow-x-auto">
         <div className="w-full">
-          <div className="relative">
+          <div className="relative min-w-[680px]">
             {currentTimeLeft !== null && currentTimeLabelLeft !== null ? (
               <div className="pointer-events-none absolute bottom-0 left-48 right-0 top-0 z-20" aria-hidden="true">
                 <span
@@ -1443,7 +1459,7 @@ function ShiftVisualization({
                       <p className="truncate text-sm font-semibold text-white">{formatStaffName(staffMember)}</p>
                       <p className="mt-1 text-xs text-white/40">{staffMember.role}</p>
                     </div>
-                    <div className="relative h-16 rounded-lg border border-white/10 bg-black/25">
+                    <div className="relative h-16 overflow-hidden rounded-lg border border-white/10 bg-black/25">
                       {hourMarks.map((minutes) => {
                         const left = ((minutes - OPEN_MINUTES) / totalMinutes) * 100;
                         return (
@@ -1459,14 +1475,16 @@ function ShiftVisualization({
                         const end = minutesFromTime(shift.end_time);
                         const left = ((start - OPEN_MINUTES) / totalMinutes) * 100;
                         const width = ((end - start) / totalMinutes) * 100;
+                        const barWidth = Math.max(4, Math.min(100, width));
+                        const barLeft = Math.min(Math.max(0, left), 100 - barWidth);
 
                         return (
                           <div
                             key={shift.id}
                             className={`absolute top-2 h-12 overflow-hidden rounded-lg border px-3 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.28)] ${statusTone(shift.status)}`}
                             style={{
-                              left: `${Math.max(0, left)}%`,
-                              width: `${Math.max(4, Math.min(100 - Math.max(0, left), width))}%`,
+                              left: `${barLeft}%`,
+                              width: `${barWidth}%`,
                             }}
                             title={`${formatStaffName(staffById.get(shift.assignee_id))} ${normalizeTime(shift.start_time)} - ${normalizeTime(shift.end_time)}`}
                           >
@@ -1571,7 +1589,7 @@ function TextField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none transition focus:border-red-500"
+        className="h-10 w-full min-w-0 appearance-none rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none transition focus:border-red-500"
       />
     </label>
   );

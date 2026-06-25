@@ -9,6 +9,8 @@ interface AdminMembershipChangeModalProps {
   userId: string;
   userName: string;
   currentPlan: string;
+  currentPlanName: string;
+  availablePlans: Array<{ id: string; name: string }>;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
@@ -19,6 +21,8 @@ export function AdminMembershipChangeModal({
   userId,
   userName,
   currentPlan,
+  currentPlanName,
+  availablePlans,
   onSuccess,
   onError,
 }: AdminMembershipChangeModalProps) {
@@ -30,6 +34,9 @@ export function AdminMembershipChangeModal({
   if (!isOpen) {
     return null;
   }
+
+  const selectedPlanExists =
+    selectedPlan === "none" || availablePlans.some((plan) => plan.id === selectedPlan);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +105,7 @@ export function AdminMembershipChangeModal({
                 Súčasné členstvo
               </label>
               <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
-                {currentPlan === "monthly"
-                  ? "Mesačná"
-                  : currentPlan === "yearly"
-                    ? "Ročná"
-                    : "Žiadne"}
+                {currentPlanName || "Žiadne"}
               </div>
             </div>
 
@@ -121,8 +124,16 @@ export function AdminMembershipChangeModal({
                 className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
                 disabled={isSubmitting}
               >
-                <option value="monthly">Mesačná</option>
-                <option value="yearly">Ročná</option>
+                {!selectedPlanExists && currentPlan !== "none" ? (
+                  <option value={currentPlan} disabled>
+                    {currentPlanName}
+                  </option>
+                ) : null}
+                {availablePlans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </option>
+                ))}
                 <option value="none">Bez členstva (zrušenie)</option>
               </select>
             </div>

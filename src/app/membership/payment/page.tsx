@@ -112,7 +112,10 @@ export default async function MembershipPaymentPage({
   const selectedPlanName = resolvedSearchParams?.plan ?? "";
   const { data: membershipRows } = await supabase
     .from("memberships")
-    .select("name, price, billing_cycle, is_single_entry");
+    .select("name, price, billing_cycle, entry_count, duration_days, is_single_entry, description, benefits, display_order, is_highlighted")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
   const membershipPlans = buildMembershipDisplayPlans(
     (membershipRows ?? []) as MembershipPlanRow[],
   );
@@ -185,6 +188,9 @@ export default async function MembershipPaymentPage({
                 {selectedPlan.price} {selectedPlan.period}
               </span>
             </p>
+            {selectedPlan.description ? (
+              <p className="mt-3 text-white/60">{selectedPlan.description}</p>
+            ) : null}
 
             <ul className="mt-5 space-y-2 text-sm text-white/70">
               {selectedPlan.features.map((feature) => (

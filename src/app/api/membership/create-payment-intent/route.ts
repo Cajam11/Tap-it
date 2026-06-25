@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     .from("memberships")
     .select("id, name")
     .eq("name", planName)
+    .eq("is_active", true)
     .maybeSingle<DbMembership>();
 
   if (membershipError || !membership) {

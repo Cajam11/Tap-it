@@ -35,7 +35,13 @@ export interface Membership {
   duration_days: number | null;
   is_single_entry: boolean;
   price: number;
+  description: string;
+  benefits: string[];
+  display_order: number;
+  is_highlighted: boolean;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface UserMembership {

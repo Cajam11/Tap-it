@@ -16,12 +16,14 @@ interface MembershipsTableClientProps {
       start_date: string;
       end_date: string | null;
       status: string | null;
-      membership: { name: string } | { name: string }[] | null;
+      membership: { id: string; name: string } | { id: string; name: string }[] | null;
     }
   >;
+  availablePlans?: Array<{ id: string; name: string }>;
 }
 
 type MembershipRecord = {
+  id: string;
   name: string;
 } | null;
 
@@ -44,22 +46,12 @@ function formatDate(dateIso: string) {
 }
 
 function getMembershipRecord(
-  membership: { name: string } | { name: string }[] | null,
+  membership: { id: string; name: string } | { id: string; name: string }[] | null,
 ): MembershipRecord {
   if (Array.isArray(membership)) {
     return membership[0] ?? null;
   }
   return membership;
-}
-
-function getMembershipPlanKey(membershipRecord: MembershipRecord) {
-  if (membershipRecord?.name === "Mesačná") {
-    return "monthly";
-  }
-  if (membershipRecord?.name === "Ročná") {
-    return "yearly";
-  }
-  return "none";
 }
 
 function isExpiredMembership(row: MembershipRow | undefined) {
@@ -75,11 +67,13 @@ function isExpiredMembership(row: MembershipRow | undefined) {
 export function MembershipsTableClient({
   filteredProfiles,
   membershipsByUserId,
+  availablePlans = [],
 }: MembershipsTableClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string>("");
   const [currentPlan, setCurrentPlan] = useState<string>("");
+  const [currentPlanName, setCurrentPlanName] = useState<string>("");
   const [flashMessage, setFlashMessage] = useState<{
     type: "success" | "error";
     message: string;
@@ -88,11 +82,13 @@ export function MembershipsTableClient({
   const handleOpenModal = (
     userId: string,
     userName: string,
-    plan: string
+    plan: string,
+    planName: string,
   ) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName || "Neznámy užívateľ");
     setCurrentPlan(plan);
+    setCurrentPlanName(planName);
     setIsModalOpen(true);
   };
 
@@ -101,6 +97,7 @@ export function MembershipsTableClient({
     setSelectedUserId(null);
     setSelectedUserName("");
     setCurrentPlan("");
+    setCurrentPlanName("");
     // Clear flash message after 3 seconds
     if (flashMessage) {
       setTimeout(() => setFlashMessage(null), 3000);
@@ -159,7 +156,8 @@ export function MembershipsTableClient({
                   ? getMembershipRecord(membership?.membership)
                   : null;
                 const currentMembershipPlan =
-                  getMembershipPlanKey(membershipRecord);
+                  membershipRecord?.id ?? "none";
+                const currentMembershipPlanName = membershipRecord?.name ?? "Žiadne";
 
                 return (
                   <tr
@@ -195,7 +193,8 @@ export function MembershipsTableClient({
                           handleOpenModal(
                             profile.id,
                             profile.full_name || "",
-                            currentMembershipPlan
+                            currentMembershipPlan,
+                            currentMembershipPlanName,
                           )
                         }
                         className="rounded-lg border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/10"
@@ -217,6 +216,8 @@ export function MembershipsTableClient({
           userId={selectedUserId}
           userName={selectedUserName}
           currentPlan={currentPlan}
+          currentPlanName={currentPlanName}
+          availablePlans={availablePlans}
           onSuccess={handleSuccess}
           onError={handleError}
         />

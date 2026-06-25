@@ -224,7 +224,10 @@ export default async function LandingPage() {
 
   const { data: membershipRows } = await supabase
     .from("memberships")
-    .select("name, price, billing_cycle, is_single_entry");
+    .select("name, price, billing_cycle, entry_count, duration_days, is_single_entry, description, benefits, display_order, is_highlighted")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
   const pricing = buildMembershipDisplayPlans(
     (membershipRows ?? []) as MembershipPlanRow[],
   );
@@ -780,6 +783,11 @@ export default async function LandingPage() {
                     <p className="text-sm font-semibold text-white/60 uppercase tracking-wider">
                       {p.name}
                     </p>
+                    {p.description ? (
+                      <p className="mt-3 text-sm leading-relaxed text-white/45">
+                        {p.description}
+                      </p>
+                    ) : null}
                     <p className="mt-3">
                       <span className="text-5xl font-black text-white">
                         {p.price}

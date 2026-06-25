@@ -25,9 +25,41 @@ type AdminDatabase = {
           billing_cycle: "entries" | "monthly" | "yearly" | null;
           entry_count: number | null;
           duration_days: number | null;
+          is_single_entry: boolean | null;
+          price: number | null;
+          description: string | null;
+          benefits: string[] | null;
+          display_order: number | null;
+          is_highlighted: boolean | null;
+          is_active: boolean | null;
         };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
+        Insert: {
+          id?: string;
+          name: string;
+          billing_cycle: "entries" | "monthly" | "yearly";
+          entry_count?: number | null;
+          duration_days?: number | null;
+          is_single_entry?: boolean;
+          price: number;
+          description?: string;
+          benefits?: string[];
+          display_order?: number;
+          is_highlighted?: boolean;
+          is_active?: boolean;
+        };
+        Update: {
+          name?: string;
+          billing_cycle?: "entries" | "monthly" | "yearly";
+          entry_count?: number | null;
+          duration_days?: number | null;
+          is_single_entry?: boolean;
+          price?: number;
+          description?: string;
+          benefits?: string[];
+          display_order?: number;
+          is_highlighted?: boolean;
+          is_active?: boolean;
+        };
         Relationships: [];
       };
       profiles: {

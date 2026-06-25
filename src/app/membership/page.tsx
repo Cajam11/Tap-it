@@ -42,7 +42,10 @@ export default async function MembershipPage() {
     ),
     supabase
       .from("memberships")
-      .select("name, price, billing_cycle, is_single_entry"),
+      .select("name, price, billing_cycle, entry_count, duration_days, is_single_entry, description, benefits, display_order, is_highlighted")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   const { data: openEntries } = await supabase
@@ -194,6 +197,11 @@ export default async function MembershipPage() {
                         {plan.price}
                       </p>
                       <p className="text-sm text-white/50">{plan.period}</p>
+                      {plan.description ? (
+                        <p className="mt-3 text-sm leading-relaxed text-white/55">
+                          {plan.description}
+                        </p>
+                      ) : null}
 
                       <ul className="mt-4 space-y-2 text-sm text-white/70">
                         {plan.features.map((feature) => (

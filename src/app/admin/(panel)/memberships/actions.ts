@@ -6,13 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasServerAdminAccess } from "@/lib/admin-access";
 
-const ALLOWED_PLANS = new Set(["monthly", "yearly", "none"]);
-
 type MembershipPlanRow = {
   id: string;
   name: string;
+  billing_cycle: "entries" | "monthly" | "yearly";
+  entry_count: number | null;
   duration_days: number | null;
   price: number;
+  is_active: boolean | null;
 };
 
 type ActiveMembershipRow = {
@@ -53,11 +54,32 @@ function getPlanDurationEndDate(durationDays: number | null) {
   return nextEnd.toISOString();
 }
 
+function getPlanEntriesRemaining(plan: Pick<MembershipPlanRow, "billing_cycle" | "entry_count">) {
+  if (plan.billing_cycle !== "entries") {
+    return null;
+  }
+
+  return typeof plan.entry_count === "number" && plan.entry_count > 0
+    ? plan.entry_count
+    : 1;
+}
+
+async function getActiveMembershipPlanById(planId: string) {
+  const { data, error } = await createAdminClient()
+    .from("memberships")
+    .select("id, name, billing_cycle, entry_count, duration_days, price, is_active")
+    .eq("id", planId)
+    .eq("is_active", true)
+    .maybeSingle<MembershipPlanRow>();
+
+  return { data, error };
+}
+
 export async function updateUserMembership(formData: FormData) {
   const userId = String(formData.get("userId") ?? "").trim();
   const membershipPlan = String(formData.get("membershipPlan") ?? "").trim();
 
-  if (!userId || !ALLOWED_PLANS.has(membershipPlan)) {
+  if (!userId || !membershipPlan) {
     redirect("/admin/memberships?status=error&message=Neplatny_vstup");
   }
 
@@ -134,8 +156,9 @@ export async function updateUserMembership(formData: FormData) {
 
   const { data: planRow, error: planError } = await admin
     .from("memberships")
-    .select("id, name, duration_days, price")
-    .eq("name", membershipPlan === "monthly" ? "Mesačná" : "Ročná")
+    .select("id, name, billing_cycle, entry_count, duration_days, price, is_active")
+    .eq("id", membershipPlan)
+    .eq("is_active", true)
     .maybeSingle<MembershipPlanRow>();
 
   if (planError || !planRow) {
@@ -191,7 +214,7 @@ export async function updateUserMembership(formData: FormData) {
     membership_id: planRow.id,
     start_date: nowIso,
     end_date: getPlanDurationEndDate(planRow.duration_days),
-    entries_remaining: null,
+    entries_remaining: getPlanEntriesRemaining(planRow),
     status: "active",
     activated_by_admin: true,
   });
@@ -211,7 +234,8 @@ export async function updateUserMembership(formData: FormData) {
       status: "completed",
       metadata: {
         source: "admin_membership_change",
-        action: membershipPlan,
+        action: "assign",
+        plan_name: planRow.name,
         changed_by_admin_id: user.id,
         old_membership_id: activeMembership?.membership_id ?? null,
       },
@@ -235,7 +259,7 @@ export async function adminChangeMembershipWithReason(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim();
 
   // Validate inputs
-  if (!userId || !ALLOWED_PLANS.has(membershipPlan)) {
+  if (!userId || !membershipPlan) {
     return { error: "Neplatný vstup" };
   }
 
@@ -316,11 +340,8 @@ export async function adminChangeMembershipWithReason(formData: FormData) {
   }
 
   // Get the new membership plan
-  const { data: planRow, error: planError } = await admin
-    .from("memberships")
-    .select("id, name, duration_days, price")
-    .eq("name", membershipPlan === "monthly" ? "Mesačná" : "Ročná")
-    .maybeSingle<MembershipPlanRow>();
+  const { data: planRow, error: planError } =
+    await getActiveMembershipPlanById(membershipPlan);
 
   if (planError || !planRow) {
     return { error: "Plán sa nenašiel" };
@@ -349,7 +370,7 @@ export async function adminChangeMembershipWithReason(formData: FormData) {
     membership_id: planRow.id,
     start_date: nowIso,
     end_date: getPlanDurationEndDate(planRow.duration_days),
-    entries_remaining: null,
+    entries_remaining: getPlanEntriesRemaining(planRow),
     status: "active",
     activated_by_admin: true,
   });
@@ -373,7 +394,8 @@ export async function adminChangeMembershipWithReason(formData: FormData) {
         reason: reason,
         previous_membership_id: activeMembership?.membership_id ?? null,
         new_membership_id: planRow.id,
-        action: membershipPlan,
+        action: "assign",
+        plan_name: planRow.name,
         source: "admin_manual_change",
       },
     });

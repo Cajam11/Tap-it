@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { searchMemberships } from "./search.server";
+import { searchMemberships, type AdminAssignableMembershipPlan } from "./search.server";
 import { AdminMembershipChangeModal } from "@/components/admin/AdminMembershipChangeModal";
 import { Search, X } from "lucide-react";
 
@@ -18,10 +18,11 @@ type AdminMembershipRow = {
   start_date: string;
   end_date: string | null;
   status: string | null;
-  membership: { name: string } | { name: string }[] | null;
+  membership: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 type MembershipRecord = {
+  id: string;
   name: string;
 } | null;
 
@@ -43,22 +44,12 @@ function formatDate(dateIso: string) {
 }
 
 function getMembershipRecord(
-  membership: { name: string } | { name: string }[] | null,
+  membership: { id: string; name: string } | { id: string; name: string }[] | null,
 ): MembershipRecord {
   if (Array.isArray(membership)) {
     return membership[0] ?? null;
   }
   return membership;
-}
-
-function getMembershipPlanKey(membershipRecord: MembershipRecord) {
-  if (membershipRecord?.name === "Mesačná") {
-    return "monthly";
-  }
-  if (membershipRecord?.name === "Ročná") {
-    return "yearly";
-  }
-  return "none";
 }
 
 function isExpiredMembership(row: MembershipRowType | undefined) {
@@ -74,6 +65,7 @@ function isExpiredMembership(row: MembershipRowType | undefined) {
 export function MembershipsSearchClient() {
   const [profiles, setProfiles] = useState<AdminProfileRow[]>([]);
   const [memberships, setMemberships] = useState<AdminMembershipRow[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<AdminAssignableMembershipPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -82,6 +74,7 @@ export function MembershipsSearchClient() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string>("");
   const [currentPlan, setCurrentPlan] = useState<string>("");
+  const [currentPlanName, setCurrentPlanName] = useState<string>("");
   const [flashMessage, setFlashMessage] = useState<{
     type: "success" | "error";
     message: string;
@@ -96,14 +89,17 @@ export function MembershipsSearchClient() {
         setError(result.error);
         setProfiles([]);
         setMemberships([]);
+        setAvailablePlans([]);
       } else {
         setProfiles(result.profiles);
         setMemberships(result.memberships);
+        setAvailablePlans(result.plans);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
       setProfiles([]);
       setMemberships([]);
+      setAvailablePlans([]);
     } finally {
       setLoading(false);
     }
@@ -131,10 +127,12 @@ export function MembershipsSearchClient() {
     userId: string,
     userName: string,
     membershipPlan: string,
+    membershipPlanName: string,
   ) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName || "Neznámy užívateľ");
     setCurrentPlan(membershipPlan);
+    setCurrentPlanName(membershipPlanName);
     setIsModalOpen(true);
   };
 
@@ -143,6 +141,7 @@ export function MembershipsSearchClient() {
     setSelectedUserId(null);
     setSelectedUserName("");
     setCurrentPlan("");
+    setCurrentPlanName("");
     if (flashMessage) {
       setTimeout(() => setFlashMessage(null), 3000);
     }
@@ -219,8 +218,11 @@ export function MembershipsSearchClient() {
             className="admin-role-select w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none transition-colors"
           >
             <option value="all">Vsetky</option>
-            <option value="monthly">Mesačná</option>
-            <option value="yearly">Ročná</option>
+            {availablePlans.map((availablePlan) => (
+              <option key={availablePlan.id} value={availablePlan.id}>
+                {availablePlan.name}
+              </option>
+            ))}
             <option value="none">None</option>
           </select>
         </div>
@@ -291,7 +293,8 @@ export function MembershipsSearchClient() {
               ? getMembershipRecord(membership?.membership)
               : null;
             const currentMembershipPlan =
-              getMembershipPlanKey(membershipRecord);
+              membershipRecord?.id ?? "none";
+            const currentMembershipPlanName = membershipRecord?.name ?? "Žiadne";
 
             return (
               <div
@@ -319,6 +322,7 @@ export function MembershipsSearchClient() {
                         profile.id,
                         profile.full_name || "",
                         currentMembershipPlan,
+                        currentMembershipPlanName,
                       )
                     }
                     className="shrink-0 rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
@@ -382,7 +386,8 @@ export function MembershipsSearchClient() {
                   ? getMembershipRecord(membership?.membership)
                   : null;
                 const currentMembershipPlan =
-                  getMembershipPlanKey(membershipRecord);
+                  membershipRecord?.id ?? "none";
+                const currentMembershipPlanName = membershipRecord?.name ?? "Žiadne";
 
                 return (
                   <tr
@@ -425,6 +430,7 @@ export function MembershipsSearchClient() {
                             profile.id,
                             profile.full_name || "",
                             currentMembershipPlan,
+                            currentMembershipPlanName,
                           )
                         }
                         className="rounded-lg border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
@@ -447,6 +453,8 @@ export function MembershipsSearchClient() {
           userId={selectedUserId}
           userName={selectedUserName}
           currentPlan={currentPlan}
+          currentPlanName={currentPlanName}
+          availablePlans={availablePlans}
           onSuccess={handleSuccess}
           onError={handleError}
         />

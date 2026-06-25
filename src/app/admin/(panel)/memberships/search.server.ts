@@ -16,12 +16,18 @@ type AdminMembershipRow = {
   start_date: string;
   end_date: string | null;
   status: string | null;
-  membership: { name: string } | { name: string }[] | null;
+  membership: { id: string; name: string } | { id: string; name: string }[] | null;
+};
+
+export type AdminAssignableMembershipPlan = {
+  id: string;
+  name: string;
 };
 
 type SearchMembershipsResult = {
   profiles: AdminProfileRow[];
   memberships: AdminMembershipRow[];
+  plans: AdminAssignableMembershipPlan[];
   error: string | null;
 };
 
@@ -30,16 +36,6 @@ function getMembershipRecord(membership: AdminMembershipRow["membership"]) {
     return membership[0] ?? null;
   }
   return membership;
-}
-
-function getMembershipPlanKey(membershipRecord: { name: string } | null) {
-  if (membershipRecord?.name === "Mesačná") {
-    return "monthly";
-  }
-  if (membershipRecord?.name === "Ročná") {
-    return "yearly";
-  }
-  return "none";
 }
 
 function isExpiredMembership(row: AdminMembershipRow | undefined) {
@@ -63,12 +59,12 @@ export async function searchMemberships({
   const hasAccess = await hasServerAdminAccess(supabase, "recepcny");
 
   if (!hasAccess) {
-    return { profiles: [], memberships: [], error: "Unauthorized" };
+    return { profiles: [], memberships: [], plans: [], error: "Unauthorized" };
   }
 
   const admin = createAdminClient();
 
-  const [profilesResult, membershipsResult] = await Promise.all([
+  const [profilesResult, membershipsResult, plansResult] = await Promise.all([
     admin
       .from("profiles")
       .select("id, full_name, email, created_at")
@@ -76,9 +72,15 @@ export async function searchMemberships({
     admin
       .from("user_memberships")
       .select(
-        "user_id, start_date, end_date, status, membership:memberships(name)",
+        "user_id, start_date, end_date, status, membership:memberships(id, name)",
       )
       .eq("status", "active"),
+    admin
+      .from("memberships")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   const profiles = Array.isArray(profilesResult.data)
@@ -86,6 +88,9 @@ export async function searchMemberships({
     : [];
   const memberships = Array.isArray(membershipsResult.data)
     ? (membershipsResult.data as AdminMembershipRow[])
+    : [];
+  const plans = Array.isArray(plansResult.data)
+    ? (plansResult.data as AdminAssignableMembershipPlan[])
     : [];
 
   const membershipsByUserId = new Map<string, AdminMembershipRow>();
@@ -110,7 +115,7 @@ export async function searchMemberships({
     const membershipRecord = hasCurrentMembership
       ? getMembershipRecord(membership.membership)
       : null;
-    const membershipPlan = getMembershipPlanKey(membershipRecord);
+    const membershipPlan = membershipRecord?.id ?? "none";
 
     return plan === "all" || membershipPlan === plan;
   });
@@ -118,6 +123,7 @@ export async function searchMemberships({
   return {
     profiles: filteredProfiles,
     memberships,
+    plans,
     error: null,
   };
 }

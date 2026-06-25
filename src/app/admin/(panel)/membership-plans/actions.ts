@@ -135,7 +135,7 @@ export async function saveMembershipPlan(input: MembershipPlanInput) {
   return { success: true, planId: data.id };
 }
 
-export async function deactivateMembershipPlan(planId: string) {
+export async function setMembershipPlanActive(planId: string, isActive: boolean) {
   try {
     await assertCanManageMembershipPlans();
   } catch (error) {
@@ -146,11 +146,11 @@ export async function deactivateMembershipPlan(planId: string) {
 
   const { error } = await createAdminClient()
     .from("memberships")
-    .update({ is_active: false })
+    .update({ is_active: isActive })
     .eq("id", planId);
 
   if (error) {
-    return { error: `Nepodarilo sa deaktivovat plan: ${error.message}` };
+    return { error: `Nepodarilo sa zmenit viditelnost planu: ${error.message}` };
   }
 
   revalidateMembershipPlanPaths();

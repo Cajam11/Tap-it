@@ -16,6 +16,7 @@ type GroupService = {
   price_unit: "hour" | "minute" | "session";
   capacity: number | null;
   metadata: Record<string, unknown> | null;
+  is_active: boolean;
 };
 
 type TrainerOption = {
@@ -83,9 +84,8 @@ export default async function AdminBookingsPage() {
 
   const { data: groupServices } = await supabaseAdmin
     .from("bookable_services")
-    .select("id, name, base_price, price_unit, capacity, metadata")
+    .select("id, name, base_price, price_unit, capacity, metadata, is_active")
     .eq("type", "group")
-    .eq("is_active", true)
     .order("name", { ascending: true });
 
   const { data: trainers } = await supabaseAdmin

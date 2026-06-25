@@ -26,6 +26,7 @@ type GroupService = {
   price_unit: "hour" | "minute" | "session";
   capacity: number | null;
   metadata: Record<string, unknown> | null;
+  is_active: boolean;
 };
 
 type TrainerOption = {

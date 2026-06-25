@@ -11,6 +11,7 @@ type FacilityInput = {
   name: string;
   basePrice: number;
   priceUnit: "hour" | "minute";
+  isActive: boolean;
   imageUrl?: string | null;
   firstHourPrice?: number | null;
   nextHourPrice?: number | null;
@@ -83,7 +84,7 @@ export async function saveFacilityService(input: FacilityInput) {
     base_price: basePrice,
     price_unit: priceUnit,
     capacity: null,
-    is_active: true,
+    is_active: input.isActive,
     metadata: {
       image_url: imageUrl,
       first_hour_price: hasFirstHourPrice ? firstHourPrice : null,
@@ -162,6 +163,44 @@ export async function deleteFacilityService(serviceId: string) {
 
   if (error) {
     return { error: `Nepodarilo sa zmazat priestor: ${error.message}` };
+  }
+
+  revalidatePath("/admin/priestory");
+  revalidatePath("/bookings/priestory");
+  revalidatePath(`/bookings/priestory/${serviceId}`);
+
+  return { success: true };
+}
+
+export async function setFacilityServiceActive(serviceId: string, isActive: boolean) {
+  try {
+    await assertCanManageFacilities();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Neautorizovany pristup." };
+  }
+
+  if (!serviceId) {
+    return { error: "Chyba ID priestoru." };
+  }
+
+  const admin = createAdminClient();
+  const { data: existingService } = await admin
+    .from("bookable_services")
+    .select("id")
+    .eq("id", serviceId)
+    .eq("type", "facility")
+    .maybeSingle<{ id: string }>();
+
+  if (!existingService) {
+    return { error: "Priestor neexistuje." };
+  }
+
+  const { error } = await (admin.from("bookable_services") as unknown as UpdatableQuery)
+    .update({ is_active: isActive })
+    .eq("id", serviceId);
+
+  if (error) {
+    return { error: `Nepodarilo sa zmenit viditelnost priestoru: ${error.message}` };
   }
 
   revalidatePath("/admin/priestory");

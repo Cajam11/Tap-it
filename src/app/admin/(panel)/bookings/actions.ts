@@ -21,6 +21,7 @@ type ServiceInput = {
   exerciseKind: string;
   basePrice: number;
   capacity: number | null;
+  isActive: boolean;
   imageUrl?: string | null;
 };
 
@@ -132,7 +133,7 @@ export async function saveGroupClassService(input: ServiceInput) {
     base_price: basePrice,
     price_unit: "session",
     capacity,
-    is_active: true,
+    is_active: input.isActive,
     metadata: {
       room: room || null,
       exercise_kind: exerciseKind || name,
@@ -418,31 +419,67 @@ export async function deleteGroupClassService(serviceId: string) {
     };
   }
 
-  const { error: deleteSchedulesError } = await admin
-    .from("service_schedules")
-    .delete()
-    .eq("service_id", serviceId)
-    .gte("start_time", now);
-
-  if (deleteSchedulesError) {
-    return { error: "Nepodarilo sa zmazat buduce terminy." };
-  }
-
-  const { error: deleteRulesError } = await admin
-    .from("recurring_rules")
-    .delete()
-    .eq("service_id", serviceId);
-
-  if (deleteRulesError) {
-    return { error: "Nepodarilo sa zmazat opakovacie pravidla." };
-  }
-
   const { error } = await (admin.from("bookable_services") as unknown as UpdatableQuery)
     .update({ is_active: false })
     .eq("id", serviceId);
 
   if (error) {
-    return { error: `Nepodarilo sa zmazat lekciu: ${error.message}` };
+    return { error: `Nepodarilo sa deaktivovat lekciu: ${error.message}` };
+  }
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/bookings/skupinove-lekcie");
+  revalidatePath(`/bookings/skupinove-lekcie/${serviceId}`);
+
+  return { success: true };
+}
+
+export async function setGroupClassServiceActive(serviceId: string, isActive: boolean) {
+  try {
+    await assertCanManageBookings();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Neautorizovany pristup." };
+  }
+
+  if (!serviceId) {
+    return { error: "Chyba ID lekcie." };
+  }
+
+  const admin = createAdminClient();
+  const { data: service } = await admin
+    .from("bookable_services")
+    .select("id")
+    .eq("id", serviceId)
+    .eq("type", "group")
+    .maybeSingle<{ id: string }>();
+
+  if (!service) {
+    return { error: "Skupinova lekcia neexistuje." };
+  }
+
+  if (!isActive) {
+    const now = new Date().toISOString();
+    const { count: activeBookingsCount } = await admin
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("service_id", serviceId)
+      .in("status", ["pending", "paid"])
+      .gte("start_time", now);
+
+    if ((activeBookingsCount ?? 0) > 0) {
+      return {
+        error:
+          "Tato lekcia ma buduce aktivne rezervacie. Najprv ich vybavte alebo zruste, potom ju mozete deaktivovat.",
+      };
+    }
+  }
+
+  const { error } = await (admin.from("bookable_services") as unknown as UpdatableQuery)
+    .update({ is_active: isActive })
+    .eq("id", serviceId);
+
+  if (error) {
+    return { error: `Nepodarilo sa zmenit viditelnost lekcie: ${error.message}` };
   }
 
   revalidatePath("/admin/bookings");

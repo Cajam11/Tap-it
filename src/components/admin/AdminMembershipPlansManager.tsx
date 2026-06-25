@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CreditCard, Plus, Save, Trash2 } from "lucide-react";
 import {
-  deactivateMembershipPlan,
   saveMembershipPlan,
+  setMembershipPlanActive,
 } from "@/app/admin/(panel)/membership-plans/actions";
 
 type BillingCycle = "entries" | "monthly" | "yearly";
@@ -192,23 +192,26 @@ export default function AdminMembershipPlansManager({
     });
   };
 
-  const handleDeactivate = () => {
+  const handleToggleActive = () => {
     if (!form.planId) return;
-    const confirmed = window.confirm("Deaktivovat tento membership plan?");
+    const nextActive = !form.isActive;
+    const confirmed = window.confirm(
+      nextActive ? "Aktivovat tento membership plan?" : "Deaktivovat tento membership plan?",
+    );
     if (!confirmed) return;
 
     setMessage("");
 
     startTransition(async () => {
-      const result = await deactivateMembershipPlan(form.planId!);
+      const result = await setMembershipPlanActive(form.planId!, nextActive);
 
       if (result.error) {
         setMessage(`Chyba: ${result.error}`);
         return;
       }
 
-      setForm((current) => ({ ...current, isActive: false }));
-      setMessage("Membership plan bol deaktivovany.");
+      setForm((current) => ({ ...current, isActive: nextActive }));
+      setMessage(nextActive ? "Membership plan je aktivny." : "Membership plan bol deaktivovany.");
       router.refresh();
     });
   };
@@ -275,7 +278,7 @@ export default function AdminMembershipPlansManager({
           message={message}
           onUpdate={updateForm}
           onSave={handleSave}
-          onDeactivate={handleDeactivate}
+          onToggleActive={handleToggleActive}
         />
       </section>
     </div>
@@ -288,14 +291,14 @@ function MembershipPlanForm({
   message,
   onUpdate,
   onSave,
-  onDeactivate,
+  onToggleActive,
 }: {
   form: FormState;
   isPending: boolean;
   message: string;
   onUpdate: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onSave: () => void;
-  onDeactivate: () => void;
+  onToggleActive: () => void;
 }) {
   const usesEntries = form.limitMode === "entries" || form.limitMode === "days_and_entries";
   const usesDays = form.limitMode === "days" || form.limitMode === "days_and_entries";
@@ -441,12 +444,12 @@ function MembershipPlanForm({
         {form.planId ? (
           <button
             type="button"
-            onClick={onDeactivate}
-            disabled={isPending || !form.isActive}
+            onClick={onToggleActive}
+            disabled={isPending}
             className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/75 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
-            Deaktivovať
+            {form.isActive ? "Deaktivovať" : "Aktivovať"}
           </button>
         ) : null}
       </div>

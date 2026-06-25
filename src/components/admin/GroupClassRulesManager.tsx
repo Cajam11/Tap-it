@@ -6,9 +6,9 @@ import NextImage from "next/image";
 import { CalendarClock, Check, Dumbbell, Save, Image as ImageIcon, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  deleteGroupClassService,
   saveGroupClassRecurringRule,
   saveGroupClassService,
+  setGroupClassServiceActive,
 } from "@/app/admin/(panel)/bookings/actions";
 import type { GroupClassPanelMode } from "@/components/admin/AdminBookingsWorkspace";
 
@@ -19,6 +19,7 @@ type GroupService = {
   price_unit: "hour" | "minute" | "session";
   capacity: number | null;
   metadata: Record<string, unknown> | null;
+  is_active: boolean;
 };
 
 type TrainerOption = {
@@ -57,6 +58,7 @@ type FormState = {
   days: number[];
   startTime: string;
   endTime: string;
+  isActive: boolean;
   imageUrl: string;
   imageFile: File | null;
 };
@@ -72,6 +74,7 @@ const EMPTY_FORM: FormState = {
   days: [],
   startTime: "16:00",
   endTime: "17:00",
+  isActive: true,
   imageUrl: "",
   imageFile: null,
 };
@@ -109,6 +112,7 @@ function formFromService(service: GroupService, serviceRules: RuleRow[]): FormSt
     days: serviceRules.map((rule) => rule.day_of_week),
     startTime: normalizeTime(firstRule?.start_time),
     endTime: normalizeTime(firstRule?.end_time, "17:00"),
+    isActive: service.is_active,
     imageUrl: readMetadataText(service.metadata, "image_url") ?? "",
     imageFile: null,
   };
@@ -227,6 +231,7 @@ export default function GroupClassRulesManager({
         exerciseKind: form.exerciseKind,
         basePrice: Number(form.basePrice),
         capacity: form.capacity.trim() ? Number(form.capacity) : null,
+        isActive: form.isActive,
         imageUrl: coverUrl,
       });
 
@@ -260,24 +265,26 @@ export default function GroupClassRulesManager({
     });
   };
 
-  const handleDelete = () => {
+  const handleToggleActive = () => {
     if (!form.serviceId) return;
-    const confirmed = window.confirm("Naozaj chcete zmazat tuto skupinovu lekciu?");
+    const nextActive = !form.isActive;
+    const confirmed = window.confirm(
+      nextActive ? "Aktivovat tuto skupinovu lekciu?" : "Deaktivovat tuto skupinovu lekciu?",
+    );
     if (!confirmed) return;
 
     setMessage("");
 
     startTransition(async () => {
-      const result = await deleteGroupClassService(form.serviceId!);
+      const result = await setGroupClassServiceActive(form.serviceId!, nextActive);
 
       if (result.error) {
         setMessage(`Chyba: ${result.error}`);
         return;
       }
 
-      setForm(EMPTY_FORM);
-      setSelectedServiceId(null);
-      setMessage("Skupinova lekcia bola zmazana.");
+      setForm((current) => ({ ...current, isActive: nextActive }));
+      setMessage(nextActive ? "Skupinova lekcia je aktivna." : "Skupinova lekcia je skryta.");
       router.refresh();
     });
   };
@@ -327,7 +334,14 @@ export default function GroupClassRulesManager({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 truncate text-sm font-semibold">{service.name}</span>
-                      {serviceRules.length > 0 && <Check className="h-4 w-4 shrink-0 text-green-300" />}
+                      <span className="flex shrink-0 items-center gap-2">
+                        {!service.is_active ? (
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/50">
+                            skryte
+                          </span>
+                        ) : null}
+                        {serviceRules.length > 0 && <Check className="h-4 w-4 text-green-300" />}
+                      </span>
                     </div>
                     <div className="mt-1 break-words text-xs text-white/45">
                       {formatRuleSummary(serviceRules, trainers)}
@@ -349,7 +363,7 @@ export default function GroupClassRulesManager({
             onUpdate={updateForm}
             onToggleDay={toggleDay}
             onSave={handleSaveAll}
-            onDelete={handleDelete}
+            onToggleActive={handleToggleActive}
           />
         </div>
       </div>
@@ -366,7 +380,7 @@ function ClassForm({
   onUpdate,
   onToggleDay,
   onSave,
-  onDelete,
+  onToggleActive,
 }: {
   form: FormState;
   trainers: TrainerOption[];
@@ -376,7 +390,7 @@ function ClassForm({
   onUpdate: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onToggleDay: (day: number) => void;
   onSave: () => void;
-  onDelete: () => void;
+  onToggleActive: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -436,6 +450,16 @@ function ClassForm({
             placeholder="Bez limitu"
             className="h-11 w-full rounded-lg border border-white/15 bg-black px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-red-500"
           />
+        </label>
+
+        <label className="inline-flex items-center gap-2 text-sm text-white/70">
+          <input
+            type="checkbox"
+            checked={form.isActive}
+            onChange={(event) => onUpdate("isActive", event.target.checked)}
+            className="h-4 w-4 accent-red-600"
+          />
+          Aktivna
         </label>
 
         <div className="space-y-2 md:col-span-2">
@@ -572,12 +596,12 @@ function ClassForm({
         {form.serviceId && (
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onToggleActive}
             disabled={isPending}
             className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
-            Zmazat lekciu
+            {form.isActive ? "Deaktivovat lekciu" : "Aktivovat lekciu"}
           </button>
         )}
       </div>

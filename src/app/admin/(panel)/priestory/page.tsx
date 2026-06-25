@@ -31,7 +31,6 @@ export default async function AdminFacilitiesPage() {
     .from("bookable_services")
     .select("id, name, base_price, price_unit, metadata, is_active")
     .eq("type", "facility")
-    .eq("is_active", true)
     .order("name", { ascending: true });
 
   return <AdminFacilitiesManager facilities={(facilities ?? []) as FacilityService[]} />;

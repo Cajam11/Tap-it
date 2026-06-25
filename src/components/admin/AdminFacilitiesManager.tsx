@@ -5,7 +5,10 @@ import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { Image as ImageIcon, Plus, Save, Trash2, Warehouse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { deleteFacilityService, saveFacilityService } from "@/app/admin/(panel)/priestory/actions";
+import {
+  saveFacilityService,
+  setFacilityServiceActive,
+} from "@/app/admin/(panel)/priestory/actions";
 
 type FacilityService = {
   id: string;
@@ -23,6 +26,7 @@ type FormState = {
   priceUnit: "hour" | "minute";
   firstHourPrice: string;
   nextHourPrice: string;
+  isActive: boolean;
   imageUrl: string;
   imageFile: File | null;
 };
@@ -34,6 +38,7 @@ const EMPTY_FORM: FormState = {
   priceUnit: "hour",
   firstHourPrice: "",
   nextHourPrice: "",
+  isActive: true,
   imageUrl: "",
   imageFile: null,
 };
@@ -52,6 +57,7 @@ function formFromFacility(facility: FacilityService): FormState {
     priceUnit: facility.price_unit === "minute" ? "minute" : "hour",
     firstHourPrice: readMetadataText(facility.metadata, "first_hour_price") ?? "",
     nextHourPrice: readMetadataText(facility.metadata, "next_hour_price") ?? "",
+    isActive: facility.is_active,
     imageUrl: readMetadataText(facility.metadata, "image_url") ?? "",
     imageFile: null,
   };
@@ -120,6 +126,7 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
         name: form.name,
         basePrice: Number(form.basePrice),
         priceUnit: form.priceUnit,
+        isActive: form.isActive,
         imageUrl: coverUrl,
         firstHourPrice: form.firstHourPrice.trim() ? Number(form.firstHourPrice) : null,
         nextHourPrice: form.nextHourPrice.trim() ? Number(form.nextHourPrice) : null,
@@ -142,24 +149,26 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
     });
   };
 
-  const handleDelete = () => {
+  const handleToggleActive = () => {
     if (!form.serviceId) return;
-    const confirmed = window.confirm("Naozaj chcete zmazat tento priestor?");
+    const nextActive = !form.isActive;
+    const confirmed = window.confirm(
+      nextActive ? "Aktivovat tento priestor?" : "Deaktivovat tento priestor?",
+    );
     if (!confirmed) return;
 
     setMessage("");
 
     startTransition(async () => {
-      const result = await deleteFacilityService(form.serviceId!);
+      const result = await setFacilityServiceActive(form.serviceId!, nextActive);
 
       if (result.error) {
         setMessage(`Chyba: ${result.error}`);
         return;
       }
 
-      setSelectedFacilityId(null);
-      setForm(EMPTY_FORM);
-      setMessage("Priestor bol zmazany.");
+      setForm((current) => ({ ...current, isActive: nextActive }));
+      setMessage(nextActive ? "Priestor je aktivny." : "Priestor je skryty.");
       router.refresh();
     });
   };
@@ -203,7 +212,14 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
                       : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:text-white"
                   }`}
                 >
-                  <span className="text-sm font-semibold">{facility.name}</span>
+                  <span className="flex items-center justify-between gap-3 text-sm font-semibold">
+                    <span>{facility.name}</span>
+                    {!facility.is_active ? (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/50">
+                        skryte
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="mt-1 block text-xs text-white/45">
                     {Number(facility.base_price).toFixed(2)} EUR / {formatUnit(facility.price_unit)}
                   </span>
@@ -219,7 +235,7 @@ export default function AdminFacilitiesManager({ facilities }: { facilities: Fac
           message={message}
           onUpdate={updateForm}
           onSave={handleSave}
-          onDelete={handleDelete}
+          onToggleActive={handleToggleActive}
         />
       </section>
     </div>
@@ -232,14 +248,14 @@ function FacilityForm({
   message,
   onUpdate,
   onSave,
-  onDelete,
+  onToggleActive,
 }: {
   form: FormState;
   isPending: boolean;
   message: string;
   onUpdate: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onSave: () => void;
-  onDelete: () => void;
+  onToggleActive: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrl = form.imageFile ? URL.createObjectURL(form.imageFile) : form.imageUrl;
@@ -287,6 +303,16 @@ function FacilityForm({
               <option value="hour">Za hodinu</option>
               <option value="minute">Za minutu</option>
             </select>
+          </label>
+
+          <label className="inline-flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(event) => onUpdate("isActive", event.target.checked)}
+              className="h-4 w-4 accent-red-600"
+            />
+            Aktivny
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -381,12 +407,12 @@ function FacilityForm({
         {form.serviceId && (
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onToggleActive}
             disabled={isPending}
             className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
-            Zmazat priestor
+            {form.isActive ? "Deaktivovat priestor" : "Aktivovat priestor"}
           </button>
         )}
       </div>

@@ -74,6 +74,9 @@ export default async function ServiceDetailPage({
   }
 
   const typedService = service as BookableService;
+  if (!typedService.is_active) {
+    notFound();
+  }
 
   const backHref =
     typedService.type === "facility"

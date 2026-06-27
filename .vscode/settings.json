@@ -1,4 +1,10 @@
 {
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "code-runner.executorMap": {
+    "python": "$workspaceRoot/.venv/bin/python -u"
+  },
+  "code-runner.runInTerminal": true,
   "css.validate": false,
   "scss.validate": false,
   "editor.quickSuggestions": {

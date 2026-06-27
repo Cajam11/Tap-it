@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck, CalendarHeart, MapPinned, Menu, X, CalendarClock, BadgeEuro } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, BarChart3, Clock, LogOut, Newspaper, ShieldCheck, CalendarHeart, MapPinned, Menu, X, CalendarClock, BadgeEuro, Music2 } from "lucide-react";
 import { signOutAdmin } from "@/app/admin/actions";
 import { hasMinAdminRole } from "@/lib/admin-authz";
 import type { UserRole } from "@/lib/types";
@@ -78,6 +78,11 @@ export default function AdminSidebar({ userRole, userName }: AdminSidebarProps) 
       label: "Priestory",
       href: "/admin/priestory",
       icon: MapPinned,
+    },
+    {
+      label: "Music",
+      href: "/admin/music",
+      icon: Music2,
     },
   ];
 

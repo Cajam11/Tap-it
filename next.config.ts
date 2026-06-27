@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
         hostname: "www.hayashi.cz",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "i.scdn.co",
+        pathname: "/**",
+      },
     ],
   },
 };

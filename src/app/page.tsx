@@ -27,6 +27,7 @@ import { buildMembershipDisplayPlans, type MembershipPlanRow } from "@/lib/membe
 import LiveOccupancyCard from "@/components/LiveOccupancyCard";
 import type { LivePresenceMember } from "@/components/LiveOccupancyCard";
 import GymNewsSection from "@/components/GymNewsSection";
+import GymMusicWidget from "@/components/GymMusicWidget";
 
 import SplashWrapper from "@/components/SplashWrapper";
 import TrainerCarousel, { type LandingTrainer } from "@/components/TrainerCarousel";
@@ -429,6 +430,8 @@ export default async function LandingPage() {
             showMemberList={Boolean(user)}
           />
         </section>
+
+        {user ? <GymMusicWidget /> : null}
 
         {/* -------------------- GYM NEWS -------------------------------- */}
         <GymNewsSection news={activeNews} />

@@ -178,6 +178,53 @@ export interface GymNews {
   updated_at: string;
 }
 
+export type GymMusicVoteValue = "like" | "dislike";
+export type GymMusicSuggestionStatus = "pending" | "queued" | "rejected" | "failed";
+
+export interface GymMusicPlaySession {
+  id: string;
+  spotify_track_id: string;
+  spotify_track_uri: string;
+  track_name: string;
+  artist_names: string[];
+  album_name: string | null;
+  album_image_url: string | null;
+  duration_ms: number | null;
+  progress_ms: number | null;
+  is_playing: boolean;
+  spotify_started_at: string | null;
+  played_at: string;
+  ended_at: string | null;
+  device_id: string | null;
+  device_name: string | null;
+  device_type: string | null;
+  device_is_active: boolean;
+  device_is_restricted: boolean;
+  last_synced_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GymMusicSuggestion {
+  id: string;
+  suggested_by: string;
+  spotify_track_id: string;
+  spotify_track_uri: string;
+  track_name: string;
+  artist_names: string[];
+  album_name: string | null;
+  album_image_url: string | null;
+  duration_ms: number | null;
+  status: GymMusicSuggestionStatus;
+  queued_by: string | null;
+  queued_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  queue_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type StaffShiftStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type StaffShiftSeriesStatus = "active" | "cancelled";
 

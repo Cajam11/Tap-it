@@ -15,7 +15,10 @@ export async function POST() {
   }
 
   try {
-    const music = await syncCurrentMusic(context.userId, { force: true });
+    const music = await syncCurrentMusic(context.userId, {
+      force: true,
+      bypassLock: true,
+    });
     return NextResponse.json(music);
   } catch (error) {
     console.error("Admin music sync failed", error);

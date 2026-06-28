@@ -691,7 +691,18 @@ async function tryAcquireMusicSyncLock() {
   return data === true;
 }
 
-async function syncCurrentPlayback(force = false) {
+type CurrentPlaybackSyncOptions = {
+  force?: boolean;
+  bypassLock?: boolean;
+};
+
+async function syncCurrentPlayback(
+  options: boolean | CurrentPlaybackSyncOptions = {},
+) {
+  const syncOptions =
+    typeof options === "boolean" ? { force: options } : options;
+  const force = Boolean(syncOptions.force);
+  const bypassLock = Boolean(syncOptions.bypassLock);
   const openSession = await getOpenPlaySession();
 
   if (
@@ -702,9 +713,11 @@ async function syncCurrentPlayback(force = false) {
     return openSession;
   }
 
-  const canSync = await tryAcquireMusicSyncLock();
-  if (!canSync) {
-    return openSession;
+  if (!bypassLock) {
+    const canSync = await tryAcquireMusicSyncLock();
+    if (!canSync) {
+      return openSession;
+    }
   }
 
   const token = await getSpotifyAccessToken();
@@ -847,7 +860,7 @@ async function getVoteSummary(
 
 export async function getCurrentMusic(
   userId?: string | null,
-  opts: { force?: boolean; sync?: boolean } = {},
+  opts: CurrentPlaybackSyncOptions & { sync?: boolean } = {},
 ): Promise<MusicCurrentPayload> {
   const connection = await getSpotifyConnection();
 
@@ -867,7 +880,7 @@ export async function getCurrentMusic(
   const current = reconnectRequired
     ? await getOpenPlaySession()
     : opts.sync
-      ? await syncCurrentPlayback(opts.force)
+      ? await syncCurrentPlayback(opts)
       : await getOpenPlaySession();
   const votes = await getVoteSummary(current?.id ?? null, userId);
 
@@ -883,7 +896,7 @@ export async function getCurrentMusic(
 
 export async function syncCurrentMusic(
   userId?: string | null,
-  opts: { force?: boolean } = {},
+  opts: CurrentPlaybackSyncOptions = {},
 ) {
   return getCurrentMusic(userId, { ...opts, sync: true });
 }

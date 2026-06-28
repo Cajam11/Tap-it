@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getMusicRequestUser } from "../auth";
 import { setMusicVote } from "@/lib/spotify";
 import type { GymMusicVoteValue } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getMusicRequestUser(request);
 
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

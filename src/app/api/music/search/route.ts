@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getMusicRequestUser } from "../auth";
 import { searchSpotifyTracks } from "@/lib/spotify";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getMusicRequestUser(request);
 
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

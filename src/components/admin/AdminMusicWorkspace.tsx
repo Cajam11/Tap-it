@@ -142,13 +142,10 @@ export default function AdminMusicWorkspace({
   }, [initialSuggestions]);
 
   const syncCurrentMusic = useCallback(async () => {
-    if (document.hidden) {
-      return;
-    }
-
     setIsSyncing(true);
     try {
-      const response = await fetch("/api/music/current?force=1", {
+      const response = await fetch("/api/admin/music/sync", {
+        method: "POST",
         cache: "no-store",
       });
 
@@ -186,51 +183,9 @@ export default function AdminMusicWorkspace({
   }, []);
 
   useEffect(() => {
-    void syncCurrentMusic();
-  }, [syncCurrentMusic]);
-
-  useEffect(() => {
     const ticker = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(ticker);
   }, []);
-
-  useEffect(() => {
-    if (!current?.duration_ms || !current.is_playing) {
-      return;
-    }
-
-    const remainingMs = Math.max(
-      1200,
-      current.duration_ms - (current.progress_ms ?? 0) + 1500,
-    );
-    const timeout = window.setTimeout(() => {
-      void syncCurrentMusic();
-    }, remainingMs);
-
-    return () => window.clearTimeout(timeout);
-  }, [
-    current?.id,
-    current?.duration_ms,
-    current?.is_playing,
-    current?.progress_ms,
-    syncCurrentMusic,
-  ]);
-
-  useEffect(() => {
-    const syncOnFocus = () => {
-      if (!document.hidden) {
-        void syncCurrentMusic();
-      }
-    };
-
-    window.addEventListener("focus", syncOnFocus);
-    document.addEventListener("visibilitychange", syncOnFocus);
-
-    return () => {
-      window.removeEventListener("focus", syncOnFocus);
-      document.removeEventListener("visibilitychange", syncOnFocus);
-    };
-  }, [syncCurrentMusic]);
 
   function mergeSuggestion(updated: GymMusicSuggestion) {
     setSuggestions((current) =>
@@ -271,7 +226,13 @@ export default function AdminMusicWorkspace({
           }
 
           if (old?.id && old.id === current?.id) {
-            void syncCurrentMusic();
+            setMusic((prev) => ({
+              ...prev,
+              current: null,
+              voteCounts: { like: 0, dislike: 0 },
+              userVote: null,
+            }));
+            setLoadedAt(Date.now());
           }
         },
       )
@@ -382,10 +343,6 @@ export default function AdminMusicWorkspace({
         mergeSuggestion(body.suggestion);
       }
 
-      if (action === "queue") {
-        void syncCurrentMusic();
-      }
-
       router.refresh();
     } catch {
       setError("Akcia sa nepodarila. Skus to znova.");
@@ -404,10 +361,15 @@ export default function AdminMusicWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/50">
+          <button
+            type="button"
+            onClick={() => void syncCurrentMusic()}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/[0.08] disabled:cursor-wait disabled:text-white/35"
+          >
             <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-            Realtime
-          </span>
+            Sync now
+          </button>
           {isOwner ? (
             <Link
               href="/api/admin/music/spotify/connect"

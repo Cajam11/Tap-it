@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const force = request.nextUrl.searchParams.get("force") === "1";
-    const music = await getCurrentMusic(user.id, { force });
+    const music = await getCurrentMusic(user.id);
     return NextResponse.json(music);
   } catch (error) {
     console.error("Music current failed", error);

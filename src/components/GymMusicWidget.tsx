@@ -80,11 +80,8 @@ export default function GymMusicWidget() {
     return Math.min(current.duration_ms ?? base + elapsed, base + elapsed);
   }, [current, loadedAt, now]);
 
-  const loadMusic = useCallback(async (force = false) => {
-    const response = await fetch(
-      `/api/music/current${force ? "?force=1" : ""}`,
-      { cache: "no-store" },
-    );
+  const loadMusic = useCallback(async () => {
+    const response = await fetch("/api/music/current", { cache: "no-store" });
     if (!response.ok) {
       throw new Error("music_load_failed");
     }
@@ -121,38 +118,6 @@ export default function GymMusicWidget() {
   }, [loadMusic]);
 
   useEffect(() => {
-    if (!current?.duration_ms || !current.is_playing) {
-      return;
-    }
-
-    const remainingMs = Math.max(
-      1200,
-      current.duration_ms - (current.progress_ms ?? 0) + 1500,
-    );
-    const timeout = window.setTimeout(() => {
-      void loadMusic(true);
-    }, remainingMs);
-
-    return () => window.clearTimeout(timeout);
-  }, [current?.id, current?.duration_ms, current?.is_playing, current?.progress_ms, loadMusic]);
-
-  useEffect(() => {
-    const syncOnFocus = () => {
-      if (!document.hidden) {
-        void loadMusic(true);
-      }
-    };
-
-    window.addEventListener("focus", syncOnFocus);
-    document.addEventListener("visibilitychange", syncOnFocus);
-
-    return () => {
-      window.removeEventListener("focus", syncOnFocus);
-      document.removeEventListener("visibilitychange", syncOnFocus);
-    };
-  }, [loadMusic]);
-
-  useEffect(() => {
     const channel = supabase
       .channel("landing-gym-music")
       .on(
@@ -180,7 +145,17 @@ export default function GymMusicWidget() {
           }
 
           if (old?.id && old.id === current?.id) {
-            void loadMusic(true);
+            setMusic((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    current: null,
+                    voteCounts: { like: 0, dislike: 0 },
+                    userVote: null,
+                  }
+                : prev,
+            );
+            setLoadedAt(Date.now());
           }
         },
       )

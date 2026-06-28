@@ -16,6 +16,7 @@ const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const SPOTIFY_AUTHORIZE_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_API_URL = "https://api.spotify.com/v1";
 const MUSIC_SYNC_TTL_MS = 15_000;
+const MUSIC_SYNC_LOCK_SECONDS = 12;
 const SPOTIFY_REFRESH_TOKEN_LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
 let cachedAccessToken:
@@ -673,6 +674,23 @@ function sessionPayloadFromSpotify(
   };
 }
 
+async function tryAcquireMusicSyncLock() {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("try_acquire_gym_music_sync_lock", {
+    p_lock_seconds: MUSIC_SYNC_LOCK_SECONDS,
+  });
+
+  if (error) {
+    if (isMissingMusicSchemaError(error)) {
+      return true;
+    }
+
+    throw new Error(error.message);
+  }
+
+  return data === true;
+}
+
 async function syncCurrentPlayback(force = false) {
   const openSession = await getOpenPlaySession();
 
@@ -681,6 +699,11 @@ async function syncCurrentPlayback(force = false) {
     !force &&
     Date.now() - new Date(openSession.last_synced_at).getTime() < MUSIC_SYNC_TTL_MS
   ) {
+    return openSession;
+  }
+
+  const canSync = await tryAcquireMusicSyncLock();
+  if (!canSync) {
     return openSession;
   }
 
@@ -824,7 +847,7 @@ async function getVoteSummary(
 
 export async function getCurrentMusic(
   userId?: string | null,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; sync?: boolean } = {},
 ): Promise<MusicCurrentPayload> {
   const connection = await getSpotifyConnection();
 
@@ -841,7 +864,11 @@ export async function getCurrentMusic(
   }
 
   const reconnectRequired = isSpotifyReconnectRequired(connection);
-  const current = reconnectRequired ? await getOpenPlaySession() : await syncCurrentPlayback(opts.force);
+  const current = reconnectRequired
+    ? await getOpenPlaySession()
+    : opts.sync
+      ? await syncCurrentPlayback(opts.force)
+      : await getOpenPlaySession();
   const votes = await getVoteSummary(current?.id ?? null, userId);
 
   return {
@@ -852,6 +879,13 @@ export async function getCurrentMusic(
     ...votes,
     message: reconnectRequired ? "Spotify needs to be reconnected." : undefined,
   };
+}
+
+export async function syncCurrentMusic(
+  userId?: string | null,
+  opts: { force?: boolean } = {},
+) {
+  return getCurrentMusic(userId, { ...opts, sync: true });
 }
 
 export async function setMusicVote(
